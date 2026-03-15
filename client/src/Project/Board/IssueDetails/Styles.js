@@ -1,6 +1,6 @@
 import styled from 'styled-components';
 
-import { color, font } from 'shared/utils/styles';
+import { color, font, fontSizes, lineHeights } from 'shared/utils/styles';
 
 export const Content = styled.div`
   display: flex;
@@ -31,10 +31,13 @@ export const TopActionsRight = styled.div`
   }
 `;
 
-export const SectionTitle = styled.div`
-  margin: 24px 0 5px;
+export const SectionTitle = styled.h2`
+  margin: 24px 0 8px;
+  padding: 0;
   text-transform: uppercase;
-  color: ${color.textMedium};
-  ${font.size(12.5)}
-  ${font.bold}
+  letter-spacing: 0.03em;
+  color: ${color.textDark};
+  ${font.size(fontSizes.caption)};
+  ${font.bold};
+  line-height: ${lineHeights.tight};
 `;

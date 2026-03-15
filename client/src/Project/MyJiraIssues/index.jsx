@@ -14,11 +14,14 @@ import {
   PageHeader,
   PageTitle,
   Card,
+  CardStrip,
+  CardBody,
   CardKey,
   CardSummary,
   CardMeta,
   CardStatus,
-  CardHours,
+  CardBottom,
+  CardAssigneeAvatar,
   LoaderWrap,
   Empty,
   ErrorMessage,
@@ -28,6 +31,8 @@ import {
 const JIRA_ISSUES_URL = '/api/v1/jira/issues';
 const EXTERNAL_COLUMN_ORDER_KEY = 'jira_clone_external_project_column_order';
 const EXTERNAL_ISSUES_CACHE_KEY = 'jira_clone_external_issues_cache';
+const MY_ATLASSIAN_AVATAR_URL =
+  'https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/557058:0737dc23-6a5c-419a-8115-e15ab83e32df/73e6ddb1-5ec6-4fc7-9a12-141026676fa0/128';
 
 const loadProjectColumnOrder = () => {
   try {
@@ -218,30 +223,50 @@ export default function MyJiraIssues() {
                       >
                         <LaneTitle {...colProvided.dragHandleProps} $dragHandle>
                           {projectName || projectKey}{' '}
-                          <LaneIssuesCount>({projectIssues.length})</LaneIssuesCount>
+                          <LaneIssuesCount>{projectIssues.length}</LaneIssuesCount>
                         </LaneTitle>
                         <LaneContent>
                           {projectIssues.map((issue) => {
+                            const statusColors = getStatusColors(issue.status);
+                            const typeColors   = getStatusColors(issue.issueType);
+                            const stripColor   = statusColors?.bg || '#e5e7eb';
+
                             return (
                               <Card
                                 key={issue.key}
-                                as="div"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setTimeEntryIssue(issue);
                                 }}
                               >
-                                <CardKey>{issue.key}</CardKey>
-                                <CardSummary title={issue.summary}>{issue.summary}</CardSummary>
-                                <CardMeta>
-                                  <CardStatus
-                                    $bg={getStatusColors(issue.status)?.bg}
-                                    $text={getStatusColors(issue.status)?.text}
-                                  >
-                                    {issue.status}
-                                  </CardStatus>
-                                  {issue.issueType && <span>{issue.issueType}</span>}
-                                </CardMeta>
+                                <CardStrip $color={statusColors?.text || '#94a3b8'} />
+                                <CardBody>
+                                  <CardKey>{issue.key}</CardKey>
+                                  <CardSummary title={issue.summary}>{issue.summary}</CardSummary>
+                                  <CardMeta>
+                                    <CardStatus
+                                      $bg={statusColors?.bg}
+                                      $text={statusColors?.text}
+                                    >
+                                      {issue.status}
+                                    </CardStatus>
+                                    {issue.issueType && (
+                                      <CardStatus
+                                        $bg={typeColors?.bg || '#f1f5f9'}
+                                        $text={typeColors?.text || '#475569'}
+                                      >
+                                        {issue.issueType}
+                                      </CardStatus>
+                                    )}
+                                  </CardMeta>
+                                  <CardBottom>
+                                    <CardAssigneeAvatar
+                                      size={22}
+                                      avatarUrl={issue.assigneeAvatarUrl || MY_ATLASSIAN_AVATAR_URL}
+                                      name={issue.assigneeDisplayName || 'Me'}
+                                    />
+                                  </CardBottom>
+                                </CardBody>
                               </Card>
                             );
                           })}

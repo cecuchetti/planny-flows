@@ -1,15 +1,18 @@
 import styled from 'styled-components';
 
-import { color, font } from 'shared/utils/styles';
+import { color, font, fontSizes, lineHeights } from 'shared/utils/styles';
 import { Button, Form } from 'shared/components';
 
 export const FormElement = styled(Form.Element)`
   padding: 25px 40px 35px;
 `;
 
-export const FormHeading = styled.div`
+export const FormHeading = styled.h1`
+  margin: 0;
   padding-bottom: 15px;
-  ${font.size(21)}
+  ${font.size(fontSizes.pageTitle)}
+  ${font.bold}
+  line-height: ${lineHeights.snug};
 `;
 
 export const SelectItem = styled.div`

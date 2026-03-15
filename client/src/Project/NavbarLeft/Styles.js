@@ -1,7 +1,7 @@
 import styled from 'styled-components';
 import { NavLink } from 'react-router-dom';
 
-import { font, sizes, color, mixin, zIndexValues } from 'shared/utils/styles';
+import { font, fontSizes, lineHeights, sizes, color, mixin, zIndexValues } from 'shared/utils/styles';
 import { Logo } from 'shared/components';
 
 export const NavLeft = styled.aside`
@@ -12,12 +12,14 @@ export const NavLeft = styled.aside`
   overflow-x: hidden;
   height: 100vh;
   width: ${sizes.appNavBarLeftWidth}px;
-  background: ${color.backgroundDarkPrimary};
-  transition: all 0.1s;
+  background: #fff;
+  border-right: 1px solid ${color.borderLightest};
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: width 0.2s ease, box-shadow 0.2s ease;
   ${mixin.hardwareAccelerate}
   &:hover {
     width: 200px;
-    box-shadow: 0 0 50px 0 rgba(0, 0, 0, 0.6);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
   }
 `;
 
@@ -57,18 +59,21 @@ export const LangSwitcher = styled.div`
 export const LangButton = styled.button`
   padding: 4px 8px;
   min-width: 32px;
-  color: #deebff;
+  color: ${color.textMedium};
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
-  ${font.size(12)}
+  border: 1px solid ${color.borderLightest};
+  border-radius: 6px;
+  ${font.size(fontSizes.caption)}
+  line-height: 1;
   ${mixin.clickable}
   &:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: ${color.backgroundLight};
+    color: ${color.primary};
   }
   &.active {
-    background: rgba(255, 255, 255, 0.2);
-    border-color: rgba(255, 255, 255, 0.4);
+    background: ${color.backgroundLightPrimary};
+    border-color: ${color.primary};
+    color: ${color.primary};
   }
 `;
 
@@ -78,17 +83,19 @@ export const Item = styled.div`
   height: 42px;
   line-height: 42px;
   padding-left: 64px;
-  color: #deebff;
-  transition: color 0.1s;
+  color: ${color.textDark};
+  transition: color 0.15s, background 0.15s;
   ${mixin.clickable}
   border: none;
   text-align: left;
   &:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: ${color.backgroundLight};
+    color: ${color.primary};
   }
   i {
     position: absolute;
     left: 18px;
+    color: inherit;
   }
 `;
 
@@ -98,10 +105,12 @@ export const ItemText = styled.div`
   visibility: hidden;
   opacity: 0;
   text-transform: uppercase;
-  transition: all 0.1s;
+  letter-spacing: 0.03em;
+  transition: all 0.15s;
   transition-property: right, visibility, opacity;
-  ${font.bold}
-  ${font.size(12)}
+  ${font.medium}
+  ${font.size(fontSizes.caption)}
+  line-height: ${lineHeights.normal};
   ${NavLeft}:hover & {
     right: 0;
     visibility: visible;

@@ -1,6 +1,6 @@
 import styled from 'styled-components';
 
-import { font } from 'shared/utils/styles';
+import { font, fontSizes, lineHeights } from 'shared/utils/styles';
 import { Button, Form } from 'shared/components';
 
 export const FormCont = styled.div`
@@ -14,9 +14,11 @@ export const FormElement = styled(Form.Element)`
 `;
 
 export const FormHeading = styled.h1`
+  margin: 0;
   padding: 6px 0 15px;
-  ${font.size(24)}
-  ${font.medium}
+  ${font.size(fontSizes.pageTitle)}
+  ${font.bold}
+  line-height: ${lineHeights.snug};
 `;
 
 export const ActionButton = styled(Button)`

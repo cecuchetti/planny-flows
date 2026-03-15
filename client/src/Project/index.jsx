@@ -13,7 +13,9 @@ import IssueSearch from './IssueSearch';
 import IssueCreate from './IssueCreate';
 import ProjectSettings from './ProjectSettings';
 import MyJiraIssues from './MyJiraIssues';
-import { ProjectPage } from './Styles';
+import Maintenance from './Maintenance';
+import { ProjectCategoryCopy } from 'shared/constants/projects';
+import { ProjectPage, ContentCard, TopBar, TopBarAvatar, TopBarTexts, TopBarName, TopBarCategory, BodyRow, MainContent } from './Styles';
 
 const Project = () => {
   const location = useLocation();
@@ -54,43 +56,57 @@ const Project = () => {
         issueCreateModalOpen={issueCreateModalHelpers.open}
       />
 
-      <Sidebar project={project} />
+      <ContentCard>
+        <TopBar>
+          <TopBarAvatar>📌</TopBarAvatar>
+          <TopBarTexts>
+            <TopBarName>{project.name}</TopBarName>
+            <TopBarCategory>{ProjectCategoryCopy[project.category]}</TopBarCategory>
+          </TopBarTexts>
+        </TopBar>
 
-      {issueSearchModalHelpers.isOpen() && (
-        <Modal
-          isOpen
-          testid="modal:issue-search"
-          variant="aside"
-          width={600}
-          onClose={issueSearchModalHelpers.close}
-          renderContent={() => <IssueSearch project={project} />}
-        />
-      )}
-
-      {issueCreateModalHelpers.isOpen() && (
-        <Modal
-          isOpen
-          testid="modal:issue-create"
-          width={800}
-          withCloseIcon={false}
-          onClose={issueCreateModalHelpers.close}
-          renderContent={modal => (
-            <IssueCreate
-              project={project}
-              fetchProject={fetchProject}
-              onCreate={() => navigate(`${match.url}/board`)}
-              modalClose={modal.close}
+        <BodyRow>
+        <Sidebar project={project} />
+        <MainContent>
+          {issueSearchModalHelpers.isOpen() && (
+            <Modal
+              isOpen
+              testid="modal:issue-search"
+              variant="aside"
+              width={600}
+              onClose={issueSearchModalHelpers.close}
+              renderContent={() => <IssueSearch project={project} />}
             />
           )}
-        />
-      )}
 
-      <Routes>
-        <Route path="board/*" element={<Board project={project} fetchProject={fetchProject} updateLocalProjectIssues={updateLocalProjectIssues} />} />
-        <Route path="my-jira-issues" element={<MyJiraIssues />} />
-        <Route path="settings" element={<ProjectSettings project={project} fetchProject={fetchProject} />} />
-        <Route index element={<Navigate to="board" replace />} />
-      </Routes>
+          {issueCreateModalHelpers.isOpen() && (
+            <Modal
+              isOpen
+              testid="modal:issue-create"
+              width={800}
+              withCloseIcon={false}
+              onClose={issueCreateModalHelpers.close}
+              renderContent={modal => (
+                <IssueCreate
+                  project={project}
+                  fetchProject={fetchProject}
+                  onCreate={() => navigate(`${match.url}/board`)}
+                  modalClose={modal.close}
+                />
+              )}
+            />
+          )}
+
+          <Routes>
+            <Route path="board/*" element={<Board project={project} fetchProject={fetchProject} updateLocalProjectIssues={updateLocalProjectIssues} />} />
+            <Route path="my-jira-issues" element={<MyJiraIssues />} />
+            <Route path="maintenance" element={<Maintenance />} />
+            <Route path="settings" element={<ProjectSettings project={project} fetchProject={fetchProject} />} />
+            <Route index element={<Navigate to="board" replace />} />
+          </Routes>
+        </MainContent>
+        </BodyRow>
+      </ContentCard>
     </ProjectPage>
   );
 };

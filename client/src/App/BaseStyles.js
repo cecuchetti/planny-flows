@@ -12,9 +12,12 @@ export default createGlobalStyle`
   body {
     color: ${color.textDarkest};
     -webkit-tap-highlight-color: transparent;
-    line-height: 1.2;
-    ${font.size(16)}
+    line-height: 1.5;
+    ${font.size(15)}
     ${font.regular}
+    background: linear-gradient(135deg, ${color.gradientStart} 0%, ${color.gradientEnd} 100%);
+    background-attachment: fixed;
+    min-height: 100%;
   }
 
   #root {

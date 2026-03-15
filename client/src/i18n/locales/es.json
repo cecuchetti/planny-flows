@@ -21,7 +21,30 @@
   "sidebar": {
     "kanbanBoard": "Tablero Kanban",
     "externalAssignments": "Asignaciones Externas",
-    "projectSettings": "Configuración del proyecto"
+    "projectSettings": "Configuración del proyecto",
+    "maintenance": "Mantenimiento"
+  },
+  "maintenance": {
+    "pageTitle": "Mantenimiento",
+    "actions": {
+      "outlookClean": {
+        "title": "Limpiar Outlook",
+        "subtitle": "Ejecuta el servicio de limpieza de Outlook para limpiar tu bandeja.",
+        "success": "Limpieza de Outlook completada correctamente.",
+        "running": "La limpieza de Outlook se está ejecutando en segundo plano. Serás notificado al finalizar.",
+        "failed": "La limpieza de Outlook falló después de 5 intentos: {{message}}"
+      },
+      "exportReports": {
+        "title": "Exportar reportes",
+        "subtitle": "Exportar reportes del proyecto (placeholder)."
+      },
+      "archiveOld": {
+        "title": "Archivar elementos antiguos",
+        "subtitle": "Archivar issues y comentarios antiguos (placeholder)."
+      },
+      "notImplemented": "Esta acción aún no está implementada.",
+      "error": "La acción falló. Intenta de nuevo."
+    }
   },
   "myJiraIssues": {
     "title": "Mis issues Jira",

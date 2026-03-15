@@ -145,6 +145,9 @@ export class ExternalJiraIssueClient implements IJiraIssueClient {
       status: String(status.name ?? ''),
       assigneeDisplayName: assignee ? String(assignee.displayName ?? '') : null,
       assigneeAccountId: assignee ? String(assignee.accountId ?? '') : null,
+      assigneeAvatarUrl: assignee
+        ? String((assignee.avatarUrls as Record<string, unknown>)?.['48x48'] ?? '')
+        : null,
       issueType: String(issuetype.name ?? ''),
     };
   }

@@ -6,12 +6,7 @@ const propTypes = {
   size: PropTypes.number,
 };
 
-const defaultProps = {
-  className: undefined,
-  size: 28,
-};
-
-const Logo = ({ className, size }) => (
+const Logo = ({ className, size = 28 }) => (
   <span className={className}>
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 75.76 75.76" width={size}>
       <defs>
@@ -23,8 +18,8 @@ const Logo = ({ className, size }) => (
           y2="30.99"
           gradientUnits="userSpaceOnUse"
         >
-          <stop offset="0.18" stopColor="rgba(0, 82, 204, 0.2)" />
-          <stop offset="1" stopColor="#DEEBFE" />
+          <stop offset="0.18" stopColor="rgba(37, 99, 235, 0.25)" />
+          <stop offset="1" stopColor="#bfdbfe" />
         </linearGradient>
         <linearGradient
           id="linear-gradient-2"
@@ -35,11 +30,11 @@ const Logo = ({ className, size }) => (
           xlinkHref="#linear-gradient"
         />
       </defs>
-      <title>Jira Software-blue</title>
+      <title>Planny Flows</title>
       <g id="Layer_2" data-name="Layer 2">
         <g id="Blue">
           <path
-            style={{ fill: '#DEEBFE' }}
+            style={{ fill: '#bfdbfe' }}
             d="M72.4,35.76,39.8,3.16,36.64,0h0L12.1,24.54h0L.88,35.76A3,3,0,0,0,.88,40L23.3,62.42,36.64,75.76,61.18,51.22l.38-.38L72.4,40A3,3,0,0,0,72.4,35.76ZM36.64,49.08l-11.2-11.2,11.2-11.2,11.2,11.2Z"
           />
           <path
@@ -57,6 +52,5 @@ const Logo = ({ className, size }) => (
 );
 
 Logo.propTypes = propTypes;
-Logo.defaultProps = defaultProps;
 
 export default Logo;

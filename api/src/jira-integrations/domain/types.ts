@@ -31,6 +31,7 @@ export interface IssueSummary {
   status: string;
   assigneeDisplayName: string | null;
   assigneeAccountId: string | null;
+  assigneeAvatarUrl: string | null;
   issueType: string;
 }
 

@@ -17,7 +17,7 @@ const ProjectNavbarLeft = ({ issueSearchModalOpen, issueCreateModalOpen }) => {
   return (
     <NavLeft>
       <LogoLink to="/">
-        <StyledLogo color="#fff" />
+        <StyledLogo />
       </LogoLink>
 
       <Item as="button" type="button" onClick={issueSearchModalOpen} aria-label={t('nav.searchIssues')}>

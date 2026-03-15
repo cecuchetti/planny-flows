@@ -1,67 +1,96 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import { NavLink } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-
-import { ProjectCategoryCopy } from 'shared/constants/projects';
-import { Icon, ProjectAvatar } from 'shared/components';
 
 import {
   Sidebar,
-  ProjectInfo,
-  ProjectTexts,
-  ProjectName,
-  ProjectCategory,
+  NavSection,
+  SectionLabel,
   Divider,
   LinkItem,
+  DisabledItem,
+  NavIcon,
   LinkText,
-  NotImplemented,
 } from './Styles';
 
 const propTypes = {
   project: PropTypes.object.isRequired,
 };
 
-const ProjectSidebar = ({ project }) => {
+const NAV_ITEMS = [
+  {
+    key: 'kanban',
+    labelKey: 'sidebar.kanbanBoard',
+    path: '/board',
+    icon: '📋',
+    bg: '#2563eb',   // blue
+  },
+  {
+    key: 'external',
+    labelKey: 'sidebar.externalAssignments',
+    path: '/my-jira-issues',
+    icon: '🔗',
+    bg: '#7c3aed',   // violet
+  },
+  {
+    key: 'settings',
+    labelKey: 'sidebar.projectSettings',
+    path: '/settings',
+    icon: '⚙️',
+    bg: '#475569',   // slate
+  },
+];
+
+const MAINTENANCE_ITEMS = [
+  {
+    key: 'maintenance',
+    labelKey: 'sidebar.maintenance',
+    path: '/maintenance',
+    icon: '🔧',
+    bg: '#059669',   // emerald
+  },
+];
+
+const DISABLED_ITEMS = [
+  { key: 'filters', label: 'Issues and filters', icon: '🔍', bg: '#94a3b8' },
+  { key: 'pages',   label: 'Pages',              icon: '📄', bg: '#94a3b8' },
+  { key: 'reports', label: 'Reports',            icon: '📊', bg: '#94a3b8' },
+];
+
+const ProjectSidebar = ({ project: _project }) => {
   const { t } = useTranslation();
   const basePath = '/project';
 
   return (
     <Sidebar>
-      <ProjectInfo>
-        <ProjectAvatar />
-        <ProjectTexts>
-          <ProjectName>{project.name}</ProjectName>
-          <ProjectCategory>{ProjectCategoryCopy[project.category]} project</ProjectCategory>
-        </ProjectTexts>
-      </ProjectInfo>
+      <NavSection>
+        <SectionLabel>Principal</SectionLabel>
 
-      {renderLinkItem(basePath, t('sidebar.kanbanBoard'), 'board', '/board')}
-      {renderLinkItem(basePath, t('sidebar.externalAssignments'), 'issues', '/my-jira-issues')}
-      {renderLinkItem(basePath, t('sidebar.projectSettings'), 'settings', '/settings')}
-      <Divider />
-      {renderLinkItem(basePath, 'Releases', 'shipping')}
-      {renderLinkItem(basePath, 'Issues and filters', 'issues')}
-      {renderLinkItem(basePath, 'Pages', 'page')}
-      {renderLinkItem(basePath, 'Reports', 'reports')}
-      {renderLinkItem(basePath, 'Components', 'component')}
+        {NAV_ITEMS.map(item => (
+          <LinkItem key={item.key} to={`${basePath}${item.path}`} end={item.path === '/board'}>
+            <NavIcon $bg={item.bg}>{item.icon}</NavIcon>
+            <LinkText>{t(item.labelKey)}</LinkText>
+          </LinkItem>
+        ))}
+
+        <Divider />
+        <SectionLabel>Más</SectionLabel>
+
+        {MAINTENANCE_ITEMS.map(item => (
+          <LinkItem key={item.key} to={`${basePath}${item.path}`}>
+            <NavIcon $bg={item.bg}>{item.icon}</NavIcon>
+            <LinkText>{t(item.labelKey)}</LinkText>
+          </LinkItem>
+        ))}
+
+        {DISABLED_ITEMS.map(item => (
+          <DisabledItem key={item.key}>
+            <NavIcon $bg={item.bg}>{item.icon}</NavIcon>
+            <LinkText>{item.label}</LinkText>
+          </DisabledItem>
+        ))}
+      </NavSection>
     </Sidebar>
-  );
-};
-
-const renderLinkItem = (basePath, text, iconType, path) => {
-  const isImplemented = !!path;
-
-  const linkItemProps = isImplemented
-    ? { as: NavLink, to: `${basePath}${path}`, end: true }
-    : { as: 'div' };
-
-  return (
-    <LinkItem {...linkItemProps}>
-      <Icon type={iconType} />
-      <LinkText>{text}</LinkText>
-      {!isImplemented && <NotImplemented>Not implemented</NotImplemented>}
-    </LinkItem>
   );
 };
 

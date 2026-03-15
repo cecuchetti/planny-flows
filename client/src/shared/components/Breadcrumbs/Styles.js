@@ -1,15 +1,18 @@
 import styled from 'styled-components';
 
-import { color, font } from 'shared/utils/styles';
+import { color, font, fontSizes, lineHeights } from 'shared/utils/styles';
 
-export const Container = styled.div`
+export const Container = styled.nav`
   color: ${color.textMedium};
-  ${font.size(15)};
+  ${font.size(fontSizes.caption)}
+  line-height: ${lineHeights.normal};
+  ${font.regular}
 `;
 
 export const Divider = styled.span`
   position: relative;
-  top: 2px;
-  margin: 0 10px;
-  ${font.size(18)};
+  top: 1px;
+  margin: 0 8px;
+  ${font.size(fontSizes.caption)};
+  opacity: 0.7;
 `;
