@@ -1,22 +1,22 @@
 import styled, { css } from 'styled-components';
 
-import { color, font, mixin } from 'shared/utils/styles';
+import { color, font, fontSizes, mixin, radius } from 'shared/utils/styles';
 import Spinner from 'shared/components/Spinner';
 
 export const StyledButton = styled.button`
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 32px;
+  height: 34px;
   vertical-align: middle;
   line-height: 1;
-  padding: 0 ${props => (props.iconOnly ? 9 : 12)}px;
+  padding: 0 ${props => (props.iconOnly ? 12 : 16)}px;
   white-space: nowrap;
-  border-radius: 3px;
-  transition: all 0.1s;
+  border-radius: ${radius.medium}px;
+  transition: all 0.15s ease;
   appearance: none;
   ${mixin.clickable}
-  ${font.size(14.5)}
+  ${font.size(fontSizes.bodySmall)}
   ${props => buttonVariants[props.variant]}
   &:disabled {
     opacity: 0.6;
@@ -73,6 +73,7 @@ const buttonVariants = {
   `,
   empty: css`
     background: #fff;
+    border: 1px solid ${color.borderLightest};
     ${secondaryAndEmptyShared};
   `,
 };

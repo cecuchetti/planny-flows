@@ -1,6 +1,6 @@
 import styled, { css } from 'styled-components';
 
-import { color, mixin, zIndexValues } from 'shared/utils/styles';
+import { color, mixin, zIndexValues, radius } from 'shared/utils/styles';
 import Icon from 'shared/components/Icon';
 
 export const ScrollOverlay = styled.div`
@@ -15,7 +15,7 @@ export const ScrollOverlay = styled.div`
 
 export const ClickableOverlay = styled.div`
   min-height: 100%;
-  background: rgba(9, 30, 66, 0.54);
+  background: rgba(15, 23, 42, 0.35);
   ${props => clickOverlayStyles[props.variant]}
 `;
 
@@ -41,33 +41,33 @@ const modalStyles = {
   center: css`
     max-width: ${props => props.width}px;
     vertical-align: middle;
-    border-radius: 3px;
-    ${mixin.boxShadowMedium}
+    border-radius: ${radius.large}px;
+    ${mixin.boxShadowCard}
   `,
   aside: css`
     min-height: 100vh;
     max-width: ${props => props.width}px;
-    box-shadow: 0 0 20px 0 rgba(0, 0, 0, 0.15);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 10px -5px rgba(0, 0, 0, 0.04);
   `,
 };
 
 const closeButtonStyles = {
   center: css`
-    top: 10px;
-    right: 12px;
-    padding: 3px 5px 0px 5px;
-    border-radius: 4px;
+    top: 12px;
+    right: 14px;
+    padding: 6px;
+    border-radius: ${radius.medium}px;
     &:hover {
       background: ${color.backgroundLight};
     }
   `,
   aside: css`
-    top: 10px;
-    right: -30px;
-    width: 50px;
-    height: 50px;
+    top: 12px;
+    right: -32px;
+    width: 48px;
+    height: 48px;
     padding-top: 10px;
-    border-radius: 3px;
+    border-radius: ${radius.medium}px;
     text-align: center;
     background: #fff;
     border: 1px solid ${color.borderLightest};

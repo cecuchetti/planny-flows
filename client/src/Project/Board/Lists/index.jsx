@@ -91,7 +91,7 @@ const ProjectBoardLists = ({ project, filters, updateLocalProjectIssues }) => {
                   <div
                     ref={colProvided.innerRef}
                     {...colProvided.draggableProps}
-                    style={{ ...colProvided.draggableProps.style, margin: 0, width: '25%', minWidth: 0 }}
+                    style={{ ...colProvided.draggableProps.style, margin: 0, flex: '0 0 310px', minWidth: '310px' }}
                   >
                     <List
                       status={status}

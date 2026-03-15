@@ -7,6 +7,7 @@ import * as projects from 'controllers/projects';
 import * as test from 'controllers/test';
 import * as users from 'controllers/users';
 import * as health from 'controllers/health';
+import * as maintenance from 'controllers/maintenance';
 import { jiraIntegrationsRouter } from 'jira-integrations/routes';
 import { appConfig } from 'config';
 
@@ -42,6 +43,9 @@ export const attachPrivateRoutes = (app: any): void => {
   app.put('/project', projects.update);
 
   app.get('/currentUser', users.getCurrentUser);
+
+  app.get('/maintenance/actions/outlook-clean/status', maintenance.getOutlookCleanStatus);
+  app.post('/maintenance/actions/outlook-clean', maintenance.triggerOutlookClean);
 
   // External Jira integrations - worklogs and issue management
   app.use('/api/v1/jira', jiraIntegrationsRouter);

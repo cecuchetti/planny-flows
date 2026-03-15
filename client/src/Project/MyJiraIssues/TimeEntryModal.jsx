@@ -7,7 +7,20 @@ import api from 'shared/utils/api';
 import toast from 'shared/utils/toast';
 import { Modal, Button, Input, DatePicker } from 'shared/components';
 
-import { ModalContents, ModalTitle, Field, Label, Hint, Actions, ActionsRight } from './TimeEntryModalStyles';
+import {
+  ModalContents,
+  ModalHeader,
+  HeaderRow,
+  IssueKeyBadge,
+  ModalTitle,
+  IssueSummary,
+  FormBody,
+  Field,
+  Label,
+  Hint,
+  Actions,
+  ActionsRight,
+} from './TimeEntryModalStyles';
 
 const WORKLOGS_URL = '/api/v1/jira/worklogs';
 const ISSUES_URL = '/api/v1/jira/issues';
@@ -163,58 +176,68 @@ export default function TimeEntryModal({ issue, onClose, onSaved }) {
       testid="modal:time-entry"
       isOpen
       onClose={onClose}
-      width={440}
+      width={460}
       withCloseIcon
       renderContent={({ close }) => (
         <ModalContents>
-          <ModalTitle>{issue.key}: {issue.summary || t('timeEntry.title')}</ModalTitle>
-
-          <Field>
-            <Label>{t('timeEntry.hoursLogged')} *</Label>
-            <Input
-              value={hoursInput}
-              onChange={setHoursInput}
-              onBlur={handleHoursBlur}
-              placeholder="e.g. 2h or 2.5"
-              invalid={!!hoursError}
-            />
-            <Hint>{t('timeEntry.hoursHint')}</Hint>
-            {hoursError && <Hint $error>{hoursError}</Hint>}
-          </Field>
-
-          <Field>
-            <Label>{t('timeEntry.dateAndTime')} *</Label>
-            <DatePicker
-              withTime
-              value={dateTime}
-              onChange={setDateTime}
-            />
-          </Field>
-
-          <Field>
-            <Label>{t('timeEntry.description')}</Label>
-            <Input
-              value={description}
-              onChange={setDescription}
-              placeholder={t('timeEntry.descriptionPlaceholder')}
-            />
-          </Field>
-
-          <Actions>
-            {canClose && (
-              <Button variant="danger" isWorking={isClosing} onClick={handleCloseIssue}>
-                {t('timeEntry.closeIssue')}
-              </Button>
+          <ModalHeader>
+            <HeaderRow>
+              <IssueKeyBadge>{issue.key}</IssueKeyBadge>
+              <ModalTitle>{t('timeEntry.title')}</ModalTitle>
+            </HeaderRow>
+            {issue.summary && (
+              <IssueSummary>{issue.summary}</IssueSummary>
             )}
-            <ActionsRight>
-              <Button variant="secondary" onClick={close}>
-                {t('common.cancel')}
-              </Button>
-              <Button variant="primary" isWorking={isSubmitting} onClick={handleSave}>
-                {t('common.save')}
-              </Button>
-            </ActionsRight>
-          </Actions>
+          </ModalHeader>
+
+          <FormBody>
+            <Field>
+              <Label>{t('timeEntry.hoursLogged')} *</Label>
+              <Input
+                value={hoursInput}
+                onChange={setHoursInput}
+                onBlur={handleHoursBlur}
+                placeholder="ej. 2h, 1h 30m, 2.5"
+                invalid={!!hoursError}
+              />
+              <Hint>{t('timeEntry.hoursHint')}</Hint>
+              {hoursError && <Hint $error>{hoursError}</Hint>}
+            </Field>
+
+            <Field>
+              <Label>{t('timeEntry.dateAndTime')} *</Label>
+              <DatePicker
+                withTime
+                value={dateTime}
+                onChange={setDateTime}
+              />
+            </Field>
+
+            <Field>
+              <Label>{t('timeEntry.description')}</Label>
+              <Input
+                value={description}
+                onChange={setDescription}
+                placeholder={t('timeEntry.descriptionPlaceholder')}
+              />
+            </Field>
+
+            <Actions>
+              {canClose && (
+                <Button variant="danger" isWorking={isClosing} onClick={handleCloseIssue}>
+                  {t('timeEntry.closeIssue')}
+                </Button>
+              )}
+              <ActionsRight>
+                <Button variant="empty" onClick={close}>
+                  {t('common.cancel')}
+                </Button>
+                <Button variant="primary" isWorking={isSubmitting} onClick={handleSave}>
+                  {t('common.save')}
+                </Button>
+              </ActionsRight>
+            </Actions>
+          </FormBody>
         </ModalContents>
       )}
     />

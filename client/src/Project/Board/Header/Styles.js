@@ -1,6 +1,6 @@
 import styled from 'styled-components';
 
-import { font } from 'shared/utils/styles';
+import { color, font, fontSizes, lineHeights } from 'shared/utils/styles';
 
 export const Header = styled.div`
   margin-top: 6px;
@@ -8,7 +8,11 @@ export const Header = styled.div`
   justify-content: space-between;
 `;
 
-export const BoardName = styled.div`
-  ${font.size(24)}
-  ${font.medium}
+export const BoardName = styled.h1`
+  margin: 0;
+  color: ${color.textDarkest};
+  ${font.size(fontSizes.pageTitle)}
+  ${font.bold}
+  line-height: ${lineHeights.snug};
+  letter-spacing: -0.01em;
 `;

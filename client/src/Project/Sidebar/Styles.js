@@ -1,19 +1,25 @@
 import styled from 'styled-components';
+import { NavLink } from 'react-router-dom';
 
-import { color, sizes, font, mixin, zIndexValues } from 'shared/utils/styles';
+import { color, sizes, font, fontSizes, lineHeights, mixin, radius } from 'shared/utils/styles';
 
-export const Sidebar = styled.div`
-  position: fixed;
-  z-index: ${zIndexValues.navLeft - 1};
-  top: 0;
-  left: ${sizes.appNavBarLeftWidth}px;
-  height: 100vh;
+const NAV_TEXT    = '#292a2e';
+const ACTIVE_BG   = '#eaecf4';
+const ACTIVE_TEXT = '#292a2e';
+const ACTIVE_ICON = '#5c6bc0';
+const HOVER_BG    = '#eef0f5';
+
+export const Sidebar = styled.aside`
+  flex-shrink: 0;
   width: ${sizes.secondarySideBarWidth}px;
-  padding: 0 16px 24px;
-  background: ${color.backgroundLightest};
-  border-right: 1px solid ${color.borderLightest};
+  padding: 12px 8px 24px;
+  background: #f0f2f5;
+  border-right: 1px solid #dde1ec;
+  display: flex;
+  flex-direction: column;
   ${mixin.scrollableY}
   ${mixin.customScrollbar()}
+
   @media (max-width: 1100px) {
     width: ${sizes.secondarySideBarWidth - 10}px;
   }
@@ -22,73 +28,88 @@ export const Sidebar = styled.div`
   }
 `;
 
-export const ProjectInfo = styled.div`
-  display: flex;
-  padding: 24px 4px;
-`;
+/* kept for import compatibility */
+export const ProjectInfo = styled.div``;
+export const ProjectAvatar = styled.div``;
+export const ProjectTexts = styled.div``;
+export const ProjectName = styled.div``;
+export const ProjectCategory = styled.div``;
 
-export const ProjectTexts = styled.div`
-  padding: 3px 0 0 10px;
-`;
+/* ── Nav wrapper ────────────────────────────────────── */
+export const NavSection = styled.div``;
 
-export const ProjectName = styled.div`
-  color: ${color.textDark};
-  ${font.size(15)};
+/* ── Section label ──────────────────────────────────── */
+export const SectionLabel = styled.div`
+  padding: 16px 10px 4px;
+  color: ${color.textLight};
+  ${font.size(fontSizes.overline)};
   ${font.medium};
-`;
-
-export const ProjectCategory = styled.div`
-  color: ${color.textMedium};
-  ${font.size(13)};
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  line-height: ${lineHeights.tight};
 `;
 
 export const Divider = styled.div`
-  margin-top: 17px;
-  padding-top: 18px;
-  border-top: 1px solid ${color.borderLight};
+  margin: 8px 6px;
+  border-top: 1px solid #dde1ec;
 `;
 
-export const LinkItem = styled.div`
-  position: relative;
+/* ── Nav items ──────────────────────────────────────── */
+export const LinkItem = styled(NavLink)`
   display: flex;
-  padding: 8px 12px;
-  border-radius: 3px;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  border-radius: ${radius.medium}px;
+  text-decoration: none;
+  color: ${NAV_TEXT};
+  transition: background 0.12s;
   ${mixin.clickable}
-  ${props =>
-    !props.to ? `cursor: not-allowed;` : `&:hover { background: ${color.backgroundLight}; }`}
-  i {
-    margin-right: 15px;
-    font-size: 20px;
+
+  &:hover {
+    background: ${HOVER_BG};
   }
+
   &.active {
-    color: ${color.primary};
-    background: ${color.backgroundLight};
-    i {
-      color: ${color.primary};
+    background: ${ACTIVE_BG};
+    color: ${ACTIVE_TEXT};
+
+    svg, span[role="img"] {
+      color: ${ACTIVE_ICON};
     }
   }
 `;
 
-export const LinkText = styled.div`
-  padding-top: 2px;
-  ${font.size(14.7)};
+export const DisabledItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  border-radius: ${radius.medium}px;
+  color: ${NAV_TEXT};
+  opacity: 0.38;
+  cursor: not-allowed;
 `;
 
-export const NotImplemented = styled.div`
-  display: inline-block;
-  position: absolute;
-  top: 7px;
-  left: 40px;
-  width: 140px;
-  padding: 5px 0 5px 8px;
-  border-radius: 3px;
-  text-transform: uppercase;
-  color: ${color.textDark};
-  background: ${color.backgroundMedium};
-  opacity: 0;
-  ${font.size(11.5)};
-  ${font.bold}
-  ${LinkItem}:hover & {
-    opacity: 1;
-  }
+/* ── App-style icon square ──────────────────────────── */
+export const NavIcon = styled.span`
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: ${props => props.$bg || '#e2e8f0'};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.15);
+`;
+
+export const LinkText = styled.span`
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: ${NAV_TEXT};
+  letter-spacing: 0.005em;
+  -webkit-font-smoothing: antialiased;
 `;

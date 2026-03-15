@@ -41,6 +41,12 @@ export const appConfig = {
       readTimeoutMs: Number(getEnv('HTTP_READ_TIMEOUT_MS', '10000')),
     },
   },
+  maintenance: {
+    outlookCleaner: {
+      url: getEnv('OUTLOOK_CLEANER_URL', 'https://outlook-cleaner.fly.dev/api/v1/trigger-clean')!,
+      apiKey: getEnv('OUTLOOK_CLEANER_API_KEY') || '',
+    },
+  },
 };
 
 export function isProduction(): boolean {

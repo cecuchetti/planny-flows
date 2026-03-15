@@ -21,7 +21,30 @@
   "sidebar": {
     "kanbanBoard": "Kanban Board",
     "externalAssignments": "External Assignments",
-    "projectSettings": "Project settings"
+    "projectSettings": "Project settings",
+    "maintenance": "Maintenance"
+  },
+  "maintenance": {
+    "pageTitle": "Maintenance",
+    "actions": {
+      "outlookClean": {
+        "title": "Limpiar Outlook",
+        "subtitle": "Trigger the Outlook cleaner service to clean your mailbox.",
+        "success": "Outlook clean completed successfully.",
+        "running": "Outlook clean is running in the background. You will be notified when it finishes.",
+        "failed": "Outlook clean failed after 5 attempts: {{message}}"
+      },
+      "exportReports": {
+        "title": "Export reports",
+        "subtitle": "Export project reports (placeholder)."
+      },
+      "archiveOld": {
+        "title": "Archive old items",
+        "subtitle": "Archive old issues and comments (placeholder)."
+      },
+      "notImplemented": "This action is not implemented yet.",
+      "error": "Action failed. Please try again."
+    }
   },
   "myJiraIssues": {
     "title": "My Jira issues",

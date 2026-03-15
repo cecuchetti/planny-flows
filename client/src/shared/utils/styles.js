@@ -4,72 +4,97 @@ import Color from 'color';
 import { IssueType, IssueStatus, IssuePriority } from 'shared/constants/issues';
 
 export const color = {
-  primary: '#0052cc', // Blue
-  success: '#0B875B', // green
-  danger: '#E13C3C', // red
-  warning: '#F89C1C', // orange
-  secondary: '#F4F5F7', // light grey
+  primary: '#3b6cf0',      // Blue — used sparingly (buttons, links, ticket key)
+  success: '#16a34a',      // Green
+  danger: '#dc2626',       // Red
+  warning: '#d97706',      // Amber
+  secondary: '#f3f4f6',
 
-  textDarkest: '#172b4d',
-  textDark: '#42526E',
-  textMedium: '#5E6C84',
-  textLight: '#8993a4',
-  textLink: '#0052cc',
+  textDarkest: '#111827',  // Near-black titles
+  textDark: '#374151',
+  textMedium: '#6b7280',
+  textLight: '#9ca3af',
+  textLink: '#3b6cf0',
 
-  backgroundDarkPrimary: '#0747A6',
-  backgroundMedium: '#dfe1e6',
-  backgroundLight: '#ebecf0',
-  backgroundLightest: '#F4F5F7',
-  backgroundLightPrimary: '#D2E5FE',
-  backgroundLightSuccess: '#E4FCEF',
+  backgroundDarkPrimary: '#1e293b',
+  backgroundMedium: '#e5e7eb',
+  backgroundLight: '#f3f4f6',    // Column background (transparent now, but kept as token)
+  backgroundLightest: '#f9fafb', // Card background — very light, barely-there gray
+  backgroundLightPrimary: '#eff6ff',
+  backgroundLightSuccess: '#f0fdf4',
 
-  borderLightest: '#dfe1e6',
-  borderLight: '#C1C7D0',
-  borderInputFocus: '#4c9aff',
+  // Gradient page background
+  gradientStart: '#fce7f3',
+  gradientEnd: '#ede9fe',
+
+  borderLightest: '#e5e7eb',
+  borderLight: '#d1d5db',
+  borderInputFocus: '#3b6cf0',
 };
 
 export const issueTypeColors = {
-  [IssueType.TASK]: '#4FADE6', // blue
-  [IssueType.BUG]: '#E44D42', // red
-  [IssueType.STORY]: '#65BA43', // green
+  [IssueType.TASK]: '#3b82f6', // blue
+  [IssueType.BUG]: '#dc2626', // red
+  [IssueType.STORY]: '#0d9488', // green/teal
 };
 
 export const issuePriorityColors = {
-  [IssuePriority.HIGHEST]: '#CD1317', // red
-  [IssuePriority.HIGH]: '#E9494A', // orange
-  [IssuePriority.MEDIUM]: '#E97F33', // orange
-  [IssuePriority.LOW]: '#2D8738', // green
-  [IssuePriority.LOWEST]: '#57A55A', // green
+  [IssuePriority.HIGHEST]: '#b91c1c', // red
+  [IssuePriority.HIGH]: '#ea580c', // orange
+  [IssuePriority.MEDIUM]: '#d97706', // amber
+  [IssuePriority.LOW]: '#ca8a04', // yellow
+  [IssuePriority.LOWEST]: '#65a30d', // lime
 };
 
 export const issueStatusColors = {
-  [IssueStatus.BACKLOG]: color.textDark,
-  [IssueStatus.INPROGRESS]: '#fff',
-  [IssueStatus.SELECTED]: color.textDark,
-  [IssueStatus.DONE]: '#fff',
+  [IssueStatus.BACKLOG]:    '#374151',
+  [IssueStatus.INPROGRESS]: '#1d4ed8',
+  [IssueStatus.SELECTED]:   '#6d28d9',
+  [IssueStatus.DONE]:       '#15803d',
 };
 
 export const issueStatusBackgroundColors = {
-  [IssueStatus.BACKLOG]: color.backgroundMedium,
-  [IssueStatus.INPROGRESS]: color.primary,
-  [IssueStatus.SELECTED]: color.backgroundMedium,
-  [IssueStatus.DONE]: color.success,
+  [IssueStatus.BACKLOG]:    '#f3f4f6',  // Soft gray
+  [IssueStatus.INPROGRESS]: '#dbeafe',  // Soft blue
+  [IssueStatus.SELECTED]:   '#ede9fe',  // Soft violet
+  [IssueStatus.DONE]:       '#dcfce7',  // Soft green
 };
 
-/** Jira status badge colors (key = status name lowercased) */
+/**
+ * Pastel badge palette (Asana-style):
+ * Soft background + saturated text — no full-color fills
+ */
 export const jiraStatusColors = {
-  open: { bg: '#0052cc', text: '#fff' },
-  closed: { bg: '#5E6C84', text: '#fff' },
-  'code review': { bg: '#6554C0', text: '#fff' },
-  'pending qa': { bg: '#F89C1C', text: '#172b4d' },
-  'dev in progress': { bg: '#00875A', text: '#fff' },
-  'pending deployment': { bg: '#00B8D9', text: '#fff' },
+  // ── Workflow statuses ────────────────────────────────
+  open:                   { bg: '#dbeafe', text: '#1e40af' },
+  closed:                 { bg: '#f3f4f6', text: '#4b5563' },
+  'code review':          { bg: '#ede9fe', text: '#6d28d9' },
+  'pending qa':           { bg: '#ffedd5', text: '#c2410c' },
+  'dev in progress':      { bg: '#dcfce7', text: '#15803d' },
+  'pending deployment':   { bg: '#cffafe', text: '#0e7490' },
+  'clarification needed': { bg: '#fef9c3', text: '#854d0e' },
+  // ── Issue types ──────────────────────────────────────
+  improvement:  { bg: '#fce7f3', text: '#9d174d' },
+  'new feature':{ bg: '#f3e8ff', text: '#7e22ce' },
+  bug:          { bg: '#fee2e2', text: '#b91c1c' },
+  task:         { bg: '#dbeafe', text: '#1e40af' },
+  'sub-task':   { bg: '#f3f4f6', text: '#4b5563' },
+  story:        { bg: '#dcfce7', text: '#166534' },
+  epic:         { bg: '#ede9fe', text: '#6d28d9' },
 };
 
 export const sizes = {
   appNavBarLeftWidth: 64,
-  secondarySideBarWidth: 230,
+  secondarySideBarWidth: 268,
   minViewportWidth: 1000,
+};
+
+export const radius = {
+  small: 6,
+  medium: 10,
+  large: 16,
+  xlarge: 24,
+  pill: 9999,
 };
 
 export const zIndexValues = {
@@ -78,12 +103,34 @@ export const zIndexValues = {
   navLeft: 100,
 };
 
+/** Type scale aligned with modern task-management UI (clear hierarchy, readable) */
+export const fontSizes = {
+  pageTitle: 22,
+  sectionTitle: 16,
+  body: 15,
+  bodySmall: 14,
+  caption: 13,
+  overline: 11,
+};
+
+export const lineHeights = {
+  tight: 1.25,
+  snug: 1.35,
+  normal: 1.5,
+  relaxed: 1.6,
+};
+
 export const font = {
-  regular: 'font-family: "CircularStdBook"; font-weight: normal;',
-  medium: 'font-family: "CircularStdMedium"; font-weight: normal;',
-  bold: 'font-family: "CircularStdBold"; font-weight: normal;',
-  black: 'font-family: "CircularStdBlack"; font-weight: normal;',
+  regular: 'font-family: "CircularStdBook", "Inter", system-ui, sans-serif; font-weight: normal;',
+  medium: 'font-family: "CircularStdMedium", "Inter", system-ui, sans-serif; font-weight: 500;',
+  bold: 'font-family: "CircularStdBold", "Inter", system-ui, sans-serif; font-weight: 600;',
+  black: 'font-family: "CircularStdBlack", "Inter", system-ui, sans-serif; font-weight: 700;',
   size: size => `font-size: ${size}px;`,
+  /** Combined size + line-height for consistent text blocks */
+  text: (size, lineHeight = lineHeights.normal) => `
+    font-size: ${size}px;
+    line-height: ${lineHeight};
+  `,
 };
 
 export const mixin = {
@@ -100,10 +147,13 @@ export const mixin = {
       .alpha(opacity)
       .string(),
   boxShadowMedium: css`
-    box-shadow: 0 5px 10px 0 rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  `,
+  boxShadowCard: css`
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 4px 10px -5px rgba(0, 0, 0, 0.04);
   `,
   boxShadowDropdown: css`
-    box-shadow: rgba(9, 30, 66, 0.25) 0px 4px 8px -2px, rgba(9, 30, 66, 0.31) 0px 0px 1px;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
   `,
   truncateText: css`
     overflow: hidden;
@@ -181,14 +231,16 @@ export const mixin = {
     display: inline-flex;
     align-items: center;
     height: 24px;
-    padding: 0 8px;
-    border-radius: 4px;
+    padding: 0 10px;
+    border-radius: 999px;
     cursor: pointer;
     user-select: none;
     color: ${colorValue};
     background: ${background};
-    ${font.bold}
-    ${font.size(12)}
+    ${font.medium}
+    ${font.size(fontSizes.caption)}
+    line-height: 1;
+    letter-spacing: 0.01em;
     i {
       margin-left: 4px;
     }

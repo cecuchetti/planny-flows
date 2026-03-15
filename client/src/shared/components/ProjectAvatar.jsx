@@ -6,12 +6,7 @@ const propTypes = {
   size: PropTypes.number,
 };
 
-const defaultProps = {
-  className: undefined,
-  size: 40,
-};
-
-const ProjectAvatar = ({ className, size }) => (
+const ProjectAvatar = ({ className, size = 40 }) => (
   <span className={className}>
     <svg
       width={size}
@@ -115,6 +110,5 @@ const ProjectAvatar = ({ className, size }) => (
 );
 
 ProjectAvatar.propTypes = propTypes;
-ProjectAvatar.defaultProps = defaultProps;
 
 export default ProjectAvatar;

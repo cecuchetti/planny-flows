@@ -3,21 +3,51 @@ import PropTypes from 'prop-types';
 import { useLocation } from 'react-router-dom';
 import { Draggable } from 'react-beautiful-dnd';
 
-import { IssueTypeIcon, IssuePriorityIcon } from 'shared/components';
+import { IssueStatusCopy, IssueTypeCopy } from 'shared/constants/issues';
+import { issueStatusColors, issueStatusBackgroundColors, issueTypeColors } from 'shared/utils/styles';
 
-import { IssueLink, Issue, Title, Bottom, Assignees, AssigneeAvatar } from './Styles';
+import {
+  IssueLink,
+  Issue,
+  PriorityStrip,
+  CardBody,
+  IssueKey,
+  Title,
+  BadgeRow,
+  StatusBadge,
+  Bottom,
+  Assignees,
+  AssigneeAvatar,
+} from './Styles';
+
+const getIssueKey = (project, issueId) => {
+  const prefix = project.key || (project.name || '').replace(/\W/g, '').slice(0, 4).toUpperCase() || 'PRJ';
+  return `${prefix}-${issueId}`;
+};
+
+const issueTypeBackground = {
+  task:  '#dbeafe',
+  bug:   '#fee2e2',
+  story: '#dcfce7',
+};
 
 const propTypes = {
+  project: PropTypes.object.isRequired,
   projectUsers: PropTypes.array.isRequired,
   issue: PropTypes.object.isRequired,
   index: PropTypes.number.isRequired,
 };
 
-const ProjectBoardListIssue = ({ projectUsers, issue, index }) => {
+const ProjectBoardListIssue = ({ project, projectUsers, issue, index }) => {
   const location = useLocation();
   const boardUrl = location.pathname.replace(/\/issues\/[^/]+$/, '') || location.pathname;
 
-  const assignees = issue.userIds.map(userId => projectUsers.find(user => user.id === userId));
+  const assignees = issue.userIds.map(userId => projectUsers.find(user => user.id === userId)).filter(Boolean);
+
+  const statusBg   = issueStatusBackgroundColors[issue.status];
+  const statusText = issueStatusColors[issue.status];
+  const typeBg     = issueTypeBackground[issue.type] || '#f3f4f6';
+  const typeText   = issueTypeColors[issue.type] || '#374151';
 
   return (
     <Draggable draggableId={issue.id.toString()} index={index}>
@@ -30,23 +60,31 @@ const ProjectBoardListIssue = ({ projectUsers, issue, index }) => {
           {...provided.dragHandleProps}
         >
           <Issue isBeingDragged={snapshot.isDragging && !snapshot.isDropAnimating}>
-            <Title>{issue.title}</Title>
-            <Bottom>
-              <div>
-                <IssueTypeIcon type={issue.type} />
-                <IssuePriorityIcon priority={issue.priority} top={-1} left={4} />
-              </div>
-              <Assignees>
-                {assignees.map(user => (
-                  <AssigneeAvatar
-                    key={user.id}
-                    size={24}
-                    avatarUrl={user.avatarUrl}
-                    name={user.name}
-                  />
-                ))}
-              </Assignees>
-            </Bottom>
+            <PriorityStrip $priority={Number(issue.priority)} />
+            <CardBody>
+              <IssueKey>{getIssueKey(project, issue.id)}</IssueKey>
+              <Title>{issue.title}</Title>
+              <BadgeRow>
+                <StatusBadge $bg={statusBg} $text={statusText}>
+                  {IssueStatusCopy[issue.status]}
+                </StatusBadge>
+                <StatusBadge $bg={typeBg} $text={typeText}>
+                  {IssueTypeCopy[issue.type]}
+                </StatusBadge>
+              </BadgeRow>
+              <Bottom>
+                <Assignees>
+                  {assignees.map(user => (
+                    <AssigneeAvatar
+                      key={user.id}
+                      size={22}
+                      avatarUrl={user.avatarUrl}
+                      name={user.name}
+                    />
+                  ))}
+                </Assignees>
+              </Bottom>
+            </CardBody>
           </Issue>
         </IssueLink>
       )}
