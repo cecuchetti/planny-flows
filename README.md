@@ -30,13 +30,82 @@ There are many showcase/example React projects out there but most of them are wa
 
 ## Setting up development environment 🛠
 
-- Install [postgreSQL](https://www.postgresql.org/) if you don't have it already and create a database named `jira_development`.
+- **Node.js 18+**. No database setup required if you use SQLite (recommended for local development).
 - `git clone https://github.com/oldboyxx/jira_clone.git`
-- Create an empty `.env` file in `/api`, copy `/api/.env.example` contents into it, and fill in your database username and password.
-- `npm run install-dependencies`
-- `cd api && npm start`
-- `cd client && npm start` in another terminal tab
-- App should now be running on `http://localhost:8080/`
+- Create a `.env` file in `api/` from `api/.env.example`.
+
+**Database options:**
+
+- **SQLite (easiest for local dev):** Set `DB_TYPE=sqlite` in `api/.env`. Optionally set `DB_PATH=./data/jira.sqlite` (default). No PostgreSQL installation needed.
+- **PostgreSQL:** Set `DB_TYPE=postgres` in `api/.env` and configure `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, `DB_DATABASE`. Create a database named `jira` (or your `DB_DATABASE` value).
+
+**If you use SQLite and switch Node.js versions** (e.g. with nvm), the native module `better-sqlite3` may have been built for a different Node version. If the API fails with `ERR_DLOPEN_FAILED` or "compiled against a different Node.js version", recompile it:
+
+```bash
+cd api && npm rebuild better-sqlite3
+```
+
+Or reinstall API dependencies:
+
+```bash
+cd api && rm -rf node_modules && npm install
+```
+
+Then run the API again with `cd api && npm start`.
+
+### Install dependencies
+
+```bash
+npm run install-dependencies
+```
+
+### Build (compile)
+
+From the repo root, build both API and client:
+
+```bash
+npm run build
+```
+
+Or build separately:
+
+```bash
+cd api && npm run build
+cd client && npm run build
+```
+
+### Run locally
+
+**Development** (API and client with hot reload; use two terminals):
+
+```bash
+# Terminal 1 – API
+cd api && npm start
+
+# Terminal 2 – Client
+cd client && npm start
+```
+
+- Client: **http://localhost:8080**
+- API: **http://localhost:3000**
+
+**Production** (compiled build; run API first, then in another terminal run the client):
+
+```bash
+# Terminal 1 – API
+cd api && npm run start:production
+
+# Terminal 2 – Client (serves the built static files)
+cd client && npm run start:production
+```
+
+- Client: **http://localhost:8081**
+- API: **http://localhost:3000**
+
+## Running with Docker 🐳
+
+- From the repo root: `docker compose up --build`
+- Open **http://localhost:8081** (client) and **http://localhost:3000** (API). The client build uses `API_URL=http://localhost:3000` so the browser talks to the API on your host. To override, set the `API_URL` build-arg when building the client image.
 
 ## Running cypress end-to-end tests 🚥
 

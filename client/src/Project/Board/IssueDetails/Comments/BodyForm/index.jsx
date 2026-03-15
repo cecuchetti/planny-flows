@@ -1,5 +1,6 @@
 import React, { Fragment, useRef } from 'react';
 import PropTypes from 'prop-types';
+import { useTranslation } from 'react-i18next';
 
 import { Textarea } from 'shared/components';
 
@@ -20,6 +21,7 @@ const ProjectBoardIssueDetailsCommentsBodyForm = ({
   onSubmit,
   onCancel,
 }) => {
+  const { t } = useTranslation();
   const $textareaRef = useRef();
 
   const handleSubmit = () => {
@@ -32,17 +34,17 @@ const ProjectBoardIssueDetailsCommentsBodyForm = ({
     <Fragment>
       <Textarea
         autoFocus
-        placeholder="Add a comment..."
+        placeholder={t('issue.addCommentPlaceholder')}
         value={value}
         onChange={onChange}
         ref={$textareaRef}
       />
       <Actions>
         <FormButton variant="primary" isWorking={isWorking} onClick={handleSubmit}>
-          Save
+          {t('common.save')}
         </FormButton>
         <FormButton variant="empty" onClick={onCancel}>
-          Cancel
+          {t('common.cancel')}
         </FormButton>
       </Actions>
     </Fragment>

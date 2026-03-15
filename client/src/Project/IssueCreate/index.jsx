@@ -1,12 +1,11 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import PropTypes from 'prop-types';
+import { useTranslation } from 'react-i18next';
 
 import {
   IssueType,
   IssueStatus,
   IssuePriority,
-  IssueTypeCopy,
-  IssuePriorityCopy,
 } from 'shared/constants/issues';
 import toast from 'shared/utils/toast';
 import useApi from 'shared/hooks/api';
@@ -30,10 +29,39 @@ const propTypes = {
   modalClose: PropTypes.func.isRequired,
 };
 
-const ProjectIssueCreate = ({ project, fetchProject, onCreate, modalClose }) => {
-  const [{ isCreating }, createIssue] = useApi.post('/issues');
+const userOptions = project => project.users.map(user => ({ value: user.id, label: user.name }));
 
+const ProjectIssueCreate = ({ project, fetchProject, onCreate, modalClose }) => {
+  const { t } = useTranslation();
+  const [{ isCreating }, createIssue] = useApi.post('/issues');
   const { currentUserId } = useCurrentUser();
+
+  const typeOptions = useMemo(
+    () => Object.values(IssueType).map(type => ({ value: type, label: t(`issueTypes.${type}`) })),
+    [t],
+  );
+  const priorityOptions = useMemo(
+    () =>
+      Object.values(IssuePriority).map(priority => ({
+        value: priority,
+        label: t(`issuePriorities.${priority}`),
+      })),
+    [t],
+  );
+
+  const renderType = ({ value: type }) => (
+    <SelectItem>
+      <IssueTypeIcon type={type} top={1} />
+      <SelectItemLabel>{t(`issueTypes.${type}`)}</SelectItemLabel>
+    </SelectItem>
+  );
+
+  const renderPriority = ({ value: priority }) => (
+    <SelectItem>
+      <IssuePriorityIcon priority={priority} top={1} />
+      <SelectItemLabel>{t(`issuePriorities.${priority}`)}</SelectItemLabel>
+    </SelectItem>
+  );
 
   return (
     <Form
@@ -61,7 +89,7 @@ const ProjectIssueCreate = ({ project, fetchProject, onCreate, modalClose }) => 
             users: values.userIds.map(id => ({ id })),
           });
           await fetchProject();
-          toast.success('Issue has been successfully created.');
+          toast.success(t('issue.createdSuccess'));
           onCreate();
         } catch (error) {
           Form.handleAPIError(error, form);
@@ -69,11 +97,11 @@ const ProjectIssueCreate = ({ project, fetchProject, onCreate, modalClose }) => 
       }}
     >
       <FormElement>
-        <FormHeading>Create issue</FormHeading>
+        <FormHeading>{t('issue.createIssue')}</FormHeading>
         <Form.Field.Select
           name="type"
-          label="Issue Type"
-          tip="Start typing to get a list of possible matches."
+          label={t('issue.issueType')}
+          tip={t('issue.tipType')}
           options={typeOptions}
           renderOption={renderType}
           renderValue={renderType}
@@ -81,17 +109,17 @@ const ProjectIssueCreate = ({ project, fetchProject, onCreate, modalClose }) => 
         <Divider />
         <Form.Field.Input
           name="title"
-          label="Short Summary"
-          tip="Concisely summarize the issue in one or two sentences."
+          label={t('issue.shortSummary')}
+          tip={t('issue.tipSummary')}
         />
         <Form.Field.TextEditor
           name="description"
-          label="Description"
-          tip="Describe the issue in as much detail as you'd like."
+          label={t('issue.description')}
+          tip={t('issue.tipDescription')}
         />
         <Form.Field.Select
           name="reporterId"
-          label="Reporter"
+          label={t('issue.reporter')}
           options={userOptions(project)}
           renderOption={renderUser(project)}
           renderValue={renderUser(project)}
@@ -99,58 +127,32 @@ const ProjectIssueCreate = ({ project, fetchProject, onCreate, modalClose }) => 
         <Form.Field.Select
           isMulti
           name="userIds"
-          label="Assignees"
-          tio="People who are responsible for dealing with this issue."
+          label={t('issue.assignees')}
+          tip={t('issue.tipAssignees')}
           options={userOptions(project)}
           renderOption={renderUser(project)}
           renderValue={renderUser(project)}
         />
         <Form.Field.Select
           name="priority"
-          label="Priority"
-          tip="Priority in relation to other issues."
+          label={t('issue.priority')}
+          tip={t('issue.tipPriority')}
           options={priorityOptions}
           renderOption={renderPriority}
           renderValue={renderPriority}
         />
         <Actions>
           <ActionButton type="submit" variant="primary" isWorking={isCreating}>
-            Create Issue
+            {t('issue.createIssueButton')}
           </ActionButton>
           <ActionButton type="button" variant="empty" onClick={modalClose}>
-            Cancel
+            {t('common.cancel')}
           </ActionButton>
         </Actions>
       </FormElement>
     </Form>
   );
 };
-
-const typeOptions = Object.values(IssueType).map(type => ({
-  value: type,
-  label: IssueTypeCopy[type],
-}));
-
-const priorityOptions = Object.values(IssuePriority).map(priority => ({
-  value: priority,
-  label: IssuePriorityCopy[priority],
-}));
-
-const userOptions = project => project.users.map(user => ({ value: user.id, label: user.name }));
-
-const renderType = ({ value: type }) => (
-  <SelectItem>
-    <IssueTypeIcon type={type} top={1} />
-    <SelectItemLabel>{IssueTypeCopy[type]}</SelectItemLabel>
-  </SelectItem>
-);
-
-const renderPriority = ({ value: priority }) => (
-  <SelectItem>
-    <IssuePriorityIcon priority={priority} top={1} />
-    <SelectItemLabel>{IssuePriorityCopy[priority]}</SelectItemLabel>
-  </SelectItem>
-);
 
 const renderUser = project => ({ value: userId, removeOptionValue }) => {
   const user = project.users.find(({ id }) => id === userId);

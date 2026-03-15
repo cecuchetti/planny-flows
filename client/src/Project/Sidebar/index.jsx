@@ -1,6 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import { NavLink, useRouteMatch } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 import { ProjectCategoryCopy } from 'shared/constants/projects';
 import { Icon, ProjectAvatar } from 'shared/components';
@@ -22,7 +23,8 @@ const propTypes = {
 };
 
 const ProjectSidebar = ({ project }) => {
-  const match = useRouteMatch();
+  const { t } = useTranslation();
+  const basePath = '/project';
 
   return (
     <Sidebar>
@@ -34,23 +36,24 @@ const ProjectSidebar = ({ project }) => {
         </ProjectTexts>
       </ProjectInfo>
 
-      {renderLinkItem(match, 'Kanban Board', 'board', '/board')}
-      {renderLinkItem(match, 'Project settings', 'settings', '/settings')}
+      {renderLinkItem(basePath, t('sidebar.kanbanBoard'), 'board', '/board')}
+      {renderLinkItem(basePath, t('sidebar.externalAssignments'), 'issues', '/my-jira-issues')}
+      {renderLinkItem(basePath, t('sidebar.projectSettings'), 'settings', '/settings')}
       <Divider />
-      {renderLinkItem(match, 'Releases', 'shipping')}
-      {renderLinkItem(match, 'Issues and filters', 'issues')}
-      {renderLinkItem(match, 'Pages', 'page')}
-      {renderLinkItem(match, 'Reports', 'reports')}
-      {renderLinkItem(match, 'Components', 'component')}
+      {renderLinkItem(basePath, 'Releases', 'shipping')}
+      {renderLinkItem(basePath, 'Issues and filters', 'issues')}
+      {renderLinkItem(basePath, 'Pages', 'page')}
+      {renderLinkItem(basePath, 'Reports', 'reports')}
+      {renderLinkItem(basePath, 'Components', 'component')}
     </Sidebar>
   );
 };
 
-const renderLinkItem = (match, text, iconType, path) => {
+const renderLinkItem = (basePath, text, iconType, path) => {
   const isImplemented = !!path;
 
   const linkItemProps = isImplemented
-    ? { as: NavLink, exact: true, to: `${match.path}${path}` }
+    ? { as: NavLink, to: `${basePath}${path}`, end: true }
     : { as: 'div' };
 
   return (

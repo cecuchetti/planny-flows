@@ -3,6 +3,7 @@
 
 # misc
 **/.DS_Store
+.cursor
 
 # environment config
 **/.env
@@ -10,3 +11,6 @@
 # production
 **/build
 **/npm-debug.log*
+
+# SQLite (local dev)
+api/data

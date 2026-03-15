@@ -1,0 +1,117 @@
+{
+  "common": {
+    "closeDialog": "Cerrar diálogo",
+    "dialog": "Diálogo",
+    "search": "Buscar",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "clearAll": "Limpiar todo",
+    "githubRepo": "Repositorio en Github",
+    "saveChanges": "Guardar cambios",
+    "name": "Nombre",
+    "url": "URL"
+  },
+  "nav": {
+    "searchIssues": "Buscar issues",
+    "createIssue": "Crear issue",
+    "about": "Acerca de"
+  },
+  "sidebar": {
+    "kanbanBoard": "Tablero Kanban",
+    "externalAssignments": "Asignaciones Externas",
+    "projectSettings": "Configuración del proyecto"
+  },
+  "myJiraIssues": {
+    "title": "Mis issues Jira",
+    "empty": "No tienes issues asignados en Jira externo.",
+    "hoursLogged": "{{hours}} registradas",
+    "loadError": "Error al cargar los issues.",
+    "refresh": "Actualizar"
+  },
+  "timeEntry": {
+    "title": "Registro de tiempo",
+    "hoursLogged": "Horas registradas",
+    "hoursHint": "Usá formato: 2h o 2 h (h = hora), ej. 2.5h o 1h 30m",
+    "hoursRequired": "Las horas son obligatorias.",
+    "hoursInvalid": "Usá formato como 2h, 2 h, 2.5h o 1h 30m.",
+    "hoursPositive": "Las horas deben ser mayores a cero.",
+    "dateAndTime": "Fecha y hora",
+    "description": "Descripción",
+    "descriptionPlaceholder": "Descripción opcional",
+    "defaultDescription": "Registro de tiempo",
+    "descriptionTooLong": "La descripción debe tener 5000 caracteres o menos.",
+    "saved": "Registro guardado.",
+    "saveFailed": "Error al guardar el registro.",
+    "closeIssue": "Cerrar issue",
+    "issueClosed": "Issue cerrado correctamente.",
+    "closeFailed": "Error al cerrar el issue."
+  },
+  "board": {
+    "projects": "Proyectos",
+    "kanbanBoard": "Tablero Kanban",
+    "projectDetails": "Detalles del proyecto",
+    "kanbanBoardLabel": "Tablero Kanban",
+    "onlyMyIssues": "Solo mis issues",
+    "recentlyUpdated": "Actualizados recientemente",
+    "recentIssues": "Issues recientes",
+    "matchingIssues": "Issues encontrados",
+    "searchPlaceholder": "Buscar por resumen, descripción...",
+    "noResultsTitle": "No encontramos nada que coincida con tu búsqueda",
+    "noResultsTip": "Prueba con otro término.",
+    "projectCategory": "Categoría del proyecto"
+  },
+  "issue": {
+    "createIssue": "Crear issue",
+    "issueType": "Tipo de issue",
+    "shortSummary": "Resumen breve",
+    "description": "Descripción",
+    "reporter": "Reportado por",
+    "assignees": "Responsables",
+    "priority": "Prioridad",
+    "createIssueButton": "Crear issue",
+    "tipType": "Escribe para ver opciones.",
+    "tipSummary": "Resume el issue en una o dos frases.",
+    "tipDescription": "Describe el issue con el detalle que necesites.",
+    "tipAssignees": "Personas responsables de este issue.",
+    "tipPriority": "Prioridad respecto a otros issues.",
+    "describeIssue": "Describir el issue",
+    "shortSummaryPlaceholder": "Resumen breve",
+    "addDescriptionPlaceholder": "Añadir una descripción...",
+    "addCommentPlaceholder": "Añadir un comentario...",
+    "deleteConfirmTitle": "¿Seguro que quieres eliminar este issue?",
+    "deleteConfirmMessage": "Al eliminarlo, se borrará permanentemente.",
+    "deleteIssue": "Eliminar issue",
+    "deleteCommentTitle": "¿Seguro que quieres eliminar este comentario?",
+    "deleteComment": "Eliminar comentario",
+    "createdSuccess": "El issue se ha creado correctamente.",
+    "savedSuccess": "Los cambios se han guardado correctamente.",
+    "tipProjectDescription": "Describe el proyecto con el detalle que quieras.",
+    "statusLabel": "Estado",
+    "priorityLabel": "Prioridad"
+  },
+  "issueTypes": {
+    "task": "Tarea",
+    "bug": "Bug",
+    "story": "Historia"
+  },
+  "issueStatuses": {
+    "backlog": "Backlog",
+    "selected": "Seleccionado para desarrollo",
+    "inprogress": "En progreso",
+    "done": "Hecho"
+  },
+  "issuePriorities": {
+    "5": "Más alta",
+    "4": "Alta",
+    "3": "Media",
+    "2": "Baja",
+    "1": "Más baja"
+  },
+  "select": {
+    "search": "Buscar",
+    "createOption": "Crear \"{{value}}\"",
+    "creatingOption": "Creando \"{{value}}\"..."
+  }
+}

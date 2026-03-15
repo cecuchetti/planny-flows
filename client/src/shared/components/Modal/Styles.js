@@ -51,16 +51,7 @@ const modalStyles = {
   `,
 };
 
-export const CloseIcon = styled(Icon)`
-  position: absolute;
-  font-size: 25px;
-  color: ${color.textMedium};
-  transition: all 0.1s;
-  ${mixin.clickable}
-  ${props => closeIconStyles[props.variant]}
-`;
-
-const closeIconStyles = {
+const closeButtonStyles = {
   center: css`
     top: 10px;
     right: 12px;
@@ -86,3 +77,25 @@ const closeIconStyles = {
     }
   `,
 };
+
+export const CloseButton = styled.button`
+  position: absolute;
+  font-size: 25px;
+  color: ${color.textMedium};
+  transition: all 0.1s;
+  ${mixin.clickable}
+  border: none;
+  background: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  ${props => closeButtonStyles[props.variant]}
+  &:hover {
+    color: ${color.textDarkest};
+  }
+`;
+
+export const CloseIcon = styled(Icon)`
+  font-size: inherit;
+  color: inherit;
+`;

@@ -1,5 +1,6 @@
 import React, { Fragment, useState } from 'react';
 import PropTypes from 'prop-types';
+import { useTranslation } from 'react-i18next';
 
 import api from 'shared/utils/api';
 import toast from 'shared/utils/toast';
@@ -24,6 +25,7 @@ const propTypes = {
 };
 
 const ProjectBoardIssueDetailsComment = ({ comment, fetchIssue }) => {
+  const { t } = useTranslation();
   const [isFormOpen, setFormOpen] = useState(false);
   const [isUpdating, setUpdating] = useState(false);
   const [body, setBody] = useState(comment.body);
@@ -67,13 +69,13 @@ const ProjectBoardIssueDetailsComment = ({ comment, fetchIssue }) => {
         ) : (
           <Fragment>
             <Body>{comment.body}</Body>
-            <EditLink onClick={() => setFormOpen(true)}>Edit</EditLink>
+            <EditLink onClick={() => setFormOpen(true)}>{t('common.edit')}</EditLink>
             <ConfirmModal
-              title="Are you sure you want to delete this comment?"
-              message="Once you delete, it's gone for good."
-              confirmText="Delete comment"
+              title={t('issue.deleteCommentTitle')}
+              message={t('issue.deleteConfirmMessage')}
+              confirmText={t('issue.deleteComment')}
               onConfirm={handleCommentDelete}
-              renderLink={modal => <DeleteLink onClick={modal.open}>Delete</DeleteLink>}
+              renderLink={modal => <DeleteLink onClick={modal.open}>{t('common.delete')}</DeleteLink>}
             />
           </Fragment>
         )}

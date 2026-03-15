@@ -1,0 +1,15 @@
+node_modules
+build
+dev
+.env
+.env.*
+*.log
+.git
+.gitignore
+README.md
+cypress
+**/__tests__
+**/*.test.js
+**/*.test.jsx
+**/*.spec.js
+**/*.spec.jsx

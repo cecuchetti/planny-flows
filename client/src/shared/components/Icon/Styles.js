@@ -2,11 +2,11 @@ import styled from 'styled-components';
 
 export const StyledIcon = styled.i`
   display: inline-block;
-  font-size: ${props => `${props.size}px`};
+  font-size: ${props => `${props.$size}px`};
   ${props =>
-    props.left || props.top ? `transform: translate(${props.left}px, ${props.top}px);` : ''}
+    props.$left || props.$top ? `transform: translate(${props.$left}px, ${props.$top}px);` : ''}
   &:before {
-    content: "${props => props.code}";
+    content: "${props => props.$code}";
     font-family: "jira" !important;
     speak: none;
     font-style: normal;

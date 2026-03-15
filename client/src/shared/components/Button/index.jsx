@@ -25,7 +25,7 @@ const defaultProps = {
   iconSize: 18,
   disabled: false,
   isWorking: false,
-  onClick: () => {},
+  onClick: () => { },
 };
 
 const Button = forwardRef(

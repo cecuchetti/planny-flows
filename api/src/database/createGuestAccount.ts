@@ -1,7 +1,11 @@
+import { Like } from 'typeorm';
+
 import { Comment, Issue, Project, User } from 'entities';
 import { ProjectCategory } from 'constants/projects';
 import { IssueType, IssueStatus, IssuePriority } from 'constants/issues';
 import { createEntity } from 'utils/typeorm';
+
+const GUEST_EMAIL_SUFFIX = '@jira.guest';
 
 const seedUsers = (): Promise<User[]> => {
   const users = [
@@ -191,6 +195,14 @@ const seedComments = (issues: Issue[], users: User[]): Promise<Comment[]> => {
 };
 
 const createGuestAccount = async (): Promise<User> => {
+  const existingGuests = await User.find({
+    where: { email: Like(`%${GUEST_EMAIL_SUFFIX}`) },
+    order: { id: 'ASC' },
+    take: 1,
+  });
+  if (existingGuests.length > 0) {
+    return existingGuests[0];
+  }
   const users = await seedUsers();
   const project = await seedProject(users);
   const issues = await seedIssues(project);

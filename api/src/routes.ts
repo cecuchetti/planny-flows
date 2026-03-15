@@ -1,15 +1,28 @@
+import { Request, Response } from 'express';
+
 import * as authentication from 'controllers/authentication';
 import * as comments from 'controllers/comments';
 import * as issues from 'controllers/issues';
 import * as projects from 'controllers/projects';
 import * as test from 'controllers/test';
 import * as users from 'controllers/users';
+import * as health from 'controllers/health';
+import { jiraIntegrationsRouter } from 'jira-integrations/routes';
+import { appConfig } from 'config';
 
 export const attachPublicRoutes = (app: any): void => {
-  if (process.env.NODE_ENV === 'test') {
+  app.get('/health', health.healthCheck);
+  app.get('/health/ready', health.readinessCheck);
+  app.get('/health/live', health.livenessCheck);
+
+  if (appConfig.env === 'test') {
     app.delete('/test/reset-database', test.resetDatabase);
     app.post('/test/create-account', test.createAccount);
   }
+
+  app.get('/', (_req: Request, res: Response) => {
+    res.redirect(302, appConfig.clientUrl);
+  });
 
   app.post('/authentication/guest', authentication.createGuestAccount);
 };
@@ -29,4 +42,7 @@ export const attachPrivateRoutes = (app: any): void => {
   app.put('/project', projects.update);
 
   app.get('/currentUser', users.getCurrentUser);
+
+  // External Jira integrations - worklogs and issue management
+  app.use('/api/v1/jira', jiraIntegrationsRouter);
 };
