@@ -43,6 +43,35 @@ export const Bottom = styled.div`
   width: 100%;
 `;
 
+export const LangSwitcher = styled.div`
+  display: flex;
+  align-items: center;
+  padding-left: 64px;
+  height: 42px;
+  gap: 4px;
+  ${NavLeft}:hover & {
+    padding-left: 18px;
+  }
+`;
+
+export const LangButton = styled.button`
+  padding: 4px 8px;
+  min-width: 32px;
+  color: #deebff;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  ${font.size(12)}
+  ${mixin.clickable}
+  &:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+  &.active {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.4);
+  }
+`;
+
 export const Item = styled.div`
   position: relative;
   width: 100%;
@@ -52,6 +81,8 @@ export const Item = styled.div`
   color: #deebff;
   transition: color 0.1s;
   ${mixin.clickable}
+  border: none;
+  text-align: left;
   &:hover {
     background: rgba(255, 255, 255, 0.1);
   }

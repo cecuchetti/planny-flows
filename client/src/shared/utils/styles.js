@@ -56,6 +56,16 @@ export const issueStatusBackgroundColors = {
   [IssueStatus.DONE]: color.success,
 };
 
+/** Jira status badge colors (key = status name lowercased) */
+export const jiraStatusColors = {
+  open: { bg: '#0052cc', text: '#fff' },
+  closed: { bg: '#5E6C84', text: '#fff' },
+  'code review': { bg: '#6554C0', text: '#fff' },
+  'pending qa': { bg: '#F89C1C', text: '#172b4d' },
+  'dev in progress': { bg: '#00875A', text: '#fff' },
+  'pending deployment': { bg: '#00B8D9', text: '#fff' },
+};
+
 export const sizes = {
   appNavBarLeftWidth: 64,
   secondarySideBarWidth: 230,

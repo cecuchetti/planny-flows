@@ -1,5 +1,6 @@
 import React, { Fragment, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
+import { useTranslation } from 'react-i18next';
 
 import { KeyCodes } from 'shared/constants/keyCodes';
 import { is, generateErrors } from 'shared/utils/validation';
@@ -12,6 +13,7 @@ const propTypes = {
 };
 
 const ProjectBoardIssueDetailsTitle = ({ issue, updateIssue }) => {
+  const { t } = useTranslation();
   const $titleInputRef = useRef();
   const [error, setError] = useState(null);
 
@@ -34,7 +36,7 @@ const ProjectBoardIssueDetailsTitle = ({ issue, updateIssue }) => {
     <Fragment>
       <TitleTextarea
         minRows={1}
-        placeholder="Short summary"
+        placeholder={t('issue.shortSummaryPlaceholder')}
         defaultValue={issue.title}
         ref={$titleInputRef}
         onBlur={handleTitleChange}

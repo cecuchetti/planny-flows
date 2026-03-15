@@ -1,6 +1,7 @@
 import React, { Fragment } from 'react';
 import PropTypes from 'prop-types';
-import { Route, useRouteMatch, useHistory } from 'react-router-dom';
+import { Routes, Route, useNavigate, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 import useMergeState from 'shared/hooks/mergeState';
 import { Breadcrumbs, Modal } from 'shared/components';
@@ -23,15 +24,39 @@ const defaultFilters = {
   recent: false,
 };
 
-const ProjectBoard = ({ project, fetchProject, updateLocalProjectIssues }) => {
-  const match = useRouteMatch();
-  const history = useHistory();
+const IssueDetailsModal = ({ project, fetchProject, updateLocalProjectIssues }) => {
+  const { issueId } = useParams();
+  const navigate = useNavigate();
+  const boardUrl = '/project/board';
 
+  return (
+    <Modal
+      isOpen
+      testid="modal:issue-details"
+      width={1040}
+      withCloseIcon={false}
+      onClose={() => navigate(boardUrl)}
+      renderContent={modal => (
+        <IssueDetails
+          issueId={issueId}
+          projectUsers={project.users}
+          fetchProject={fetchProject}
+          updateLocalProjectIssues={updateLocalProjectIssues}
+          modalClose={modal.close}
+        />
+      )}
+    />
+  );
+};
+
+const ProjectBoard = ({ project, fetchProject, updateLocalProjectIssues }) => {
+  const navigate = useNavigate();
+  const { t } = useTranslation();
   const [filters, mergeFilters] = useMergeState(defaultFilters);
 
   return (
     <Fragment>
-      <Breadcrumbs items={['Projects', project.name, 'Kanban Board']} />
+      <Breadcrumbs items={[t('board.projects'), project.name, t('board.kanbanBoard')]} />
       <Header />
       <Filters
         projectUsers={project.users}
@@ -44,27 +69,18 @@ const ProjectBoard = ({ project, fetchProject, updateLocalProjectIssues }) => {
         filters={filters}
         updateLocalProjectIssues={updateLocalProjectIssues}
       />
-      <Route
-        path={`${match.path}/issues/:issueId`}
-        render={routeProps => (
-          <Modal
-            isOpen
-            testid="modal:issue-details"
-            width={1040}
-            withCloseIcon={false}
-            onClose={() => history.push(match.url)}
-            renderContent={modal => (
-              <IssueDetails
-                issueId={routeProps.match.params.issueId}
-                projectUsers={project.users}
-                fetchProject={fetchProject}
-                updateLocalProjectIssues={updateLocalProjectIssues}
-                modalClose={modal.close}
-              />
-            )}
-          />
-        )}
-      />
+      <Routes>
+        <Route
+          path="issues/:issueId"
+          element={
+            <IssueDetailsModal
+              project={project}
+              fetchProject={fetchProject}
+              updateLocalProjectIssues={updateLocalProjectIssues}
+            />
+          }
+        />
+      </Routes>
     </Fragment>
   );
 };

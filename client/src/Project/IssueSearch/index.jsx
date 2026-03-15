@@ -2,6 +2,7 @@ import React, { Fragment, useState } from 'react';
 import PropTypes from 'prop-types';
 import { Link } from 'react-router-dom';
 import { get } from 'lodash';
+import { useTranslation } from 'react-i18next';
 
 import useApi from 'shared/hooks/api';
 import { sortByNewest } from 'shared/utils/javascript';
@@ -29,6 +30,7 @@ const propTypes = {
 };
 
 const ProjectIssueSearch = ({ project }) => {
+  const { t } = useTranslation();
   const [isSearchTermEmpty, setIsSearchTermEmpty] = useState(true);
 
   const [{ data, isLoading }, fetchIssues] = useApi.get('/issues', {}, { lazy: true });
@@ -52,7 +54,7 @@ const ProjectIssueSearch = ({ project }) => {
       <SearchInputCont>
         <SearchInputDebounced
           autoFocus
-          placeholder="Search issues by summary, description..."
+          placeholder={t('board.searchPlaceholder')}
           onChange={handleSearchChange}
         />
         <SearchIcon type="search" size={22} />
@@ -61,14 +63,14 @@ const ProjectIssueSearch = ({ project }) => {
 
       {isSearchTermEmpty && recentIssues.length > 0 && (
         <Fragment>
-          <SectionTitle>Recent Issues</SectionTitle>
+          <SectionTitle>{t('board.recentIssues')}</SectionTitle>
           {recentIssues.map(renderIssue)}
         </Fragment>
       )}
 
       {!isSearchTermEmpty && matchingIssues.length > 0 && (
         <Fragment>
-          <SectionTitle>Matching Issues</SectionTitle>
+          <SectionTitle>{t('board.matchingIssues')}</SectionTitle>
           {matchingIssues.map(renderIssue)}
         </Fragment>
       )}
@@ -76,8 +78,8 @@ const ProjectIssueSearch = ({ project }) => {
       {!isSearchTermEmpty && !isLoading && matchingIssues.length === 0 && (
         <NoResults>
           <NoResultsSVG />
-          <NoResultsTitle>We couldn&apos;t find anything matching your search</NoResultsTitle>
-          <NoResultsTip>Try again with a different term.</NoResultsTip>
+          <NoResultsTitle>{t('board.noResultsTitle')}</NoResultsTitle>
+          <NoResultsTip>{t('board.noResultsTip')}</NoResultsTip>
         </NoResults>
       )}
     </IssueSearch>

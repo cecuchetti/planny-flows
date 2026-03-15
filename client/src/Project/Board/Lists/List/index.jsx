@@ -3,8 +3,7 @@ import PropTypes from 'prop-types';
 import moment from 'moment';
 import { Droppable } from 'react-beautiful-dnd';
 import { intersection } from 'lodash';
-
-import { IssueStatusCopy } from 'shared/constants/issues';
+import { useTranslation } from 'react-i18next';
 
 import Issue from './Issue';
 import { List, Title, IssuesCount, Issues } from './Styles';
@@ -14,13 +13,16 @@ const propTypes = {
   project: PropTypes.object.isRequired,
   filters: PropTypes.object.isRequired,
   currentUserId: PropTypes.number,
+  columnDragHandleProps: PropTypes.object,
 };
 
 const defaultProps = {
   currentUserId: null,
+  columnDragHandleProps: null,
 };
 
-const ProjectBoardList = ({ status, project, filters, currentUserId }) => {
+const ProjectBoardList = ({ status, project, filters, currentUserId, columnDragHandleProps }) => {
+  const { t } = useTranslation();
   const filteredIssues = filterIssues(project.issues, filters, currentUserId);
   const filteredListIssues = getSortedListIssues(filteredIssues, status);
   const allListIssues = getSortedListIssues(project.issues, status);
@@ -28,9 +30,9 @@ const ProjectBoardList = ({ status, project, filters, currentUserId }) => {
   return (
     <Droppable key={status} droppableId={status}>
       {provided => (
-        <List>
-          <Title>
-            {`${IssueStatusCopy[status]} `}
+        <List $fullWidth={!!columnDragHandleProps}>
+          <Title {...columnDragHandleProps}>
+            {`${t(`issueStatuses.${status}`)} `}
             <IssuesCount>{formatIssuesCount(allListIssues, filteredListIssues)}</IssuesCount>
           </Title>
           <Issues

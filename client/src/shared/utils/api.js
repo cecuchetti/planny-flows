@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-import history from 'browserHistory';
+import { navigationRef } from 'shared/utils/navigationRef';
 import toast from 'shared/utils/toast';
 import { objectToQueryString } from 'shared/utils/url';
 import { getStoredAuthToken, removeStoredAuthToken } from 'shared/utils/authToken';
@@ -34,11 +34,11 @@ const api = (method, url, variables) =>
       },
       error => {
         if (error.response) {
-          if (error.response.data.error.code === 'INVALID_TOKEN') {
+          if (error.response?.data?.error?.code === 'INVALID_TOKEN') {
             removeStoredAuthToken();
-            history.push('/authenticate');
+            if (navigationRef.current) navigationRef.current('/authenticate');
           } else {
-            reject(error.response.data.error);
+            reject(error.response?.data?.error ?? defaults.error);
           }
         } else {
           reject(defaults.error);

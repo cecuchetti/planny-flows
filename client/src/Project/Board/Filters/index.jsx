@@ -1,6 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import { xor } from 'lodash';
+import { useTranslation } from 'react-i18next';
 
 import {
   Filters,
@@ -20,6 +21,7 @@ const propTypes = {
 };
 
 const ProjectBoardFilters = ({ projectUsers, defaultFilters, filters, mergeFilters }) => {
+  const { t } = useTranslation();
   const { searchTerm, userIds, myOnly, recent } = filters;
 
   const areFiltersCleared = !searchTerm && userIds.length === 0 && !myOnly && !recent;
@@ -47,17 +49,17 @@ const ProjectBoardFilters = ({ projectUsers, defaultFilters, filters, mergeFilte
         isActive={myOnly}
         onClick={() => mergeFilters({ myOnly: !myOnly })}
       >
-        Only My Issues
+        {t('board.onlyMyIssues')}
       </StyledButton>
       <StyledButton
         variant="empty"
         isActive={recent}
         onClick={() => mergeFilters({ recent: !recent })}
       >
-        Recently Updated
+        {t('board.recentlyUpdated')}
       </StyledButton>
       {!areFiltersCleared && (
-        <ClearAll onClick={() => mergeFilters(defaultFilters)}>Clear all</ClearAll>
+        <ClearAll onClick={() => mergeFilters(defaultFilters)}>{t('common.clearAll')}</ClearAll>
       )}
     </Filters>
   );

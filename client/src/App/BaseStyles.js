@@ -65,8 +65,12 @@ export default createGlobalStyle`
 
   [role="button"], button, input, select, textarea {
     outline: none;
-    &:focus {
+    &:focus:not(:focus-visible) {
       outline: none;
+    }
+    &:focus-visible {
+      outline: 2px solid ${color.borderInputFocus};
+      outline-offset: 2px;
     }
     &:disabled {
       opacity: 1;

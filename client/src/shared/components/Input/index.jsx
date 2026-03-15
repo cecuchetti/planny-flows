@@ -18,7 +18,7 @@ const defaultProps = {
   icon: undefined,
   invalid: false,
   filter: undefined,
-  onChange: () => {},
+  onChange: () => { },
 };
 
 const Input = forwardRef(({ icon, className, filter, onChange, ...inputProps }, ref) => {

@@ -1,0 +1,1 @@
+export { IssueRepository } from './IssueRepository';

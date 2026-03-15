@@ -1,5 +1,5 @@
 import React from 'react';
-import { Route, Redirect, useRouteMatch, useHistory } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 
 import useApi from 'shared/hooks/api';
 import { updateArrayItemById } from 'shared/utils/javascript';
@@ -12,14 +12,24 @@ import Board from './Board';
 import IssueSearch from './IssueSearch';
 import IssueCreate from './IssueCreate';
 import ProjectSettings from './ProjectSettings';
+import MyJiraIssues from './MyJiraIssues';
 import { ProjectPage } from './Styles';
 
 const Project = () => {
-  const match = useRouteMatch();
-  const history = useHistory();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const match = { path: '/project', url: location.pathname };
 
-  const issueSearchModalHelpers = createQueryParamModalHelpers('issue-search');
-  const issueCreateModalHelpers = createQueryParamModalHelpers('issue-create');
+  const issueSearchModalHelpers = createQueryParamModalHelpers(
+    'issue-search',
+    navigate,
+    location,
+  );
+  const issueCreateModalHelpers = createQueryParamModalHelpers(
+    'issue-create',
+    navigate,
+    location,
+  );
 
   const [{ data, error, setLocalData }, fetchProject] = useApi.get('/project');
 
@@ -68,30 +78,19 @@ const Project = () => {
             <IssueCreate
               project={project}
               fetchProject={fetchProject}
-              onCreate={() => history.push(`${match.url}/board`)}
+              onCreate={() => navigate(`${match.url}/board`)}
               modalClose={modal.close}
             />
           )}
         />
       )}
 
-      <Route
-        path={`${match.path}/board`}
-        render={() => (
-          <Board
-            project={project}
-            fetchProject={fetchProject}
-            updateLocalProjectIssues={updateLocalProjectIssues}
-          />
-        )}
-      />
-
-      <Route
-        path={`${match.path}/settings`}
-        render={() => <ProjectSettings project={project} fetchProject={fetchProject} />}
-      />
-
-      {match.isExact && <Redirect to={`${match.url}/board`} />}
+      <Routes>
+        <Route path="board/*" element={<Board project={project} fetchProject={fetchProject} updateLocalProjectIssues={updateLocalProjectIssues} />} />
+        <Route path="my-jira-issues" element={<MyJiraIssues />} />
+        <Route path="settings" element={<ProjectSettings project={project} fetchProject={fetchProject} />} />
+        <Route index element={<Navigate to="board" replace />} />
+      </Routes>
     </ProjectPage>
   );
 };

@@ -63,10 +63,10 @@ class Issue extends BaseEntity {
   @Column('integer', { nullable: true })
   timeRemaining: number | null;
 
-  @CreateDateColumn({ type: 'timestamp' })
+  @CreateDateColumn({ type: 'datetime' })
   createdAt: Date;
 
-  @UpdateDateColumn({ type: 'timestamp' })
+  @UpdateDateColumn({ type: 'datetime' })
   updatedAt: Date;
 
   @Column('integer')

@@ -36,3 +36,15 @@ export class InvalidTokenError extends CustomError {
     super(message, 'INVALID_TOKEN', 401);
   }
 }
+
+export class IntegrationUnavailableError extends CustomError {
+  constructor(message = 'Integration is not available.') {
+    super(message, 'INTEGRATION_UNAVAILABLE', 503);
+  }
+}
+
+export class ExternalServiceError extends CustomError {
+  constructor(message: string, public readonly service: string) {
+    super(message, 'EXTERNAL_SERVICE_ERROR', 502, { service });
+  }
+}
