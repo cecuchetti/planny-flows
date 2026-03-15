@@ -1,150 +1,182 @@
-<h1 align="center">A simplified Jira clone built with React and Node</h1>
+# Planny Flows
 
-<div align="center">Auto formatted with Prettier, tested with Cypress 🎗</div>
+> A proxy for your real Jira instances: see tickets assigned to you, track time, and close issues from one place. More features coming — the goal is a single platform for work and personal activities.
 
-<h3 align="center">
-  <a href="https://jira.ivorreic.com/">Visit the live app</a> |
-  <a href="https://github.com/oldboyxx/jira_clone/tree/master/client">View client</a> |
-  <a href="https://github.com/oldboyxx/jira_clone/tree/master/api">View API</a>
-</h3>
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-![Tech logos](https://i.ibb.co/DVFj8PL/tech-icons.jpg)
+**Tech stack**
 
-![App screenshot](https://i.ibb.co/W3qVvCn/jira-optimized.jpg)
+[![React](https://img.shields.io/badge/React-20232A?style=flat-square&logo=react&logoColor=61DAFB)](https://react.dev/)
+[![Node.js](https://img.shields.io/badge/Node.js-339933?style=flat-square&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Express](https://img.shields.io/badge/Express-000000?style=flat-square&logo=express&logoColor=white)](https://expressjs.com/)
+[![Webpack](https://img.shields.io/badge/Webpack-8DD6F9?style=flat-square&logo=webpack&logoColor=black)](https://webpack.js.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat-square&logo=docker&logoColor=white)](https://www.docker.com/)
+[![Cypress](https://img.shields.io/badge/Cypress-17202C?style=flat-square&logo=cypress&logoColor=white)](https://www.cypress.io/)
 
-## What is this and who is it for 🤷‍♀️
+**Fork of [oldboyxx/jira_clone](https://github.com/oldboyxx/jira_clone)** — extended as a Jira proxy (worklogs, time tracking, close/update issues); i18n and Docker support.
 
-I do React consulting and this is a showcase product I've built in my spare time. It's a very good example of modern, real-world React codebase.
+---
 
-There are many showcase/example React projects out there but most of them are way too simple. I like to think that this codebase contains enough complexity to offer valuable insights to React developers of all skill levels while still being _relatively_ easy to understand.
+## Why this exists
 
-## Features
+Planny Flows sits in front of your real Jira (one or two instances): you see your assigned tickets, log time, and close or update them without living inside Jira. It also keeps a local board for quick issues. The longer-term aim is to grow it into a platform that handles both work-related and personal activities in one place.
 
-- Proven, scalable, and easy to understand project structure
-- Written in modern React, only functional components with hooks
-- A variety of custom light-weight UI components such as datepicker, modal, various form elements etc
-- Simple local React state management, without redux, mobx, or similar
-- Custom webpack setup, without create-react-app or similar
-- Client written in Babel powered JavaScript
-- API written in TypeScript and using TypeORM
+---
 
-## Setting up development environment 🛠
+## Quick start
 
-- **Node.js 18+**. No database setup required if you use SQLite (recommended for local development).
-- `git clone https://github.com/oldboyxx/jira_clone.git`
-- Create a `.env` file in `api/` from `api/.env.example`.
-
-**Database options:**
-
-- **SQLite (easiest for local dev):** Set `DB_TYPE=sqlite` in `api/.env`. Optionally set `DB_PATH=./data/jira.sqlite` (default). No PostgreSQL installation needed.
-- **PostgreSQL:** Set `DB_TYPE=postgres` in `api/.env` and configure `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, `DB_DATABASE`. Create a database named `jira` (or your `DB_DATABASE` value).
-
-**If you use SQLite and switch Node.js versions** (e.g. with nvm), the native module `better-sqlite3` may have been built for a different Node version. If the API fails with `ERR_DLOPEN_FAILED` or "compiled against a different Node.js version", recompile it:
+**Prerequisites:** Node.js 18+, npm.
 
 ```bash
-cd api && npm rebuild better-sqlite3
-```
-
-Or reinstall API dependencies:
-
-```bash
-cd api && rm -rf node_modules && npm install
-```
-
-Then run the API again with `cd api && npm start`.
-
-### Install dependencies
-
-```bash
+git clone https://github.com/cecuchetti/planny-flows.git
+cd planny-flows
 npm run install-dependencies
 ```
 
-### Build (compile)
-
-From the repo root, build both API and client:
+Create `api/.env` from `api/.env.example` (SQLite defaults work with no extra setup). Then:
 
 ```bash
-npm run build
-```
-
-Or build separately:
-
-```bash
-cd api && npm run build
-cd client && npm run build
-```
-
-### Run locally
-
-**Development** (API and client with hot reload; use two terminals):
-
-```bash
-# Terminal 1 – API
+# Terminal 1 — API
 cd api && npm start
 
-# Terminal 2 – Client
+# Terminal 2 — Client
 cd client && npm start
 ```
 
-- Client: **http://localhost:8080**
-- API: **http://localhost:3000**
+- **Client:** http://localhost:8080  
+- **API:** http://localhost:3000  
 
-**Production** (compiled build; run API first, then in another terminal run the client):
+---
+
+## Features
+
+- **Jira proxy:** Connect to one or two real Jira (Atlassian) instances. View **tickets assigned to you**, **track time** (worklogs), and **close or update** issues from the app.
+- **My Jira issues:** Single view of your assignments across internal and/or external Jira.
+- **Local board (optional):** Drag-and-drop board and local issues (from the original jira_clone) when you want a simple board or no Jira.
+- **i18n:** English and Spanish (client).
+- **Stack:** React (Babel) + Node/TypeScript API, TypeORM, custom Webpack. Prettier; E2E with Cypress; API tests with Vitest.
+- **Run anywhere:** SQLite or PostgreSQL; Docker Compose for API + client + Postgres.
+
+---
+
+## Installation and setup
+
+### 1. Clone and install
 
 ```bash
-# Terminal 1 – API
-cd api && npm run start:production
-
-# Terminal 2 – Client (serves the built static files)
-cd client && npm run start:production
+git clone https://github.com/cecuchetti/planny-flows.git
+cd planny-flows
+npm run install-dependencies
 ```
 
-- Client: **http://localhost:8081**
-- API: **http://localhost:3000**
+### 2. API environment
 
-## Running with Docker 🐳
+Copy the example env and adjust if needed:
 
-- From the repo root: `docker compose up --build`
-- Open **http://localhost:8081** (client) and **http://localhost:3000** (API). The client build uses `API_URL=http://localhost:3000` so the browser talks to the API on your host. To override, set the `API_URL` build-arg when building the client image.
+```bash
+cp api/.env.example api/.env
+```
 
-## Running cypress end-to-end tests 🚥
+**Database:**
 
-- Set up development environment
-- Create a database named `jira_test` and start the api with `cd api && npm run start:test`
-- `cd client && npm run test:cypress`
+| Option       | Use case              | What to do |
+|-------------|------------------------|------------|
+| **SQLite**  | Local dev (default)    | Set `DB_TYPE=sqlite`. Optionally `DB_PATH=./data/jira.sqlite`. No DB install. |
+| **PostgreSQL** | Shared or production | Set `DB_TYPE=postgres` and set `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, `DB_DATABASE`. Create the DB (e.g. `jira`). |
 
-## What's missing?
+**Jira (optional):** See `api/.env.example` for `INTERNAL_*` and `EXTERNAL_*` vars. Leave them commented to run without Jira.
 
-There are features missing from this showcase product which should exist in a real product:
+**If you switch Node versions** (e.g. nvm) and the API fails with `ERR_DLOPEN_FAILED` or “compiled against a different Node.js version”:
 
-### Migrations 🗄
+```bash
+cd api && npm rebuild better-sqlite3
+# or: rm -rf node_modules && npm install
+```
 
-We're currently using TypeORM's `synchronize` feature which auto creates the database schema on every application launch. It's fine to do this in a showcase product or during early development while the product is not used by anyone, but before going live with a real product, we should [introduce migrations](https://github.com/typeorm/typeorm/blob/master/docs/migrations.md).
+### 3. Run
 
-### Proper authentication system 🔐
+**Development (two terminals):**
 
-We currently auto create an auth token and seed a project with issues and users for anyone who visits the API without valid credentials. In a real product we'd want to implement a proper [email and password authentication system](https://www.google.com/search?q=email+and+password+authentication+node+js&oq=email+and+password+authentication+node+js).
+```bash
+# Terminal 1
+cd api && npm start
 
-### Accessibility ♿
+# Terminal 2
+cd client && npm start
+```
 
-Not all components have properly defined [aria attributes](https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA), visual focus indicators etc. Most early stage companies tend to ignore this aspect of their product but in many cases they shouldn't, especially once their userbase starts growing.
+**Production build:**
 
-### Unit/Integration tests 🧪
+```bash
+npm run build
+# Then:
+cd api && npm run start:production
+cd client && npm run start:production   # other terminal
+```
 
-Both Client and API are currently tested through [end-to-end Cypress tests](https://github.com/oldboyxx/jira_clone/tree/master/client/cypress/integration). That's good enough for a relatively simple application such as this, even if it was a real product. However, as the app grows in complexity, it might be wise to start writing additional unit/integration tests.
+- Dev client: http://localhost:8080 — Production client: http://localhost:8081  
+- API: http://localhost:3000  
+
+---
+
+## Docker
+
+From the repo root:
+
+```bash
+docker compose up --build
+```
+
+- Client: http://localhost:8081  
+- API: http://localhost:3000  
+- Compose uses PostgreSQL; override with env or compose file if you prefer.
+
+---
+
+## Tests
+
+**E2E (Cypress):**
+
+- Create a test DB (e.g. `jira_test` for Postgres) and set `DB_DATABASE=jira_test` when starting the API.
+- Run API: `cd api && npm run start:test`
+- Run client tests: `cd client && npm run test:cypress`
+
+**API (Vitest):**
+
+```bash
+cd api && npm test
+# or: npm run test:watch   npm run test:coverage
+```
+
+---
+
+## Project layout
+
+| Path        | Description |
+|------------|-------------|
+| `client/`  | React app (Babel, Webpack, react-router, styled-components). |
+| `api/`     | Express + TypeScript API, TypeORM, optional Jira integrations. |
+| `api/docs/`| Backend architecture and feature-module guide. |
+
+---
+
+## What’s missing (for a production product)
+
+- **Migrations:** TypeORM `synchronize` is used; replace with [migrations](https://typeorm.io/migrations) before production.
+- **Auth:** Guest/auto-login is fine for demos; add proper email/password (or SSO) for real use.
+- **Accessibility:** Not all components have full ARIA and focus handling yet.
+- **Test coverage:** E2E (Cypress) + API (Vitest) exist; more unit/integration tests would help as the app grows.
+
+---
 
 ## Contributing
 
-I will not be accepting PR's on this repository. Feel free to fork and maintain your own version.
+Contributions are welcome. Please open an issue or PR; see [CONTRIBUTING.md](CONTRIBUTING.md) if you have specific guidelines.
+
+---
 
 ## License
 
-[MIT](https://opensource.org/licenses/MIT)
-
-<hr>
-
-<h3>
-  <a href="https://jira.ivorreic.com/">Visit the live app</a> |
-  <a href="https://github.com/oldboyxx/jira_clone/tree/master/client">View client</a> |
-  <a href="https://github.com/oldboyxx/jira_clone/tree/master/api">View API</a>
-</h3>
+MIT. Original [jira_clone](https://github.com/oldboyxx/jira_clone) by Ivor Reic — same license.
