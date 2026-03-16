@@ -28,15 +28,15 @@
     "pageTitle": "Maintenance",
     "actions": {
       "outlookClean": {
-        "title": "Limpiar Outlook",
+        "title": "Clean Outlook",
         "subtitle": "Trigger the Outlook cleaner service to clean your mailbox.",
         "success": "Outlook clean completed successfully.",
         "running": "Outlook clean is running in the background. You will be notified when it finishes.",
         "failed": "Outlook clean failed after 5 attempts: {{message}}"
       },
-      "cargarTempo": {
-        "title": "Cargar horas en Tempo",
-        "subtitle": "Carga horas en Tempo para el ticket VIS-2"
+      "logHours": {
+        "title": "Log Hours to Tempo",
+        "subtitle": "Log hours to Tempo for ticket VIS-2"
       },
       "archiveOld": {
         "title": "Archive old items",
@@ -63,7 +63,8 @@
     "exportFailed": "Failed to export time entries.",
     "hoursCompleteWarning": "{{hours}} hours have already been logged for this date. Are you sure you want to continue?",
     "hoursLoggedToday": "{{hours}} hours logged",
-    "hoursLoading": "Loading hours..."
+    "hoursLoading": "Loading hours...",
+    "hoursFetchError": "Could not load hours"
   },
   "myJiraIssues": {
     "title": "My Jira issues",
@@ -91,7 +92,10 @@
     "defaultDescription": "Time entry",
     "descriptionTooLong": "Description must be 5000 characters or less.",
     "saved": "Time entry saved.",
-    "saveFailed": "Failed to save time entry."
+    "saveFailed": "Failed to save time entry.",
+    "closeIssue": "Close issue",
+    "issueClosed": "Issue closed successfully.",
+    "closeFailed": "Failed to close issue."
   },
   "board": {
     "projects": "Projects",

@@ -34,7 +34,7 @@
         "running": "La limpieza de Outlook se está ejecutando en segundo plano. Serás notificado al finalizar.",
         "failed": "La limpieza de Outlook falló después de 5 intentos: {{message}}"
       },
-      "cargarTempo": {
+      "logHours": {
         "title": "Cargar horas en Tempo",
         "subtitle": "Carga horas en Tempo para el ticket VIS-2"
       },
@@ -63,7 +63,8 @@
     "exportFailed": "Error al exportar entradas de tiempo.",
     "hoursCompleteWarning": "Ya se han cargado {{hours}} horas para esta fecha. ¿Estás seguro de continuar?",
     "hoursLoggedToday": "{{hours}} horas cargadas",
-    "hoursLoading": "Cargando horas..."
+    "hoursLoading": "Cargando horas...",
+    "hoursFetchError": "No se pudieron cargar las horas"
   },
   "myJiraIssues": {
     "title": "Mis issues Jira",
