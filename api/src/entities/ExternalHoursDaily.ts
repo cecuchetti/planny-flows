@@ -1,5 +1,7 @@
 import { Entity, Column, PrimaryColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
+export type HoursSource = 'tempo' | 'manual';
+
 /**
  * Stores total seconds logged (externally) per calendar date.
  * Updated when user creates a JIRA/BOTH worklog and can be edited from the UI.
@@ -12,6 +14,10 @@ export default class ExternalHoursDaily {
 
   @Column({ name: 'total_seconds', type: 'integer', default: 0 })
   totalSeconds: number;
+
+  /** Source of the hours data: 'tempo' (from API) or 'manual' (user edited) */
+  @Column({ name: 'source', type: 'varchar', length: 20, default: 'tempo' })
+  source: HoursSource;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
