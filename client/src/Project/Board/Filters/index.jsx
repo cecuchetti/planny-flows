@@ -35,7 +35,7 @@ const ProjectBoardFilters = ({ projectUsers, defaultFilters, filters, mergeFilte
       />
       <Avatars>
         {projectUsers.map(user => (
-          <AvatarIsActiveBorder key={user.id} isActive={userIds.includes(user.id)}>
+          <AvatarIsActiveBorder key={user.id} $isActive={userIds.includes(user.id)}>
             <StyledAvatar
               avatarUrl={user.avatarUrl}
               name={user.name}

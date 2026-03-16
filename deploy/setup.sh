@@ -13,7 +13,7 @@ NC='\033[0m'
 
 # Configuration
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-DEPLOY_DIR="$HOME/.planny-flows"
+DEPLOY_DIR="/Users/ecuchetti/.planny-flows"
 TEMPLATES_DIR="$PROJECT_DIR/deploy/templates"
 HOSTNAME=$(hostname | sed 's/\.local$//')
 SKIP_BUILD=false
@@ -31,7 +31,7 @@ echo ""
 # ─────────────────────────────────────────────────────────────────────
 # SECTION 1: Prerequisites Check
 # ─────────────────────────────────────────────────────────────────────
-echo -e "${YELLOW}[1/7] Checking prerequisites...${NC}"
+echo -e "${YELLOW}[1/8] Checking prerequisites...${NC}"
 
 NODE_VERSION=$(node -v 2>/dev/null | sed 's/v//' | cut -d. -f1)
 if [[ -z "$NODE_VERSION" || "$NODE_VERSION" -lt 18 ]]; then
@@ -55,19 +55,21 @@ echo -e "${GREEN}✓ Project directory: $PROJECT_DIR${NC}"
 # ─────────────────────────────────────────────────────────────────────
 # SECTION 2: Create Directory Structure
 # ─────────────────────────────────────────────────────────────────────
-echo -e "${YELLOW}[2/7] Creating directory structure...${NC}"
+echo -e "${YELLOW}[2/8] Creating directory structure...${NC}"
 
-mkdir -p "$DEPLOY_DIR"/{data,logs,pids}
+mkdir -p "$DEPLOY_DIR"/{api,client,data,logs,pids}
 chmod 700 "$DEPLOY_DIR"
 echo -e "${GREEN}✓ Created $DEPLOY_DIR${NC}"
-echo -e "  - data/  (SQLite database)"
-echo -e "  - logs/  (Application logs)"
-echo -e "  - pids/  (Process IDs)"
+echo -e "  - api/     (API server files)"
+echo -e "  - client/  (Client server files)"
+echo -e "  - data/    (SQLite database)"
+echo -e "  - logs/    (Application logs)"
+echo -e "  - pids/    (Process IDs)"
 
 # ─────────────────────────────────────────────────────────────────────
 # SECTION 3: Generate Configuration
 # ─────────────────────────────────────────────────────────────────────
-echo -e "${YELLOW}[3/7] Generating production configuration...${NC}"
+echo -e "${YELLOW}[3/8] Generating production configuration...${NC}"
 
 JWT_SECRET=$(openssl rand -base64 32)
 echo -e "${GREEN}✓ Generated secure JWT_SECRET${NC}"
@@ -83,7 +85,7 @@ echo -e "${GREEN}✓ Created $DEPLOY_DIR/.env.production${NC}"
 # ─────────────────────────────────────────────────────────────────────
 # SECTION 4: Install Dependencies
 # ─────────────────────────────────────────────────────────────────────
-echo -e "${YELLOW}[4/7] Installing dependencies...${NC}"
+echo -e "${YELLOW}[4/8] Installing dependencies...${NC}"
 
 cd "$PROJECT_DIR"
 
@@ -103,9 +105,9 @@ echo -e "${GREEN}✓ Client dependencies installed${NC}"
 # SECTION 5: Build Application
 # ─────────────────────────────────────────────────────────────────────
 if [[ "$SKIP_BUILD" == true ]]; then
-  echo -e "${YELLOW}[5/7] Skipping build (--skip-build)${NC}"
+  echo -e "${YELLOW}[5/8] Skipping build (--skip-build)${NC}"
 else
-  echo -e "${YELLOW}[5/7] Building application...${NC}"
+  echo -e "${YELLOW}[5/8] Building application...${NC}"
   
   cd "$PROJECT_DIR/api"
   npm run build
@@ -117,12 +119,49 @@ else
 fi
 
 # ─────────────────────────────────────────────────────────────────────
-# SECTION 6: Generate Startup Scripts
+# SECTION 6: Copy Production Files
 # ─────────────────────────────────────────────────────────────────────
-echo -e "${YELLOW}[6/7] Generating startup scripts...${NC}"
+echo -e "${YELLOW}[6/8] Copying production files...${NC}"
+
+# Copy API files
+echo -e "  Copying API..."
+rm -rf "$DEPLOY_DIR/api"/*
+mkdir -p "$DEPLOY_DIR/api/build"
+cp -r "$PROJECT_DIR/api/build"/* "$DEPLOY_DIR/api/build/"
+cp "$PROJECT_DIR/api/tsconfig-paths.js" "$DEPLOY_DIR/api/" 2>/dev/null || true
+cp "$PROJECT_DIR/api/tsconfig.json" "$DEPLOY_DIR/api/" 2>/dev/null || true
+cp "$PROJECT_DIR/api/package.json" "$DEPLOY_DIR/api/"
+cp "$PROJECT_DIR/api/package-lock.json" "$DEPLOY_DIR/api/" 2>/dev/null || true
+
+# Install production dependencies for API
+cd "$DEPLOY_DIR/api"
+npm ci --omit=dev 2>/dev/null || npm install --omit=dev
+
+# Rebuild native modules for current Node version
+npm rebuild better-sqlite3 2>/dev/null || true
+echo -e "${GREEN}✓ API files copied to $DEPLOY_DIR/api/${NC}"
+
+# Copy Client files
+echo -e "  Copying Client..."
+rm -rf "$DEPLOY_DIR/client"/*
+mkdir -p "$DEPLOY_DIR/client/build"
+cp -r "$PROJECT_DIR/client/build"/* "$DEPLOY_DIR/client/build/"
+cp "$PROJECT_DIR/client/server.js" "$DEPLOY_DIR/client/"
+cp "$PROJECT_DIR/client/package.json" "$DEPLOY_DIR/client/"
+cp "$PROJECT_DIR/client/package-lock.json" "$DEPLOY_DIR/client/" 2>/dev/null || true
+
+# Install production dependencies for Client
+cd "$DEPLOY_DIR/client"
+npm ci --omit=dev 2>/dev/null || npm install --omit=dev
+echo -e "${GREEN}✓ Client files copied to $DEPLOY_DIR/client/${NC}"
+
+# ─────────────────────────────────────────────────────────────────────
+# SECTION 7: Generate Startup Scripts
+# ─────────────────────────────────────────────────────────────────────
+echo -e "${YELLOW}[7/8] Generating startup scripts...${NC}"
 
 # Generate start.sh from template
-sed -e "s|__PROJECT_DIR__|$PROJECT_DIR|g" \
+sed -e "s|__PROJECT_DIR__|$DEPLOY_DIR|g" \
     -e "s|__DEPLOY_DIR__|$DEPLOY_DIR|g" \
     -e "s|__HOSTNAME__|$HOSTNAME|g" \
     "$TEMPLATES_DIR/start.sh" > "$DEPLOY_DIR/start.sh"
@@ -130,19 +169,29 @@ chmod +x "$DEPLOY_DIR/start.sh"
 echo -e "${GREEN}✓ Created startup script${NC}"
 
 # Generate launchd plist from template (no JWT_SECRET - loaded from .env)
-sed -e "s|__PROJECT_DIR__|$PROJECT_DIR|g" \
+sed -e "s|__PROJECT_DIR__|$DEPLOY_DIR|g" \
     -e "s|__DEPLOY_DIR__|$DEPLOY_DIR|g" \
     -e "s|__HOSTNAME__|$HOSTNAME|g" \
     "$TEMPLATES_DIR/launchd.plist" > "$DEPLOY_DIR/com.plannyflows.plist"
 echo -e "${GREEN}✓ Created launchd plist${NC}"
 
 # ─────────────────────────────────────────────────────────────────────
-# SECTION 7: Display Instructions
+# SECTION 8: Display Instructions
 # ─────────────────────────────────────────────────────────────────────
 echo ""
 echo -e "${GREEN}═══════════════════════════════════════════════════════════${NC}"
 echo -e "${GREEN}     Setup Complete!${NC}"
 echo -e "${GREEN}═══════════════════════════════════════════════════════════${NC}"
+echo ""
+echo -e "${BLUE}Production files deployed to:${NC}"
+echo -e "  $DEPLOY_DIR/"
+echo -e "  ├── api/          (API server)"
+echo -e "  ├── client/       (Client server)"
+echo -e "  ├── data/         (SQLite database)"
+echo -e "  ├── logs/         (Application logs)"
+echo -e "  ├── pids/         (Process IDs)"
+echo -e "  ├── .env.production"
+echo -e "  └── start.sh"
 echo ""
 echo -e "${BLUE}Next steps:${NC}"
 echo ""
@@ -161,9 +210,4 @@ echo -e "     Start:   sudo launchctl bootstrap system /Library/LaunchDaemons/co
 echo ""
 echo -e "  ${YELLOW}4. From other devices on your network:${NC}"
 echo -e "     Open: http://${HOSTNAME}.local:8081"
-echo ""
-echo -e "${BLUE}Configuration files:${NC}"
-echo -e "  - Environment: $DEPLOY_DIR/.env.production"
-echo -e "  - Database:    $DEPLOY_DIR/data/jira.sqlite"
-echo -e "  - Logs:        $DEPLOY_DIR/logs/"
 echo ""

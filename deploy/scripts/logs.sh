@@ -1,7 +1,7 @@
 #!/bin/bash
 # logs.sh - View planny-flows logs
 
-DEPLOY_DIR="$HOME/.planny-flows"
+DEPLOY_DIR="/Users/ecuchetti/.planny-flows"
 LOG_DIR="$DEPLOY_DIR/logs"
 
 if [[ ! -d "$LOG_DIR" ]]; then

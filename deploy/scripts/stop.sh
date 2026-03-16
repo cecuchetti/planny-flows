@@ -1,7 +1,7 @@
 #!/bin/bash
 # stop.sh - Stop planny-flows services
 
-DEPLOY_DIR="$HOME/.planny-flows"
+DEPLOY_DIR="/Users/ecuchetti/.planny-flows"
 PID_DIR="$DEPLOY_DIR/pids"
 
 echo "Stopping Planny-Flows..."

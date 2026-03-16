@@ -4,11 +4,10 @@
 
 set -e
 
-PROJECT_DIR="__PROJECT_DIR__"
 DEPLOY_DIR="__DEPLOY_DIR__"
-LOG_DIR="__DEPLOY_DIR__/logs"
-PID_DIR="__DEPLOY_DIR__/pids"
-ENV_FILE="__DEPLOY_DIR__/.env.production"
+LOG_DIR="$DEPLOY_DIR/logs"
+PID_DIR="$DEPLOY_DIR/pids"
+ENV_FILE="$DEPLOY_DIR/.env.production"
 
 mkdir -p "$LOG_DIR" "$PID_DIR"
 
@@ -39,7 +38,7 @@ fi
 log "Starting Planny-Flows..."
 
 # Start API
-cd "$PROJECT_DIR/api"
+cd "$DEPLOY_DIR/api"
 nohup node -r ./tsconfig-paths.js build/index.js >> "$LOG_DIR/api.log" 2>> "$LOG_DIR/api-error.log" &
 echo $! > "$PID_DIR/api.pid"
 API_PID=$!
@@ -52,7 +51,7 @@ fi
 log "API started (PID: $API_PID)"
 
 # Start Client (explicit PORT to avoid conflict)
-cd "$PROJECT_DIR/client"
+cd "$DEPLOY_DIR/client"
 PORT=8081 nohup node server.js >> "$LOG_DIR/client.log" 2>> "$LOG_DIR/client-error.log" &
 echo $! > "$PID_DIR/client.pid"
 CLIENT_PID=$!

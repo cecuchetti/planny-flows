@@ -21,7 +21,7 @@ export const InputElement = styled.input`
   transition: border-color 0.15s, box-shadow 0.15s;
   ${font.regular}
   ${font.size(fontSizes.body)}
-  ${props => props.hasIcon && 'padding-left: 38px;'}
+  ${props => props.$hasIcon && 'padding-left: 38px;'}
   &:hover {
     border-color: ${color.borderLight};
   }
@@ -32,7 +32,7 @@ export const InputElement = styled.input`
     outline: none;
   }
   ${props =>
-    props.invalid &&
+    props.$invalid &&
     css`
       &,
       &:focus {

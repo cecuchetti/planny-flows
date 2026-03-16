@@ -32,5 +32,5 @@ if [[ "$CLIENT_STATUS" == "200" ]]; then
 else
     echo ""
     echo "✗ Service failed to start. Check logs:"
-    echo "  tail -20 ~/.planny-flows/logs/launchd-error.log"
+    echo "  tail -20 /Users/ecuchetti/.planny-flows/logs/launchd-error.log"
 fi

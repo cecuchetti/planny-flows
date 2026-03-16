@@ -11,63 +11,54 @@ import {
   DisabledItem,
   NavIcon,
   LinkText,
+  MobileHeader,
 } from './Styles';
 
 const propTypes = {
   project: PropTypes.object.isRequired,
+  onNavClick: PropTypes.func,
+  isMobile: PropTypes.bool,
 };
 
 const NAV_ITEMS = [
-  {
-    key: 'kanban',
-    labelKey: 'sidebar.kanbanBoard',
-    path: '/board',
-    icon: '📋',
-    bg: '#2563eb',   // blue
-  },
-  {
-    key: 'external',
-    labelKey: 'sidebar.externalAssignments',
-    path: '/my-jira-issues',
-    icon: '🔗',
-    bg: '#7c3aed',   // violet
-  },
-  {
-    key: 'settings',
-    labelKey: 'sidebar.projectSettings',
-    path: '/settings',
-    icon: '⚙️',
-    bg: '#475569',   // slate
-  },
+  { key: 'kanban', labelKey: 'sidebar.kanbanBoard', path: '/board', icon: '📋', bg: '#2563eb' },
+  { key: 'external', labelKey: 'sidebar.externalAssignments', path: '/my-jira-issues', icon: '🔗', bg: '#7c3aed' },
+  { key: 'settings', labelKey: 'sidebar.projectSettings', path: '/settings', icon: '⚙️', bg: '#475569' },
 ];
 
 const MAINTENANCE_ITEMS = [
-  {
-    key: 'maintenance',
-    labelKey: 'sidebar.maintenance',
-    path: '/maintenance',
-    icon: '🔧',
-    bg: '#059669',   // emerald
-  },
+  { key: 'maintenance', labelKey: 'sidebar.maintenance', path: '/maintenance', icon: '🔧', bg: '#059669' },
 ];
 
 const DISABLED_ITEMS = [
   { key: 'filters', label: 'Issues and filters', icon: '🔍', bg: '#94a3b8' },
-  { key: 'pages',   label: 'Pages',              icon: '📄', bg: '#94a3b8' },
-  { key: 'reports', label: 'Reports',            icon: '📊', bg: '#94a3b8' },
+  { key: 'pages', label: 'Pages', icon: '📄', bg: '#94a3b8' },
+  { key: 'reports', label: 'Reports', icon: '📊', bg: '#94a3b8' },
 ];
 
-const ProjectSidebar = ({ project: _project }) => {
+const ProjectSidebar = ({ project: _project, onNavClick, isMobile }) => {
   const { t } = useTranslation();
   const basePath = '/project';
 
   return (
-    <Sidebar>
+    <Sidebar $isMobile={isMobile}>
+      {isMobile && (
+        <MobileHeader>
+          <span role="img" aria-label="menu">☰</span>
+          Menu
+        </MobileHeader>
+      )}
+
       <NavSection>
         <SectionLabel>Principal</SectionLabel>
 
         {NAV_ITEMS.map(item => (
-          <LinkItem key={item.key} to={`${basePath}${item.path}`} end={item.path === '/board'}>
+          <LinkItem 
+            key={item.key} 
+            to={`${basePath}${item.path}`} 
+            end={item.path === '/board'}
+            onClick={onNavClick}
+          >
             <NavIcon $bg={item.bg}>{item.icon}</NavIcon>
             <LinkText>{t(item.labelKey)}</LinkText>
           </LinkItem>
@@ -77,7 +68,11 @@ const ProjectSidebar = ({ project: _project }) => {
         <SectionLabel>Más</SectionLabel>
 
         {MAINTENANCE_ITEMS.map(item => (
-          <LinkItem key={item.key} to={`${basePath}${item.path}`}>
+          <LinkItem 
+            key={item.key} 
+            to={`${basePath}${item.path}`}
+            onClick={onNavClick}
+          >
             <NavIcon $bg={item.bg}>{item.icon}</NavIcon>
             <LinkText>{t(item.labelKey)}</LinkText>
           </LinkItem>

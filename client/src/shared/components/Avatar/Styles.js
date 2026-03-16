@@ -7,7 +7,7 @@ export const Image = styled.div`
   width: ${props => props.size}px;
   height: ${props => props.size}px;
   border-radius: 100%;
-  ${props => mixin.backgroundImage(props.avatarUrl)}
+  ${props => mixin.backgroundImage(props.$avatarUrl)}
 `;
 
 export const Letter = styled.div`

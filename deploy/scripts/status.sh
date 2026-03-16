@@ -1,7 +1,7 @@
 #!/bin/bash
 # status.sh - Check planny-flows service status
 
-DEPLOY_DIR="$HOME/.planny-flows"
+DEPLOY_DIR="/Users/ecuchetti/.planny-flows"
 PID_DIR="$DEPLOY_DIR/pids"
 
 echo "Planny-Flows Status"

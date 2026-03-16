@@ -36,7 +36,7 @@ const colored = css`
       background: ${props => mixin.darken(color[props.$variant], 0.1)};
     }
     ${props =>
-    props.isActive &&
+    props.$isActive &&
     css`
         background: ${mixin.darken(color[props.$variant], 0.1)} !important;
       `}
@@ -55,7 +55,7 @@ const secondaryAndEmptyShared = css`
       background: ${color.backgroundLightPrimary};
     }
     ${props =>
-    props.isActive &&
+    props.$isActive &&
     css`
         color: ${color.primary};
         background: ${color.backgroundLightPrimary} !important;

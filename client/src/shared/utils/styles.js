@@ -114,6 +114,22 @@ export const sizes = {
   appNavBarLeftWidth: 64,
   secondarySideBarWidth: 268,
   minViewportWidth: 1000,
+  mobileTopBarHeight: 56,
+  mobileBottomNavHeight: 64,
+};
+
+export const breakpoints = {
+  mobile: 480,
+  tablet: 768,
+  laptop: 1024,
+};
+
+export const media = {
+  mobile: `@media (max-width: ${breakpoints.mobile}px)`,
+  tablet: `@media (max-width: ${breakpoints.tablet}px)`,
+  laptop: `@media (max-width: ${breakpoints.laptop}px)`,
+  belowTablet: `@media (max-width: ${breakpoints.tablet - 1}px)`,
+  belowLaptop: `@media (max-width: ${breakpoints.laptop - 1}px)`,
 };
 
 export const radius = {

@@ -10,14 +10,7 @@ const propTypes = {
   size: PropTypes.number,
 };
 
-const defaultProps = {
-  className: undefined,
-  avatarUrl: null,
-  name: '',
-  size: 32,
-};
-
-const Avatar = ({ className, avatarUrl, name, size, ...otherProps }) => {
+const Avatar = ({ className, avatarUrl, name, size = 32, ...otherProps }) => {
   const sharedProps = {
     className,
     size,
@@ -26,12 +19,12 @@ const Avatar = ({ className, avatarUrl, name, size, ...otherProps }) => {
   };
 
   if (avatarUrl) {
-    return <Image avatarUrl={avatarUrl} {...sharedProps} />;
+    return <Image $avatarUrl={avatarUrl} {...sharedProps} />;
   }
 
   return (
-    <Letter color={getColorFromName(name)} {...sharedProps}>
-      <span>{name.charAt(0)}</span>
+    <Letter color={getColorFromName(name || '')} {...sharedProps}>
+      <span>{(name || '').charAt(0)}</span>
     </Letter>
   );
 };
@@ -50,6 +43,5 @@ const colors = [
 const getColorFromName = name => colors[name.toLocaleLowerCase().charCodeAt(0) % colors.length];
 
 Avatar.propTypes = propTypes;
-Avatar.defaultProps = defaultProps;
 
 export default Avatar;

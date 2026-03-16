@@ -1,7 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import moment from 'moment';
-import { Droppable } from 'react-beautiful-dnd';
+import { Droppable } from '@hello-pangea/dnd';
 import { intersection } from 'lodash';
 import { useTranslation } from 'react-i18next';
 
@@ -16,12 +16,7 @@ const propTypes = {
   columnDragHandleProps: PropTypes.object,
 };
 
-const defaultProps = {
-  currentUserId: null,
-  columnDragHandleProps: null,
-};
-
-const ProjectBoardList = ({ status, project, filters, currentUserId, columnDragHandleProps }) => {
+const ProjectBoardList = ({ status, project, filters, currentUserId = null, columnDragHandleProps = null }) => {
   const { t } = useTranslation();
   const filteredIssues = filterIssues(project.issues, filters, currentUserId);
   const filteredListIssues = getSortedListIssues(filteredIssues, status);
@@ -87,6 +82,5 @@ const formatIssuesCount = (allListIssues, filteredListIssues) => {
 };
 
 ProjectBoardList.propTypes = propTypes;
-ProjectBoardList.defaultProps = defaultProps;
 
 export default ProjectBoardList;

@@ -1,6 +1,6 @@
 import styled, { css } from 'styled-components';
 
-import { color, mixin, zIndexValues, radius } from 'shared/utils/styles';
+import { color, mixin, zIndexValues, radius, media } from 'shared/utils/styles';
 import Icon from 'shared/components/Icon';
 
 export const ScrollOverlay = styled.div`
@@ -25,6 +25,10 @@ const clickOverlayStyles = {
     justify-content: center;
     align-items: center;
     padding: 50px;
+
+    ${media.tablet} {
+      padding: 16px;
+    }
   `,
   aside: '',
 };
@@ -43,11 +47,20 @@ const modalStyles = {
     vertical-align: middle;
     border-radius: ${radius.large}px;
     ${mixin.boxShadowCard}
+
+    ${media.tablet} {
+      max-width: calc(100vw - 32px);
+      max-height: calc(100vh - 32px);
+    }
   `,
   aside: css`
     min-height: 100vh;
     max-width: ${props => props.width}px;
     box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 10px -5px rgba(0, 0, 0, 0.04);
+
+    ${media.tablet} {
+      max-width: 100vw;
+    }
   `,
 };
 
@@ -59,6 +72,11 @@ const closeButtonStyles = {
     border-radius: ${radius.medium}px;
     &:hover {
       background: ${color.backgroundLight};
+    }
+
+    ${media.tablet} {
+      top: 8px;
+      right: 8px;
     }
   `,
   aside: css`
@@ -74,6 +92,12 @@ const closeButtonStyles = {
     ${mixin.boxShadowMedium};
     &:hover {
       color: ${color.primary};
+    }
+
+    ${media.tablet} {
+      right: 8px;
+      width: 40px;
+      height: 40px;
     }
   `,
 };
