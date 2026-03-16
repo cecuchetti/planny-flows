@@ -8,6 +8,7 @@ import { PageLoader, Button } from 'shared/components';
 import { Lane, LaneTitle, LaneIssuesCount, LaneContent } from 'shared/components/LaneStyles';
 import { jiraStatusColors } from 'shared/utils/styles';
 import TimeEntryModal from './TimeEntryModal';
+import HoursByDateModal from './HoursByDateModal';
 
 import {
   Page,
@@ -29,6 +30,7 @@ import {
 } from './Styles';
 
 const JIRA_ISSUES_URL = '/api/v1/jira/issues';
+const WORKLOGS_HOURS_BY_DATE_URL = '/api/v1/jira/worklogs/hours-by-date';
 const EXTERNAL_COLUMN_ORDER_KEY = 'jira_clone_external_project_column_order';
 const EXTERNAL_ISSUES_CACHE_KEY = 'jira_clone_external_issues_cache';
 const MY_ATLASSIAN_AVATAR_URL =
@@ -82,6 +84,8 @@ export default function MyJiraIssues() {
   const [hasFetchedOnce, setHasFetchedOnce] = useState(false);
   const [timeEntryIssue, setTimeEntryIssue] = useState(null);
   const [projectColumnOrder, setProjectColumnOrder] = useState(() => loadProjectColumnOrder() || []);
+  const [hoursTodaySeconds, setHoursTodaySeconds] = useState(null);
+  const [showHoursModal, setShowHoursModal] = useState(false);
 
   const fetchFromApi = useCallback(async () => {
     setIsLoading(true);
@@ -163,9 +167,26 @@ export default function MyJiraIssues() {
     }
   }, [issues, projectColumnOrder]);
 
+  const fetchHoursToday = useCallback(async () => {
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      const res = await api.get(WORKLOGS_HOURS_BY_DATE_URL, { from: today, to: today });
+      const list = res.items || [];
+      const row = list.find((r) => r.workDate === today);
+      setHoursTodaySeconds(row ? row.totalSeconds : 0);
+    } catch (_) {
+      setHoursTodaySeconds(0);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchHoursToday();
+  }, [fetchHoursToday]);
+
   const handleTimeEntrySaved = useCallback(() => {
     fetchFromApi();
-  }, [fetchFromApi]);
+    fetchHoursToday();
+  }, [fetchFromApi, fetchHoursToday]);
 
   if (!hasFetchedOnce && isLoading && !(issues && issues.length)) {
     return (
@@ -188,14 +209,50 @@ export default function MyJiraIssues() {
     );
   }
 
+  const hoursTodayDisplay =
+    hoursTodaySeconds != null
+      ? t('myJiraIssues.hoursTodayValue', {
+          hours: hoursTodaySeconds === 0 ? '0' : (hoursTodaySeconds / 3600).toFixed(2).replace(/\.?0+$/, ''),
+        })
+      : '';
+
   return (
     <Page>
       <PageHeader>
         <PageTitle>{t('sidebar.externalAssignments')}</PageTitle>
-        <Button variant="primary" isWorking={isLoading} onClick={fetchFromApi}>
-          {t('myJiraIssues.refresh')}
-        </Button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          {hoursTodayDisplay !== '' && (
+            <button
+              type="button"
+              onClick={() => setShowHoursModal(true)}
+              style={{
+                padding: '6px 12px',
+                borderRadius: 6,
+                border: '1px solid #c4b5fd',
+                background: '#f5f3ff',
+                color: '#6d28d9',
+                cursor: 'pointer',
+                fontSize: 14,
+                fontWeight: 500,
+              }}
+              title={t('myJiraIssues.hoursToday')}
+            >
+              {t('myJiraIssues.hoursToday')}: {hoursTodayDisplay}
+            </button>
+          )}
+          <Button variant="primary" isWorking={isLoading} onClick={fetchFromApi}>
+            {t('myJiraIssues.refresh')}
+          </Button>
+        </div>
       </PageHeader>
+
+      {showHoursModal && (
+        <HoursByDateModal
+          isOpen={showHoursModal}
+          onClose={() => setShowHoursModal(false)}
+          onSaved={fetchHoursToday}
+        />
+      )}
 
       {timeEntryIssue && (
         <TimeEntryModal

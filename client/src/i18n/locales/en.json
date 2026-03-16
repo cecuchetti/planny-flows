@@ -51,7 +51,13 @@
     "empty": "No issues assigned to you in external Jira.",
     "hoursLogged": "{{hours}} logged",
     "loadError": "Failed to load issues.",
-    "refresh": "Refresh"
+    "refresh": "Refresh",
+    "hoursToday": "Hours today",
+    "hoursTodayValue": "{{hours}}h",
+    "hoursWeekTitle": "Hours logged this week",
+    "hoursWeekDay": "{{dayName}} {{date}}",
+    "hoursEditPlaceholder": "0",
+    "hoursSaved": "Hours updated."
   },
   "timeEntry": {
     "title": "Time Entry",

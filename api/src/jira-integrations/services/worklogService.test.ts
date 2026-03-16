@@ -18,17 +18,6 @@ function createMockSubmissionRepository(): ISubmissionRepository {
   };
 }
 
-function createTestDeps(overrides?: Partial<WorklogServiceDeps>): WorklogServiceDeps {
-  return {
-    internalClient: createMockWorklogClient(),
-    externalClient: createMockWorklogClient(),
-    submissionRepository: createMockSubmissionRepository(),
-    tempoIssueKey: 'VIS-2',
-    externalAccountId: 'test-account-id',
-    ...overrides,
-  };
-}
-
 describe('WorklogService', () => {
   let mockInternalClient: IJiraWorklogClient;
   let mockExternalClient: IJiraWorklogClient;

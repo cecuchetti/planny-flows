@@ -51,7 +51,13 @@
     "empty": "No tienes issues asignados en Jira externo.",
     "hoursLogged": "{{hours}} registradas",
     "loadError": "Error al cargar los issues.",
-    "refresh": "Actualizar"
+    "refresh": "Actualizar",
+    "hoursToday": "Horas hoy",
+    "hoursTodayValue": "{{hours}}h",
+    "hoursWeekTitle": "Horas cargadas esta semana",
+    "hoursWeekDay": "{{dayName}} {{date}}",
+    "hoursEditPlaceholder": "0",
+    "hoursSaved": "Horas actualizadas."
   },
   "timeEntry": {
     "title": "Registro de tiempo",

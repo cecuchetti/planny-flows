@@ -1,0 +1,16 @@
+# Which instance names are used for worklog "internal" (Tempo) vs "external" (Jira)
+worklog:
+  internalInstance: internal
+  externalInstance: external
+
+instances:
+  - name: internal
+    atlassianBaseUrl: ${INTERNAL_ATLASSIAN_BASE_URL}
+    authType: basic
+    envPrefix: INTERNAL_
+    fixedIssueKey: VIS-2
+  - name: external
+    atlassianBaseUrl: ${EXTERNAL_ATLASSIAN_BASE_URL}
+    authType: basic
+    envPrefix: EXTERNAL_
+    myAccountId: ${EXTERNAL_MY_ACCOUNT_ID}

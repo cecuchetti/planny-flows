@@ -1,7 +1,6 @@
 import { HttpClient, HttpClientConfig } from './baseClient';
 import { IssueSummary } from '../domain/types';
 import { IJiraIssueClient, Transition } from '../domain/interfaces';
-import { jiraConfig } from '../config';
 import { logger } from '../logger';
 
 export interface SearchIssuesParams {
@@ -14,19 +13,12 @@ export interface SearchIssuesParams {
   maxResults?: number;
 }
 
-export class ExternalJiraIssueClient implements IJiraIssueClient {
+/** Single configurable Jira issue client. Use with config from getJiraInstanceConfig(instanceName). */
+export class JiraIssueClient implements IJiraIssueClient {
   private httpClient: HttpClient;
 
-  constructor(configOverride?: Partial<HttpClientConfig>) {
-    const httpConfig: HttpClientConfig = {
-      baseURL: configOverride?.baseURL ?? jiraConfig.external.atlassianBaseUrl,
-      authType: configOverride?.authType ?? jiraConfig.external.jiraAuthType,
-      email: configOverride?.email ?? jiraConfig.external.jiraEmail,
-      apiToken: configOverride?.apiToken ?? jiraConfig.external.jiraApiToken,
-      timeoutMs: configOverride?.timeoutMs ?? jiraConfig.http.connectTimeoutMs,
-      systemName: 'external-jira',
-    };
-    this.httpClient = new HttpClient(httpConfig);
+  constructor(config: HttpClientConfig) {
+    this.httpClient = new HttpClient(config);
   }
 
   setRequestId(requestId: string | undefined): void {
@@ -53,7 +45,7 @@ export class ExternalJiraIssueClient implements IJiraIssueClient {
       return issues.map((issue: Record<string, unknown>) => this.mapIssue(issue));
     } catch (error) {
       logger.error({ error: error instanceof Error ? error.message : error, params }, 'Failed to search issues');
-      throw new Error('Failed to search issues in external Jira');
+      throw new Error('Failed to search issues in Jira');
     }
   }
 
@@ -67,10 +59,10 @@ export class ExternalJiraIssueClient implements IJiraIssueClient {
     } catch (error: unknown) {
       const err = error as { response?: { status?: number } };
       if (err.response?.status === 404) {
-        throw new Error(`Issue ${issueKey} not found in external Jira`);
+        throw new Error(`Issue ${issueKey} not found in Jira`);
       }
       logger.error({ error: error instanceof Error ? error.message : error, issueKey }, 'Failed to get issue');
-      throw new Error('Failed to retrieve issue from external Jira');
+      throw new Error('Failed to retrieve issue from Jira');
     }
   }
 
@@ -87,7 +79,7 @@ export class ExternalJiraIssueClient implements IJiraIssueClient {
       }));
     } catch (error) {
       logger.error({ error: error instanceof Error ? error.message : error, issueKey }, 'Failed to get transitions');
-      throw new Error('Failed to get transitions from external Jira');
+      throw new Error('Failed to get transitions from Jira');
     }
   }
 
@@ -100,7 +92,7 @@ export class ExternalJiraIssueClient implements IJiraIssueClient {
       logger.info({ issueKey, transitionId }, 'Issue transitioned');
     } catch (error) {
       logger.error({ error: error instanceof Error ? error.message : error, issueKey, transitionId }, 'Failed to transition issue');
-      throw new Error('Failed to transition issue in external Jira');
+      throw new Error('Failed to transition issue in Jira');
     }
   }
 
