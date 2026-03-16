@@ -38,19 +38,19 @@ export function parseDurationToMinutes(input) {
 
   const hMatch = normalized.match(/(\d+(?:\.\d+)?)\s*h/);
   if (hMatch) {
-    totalMinutes += parseFloat(hMatch[1], 10) * 60;
+    totalMinutes += parseFloat(hMatch[1]) * 60;
   }
 
   const mMatch = normalized.match(/(\d+(?:\.\d+)?)\s*m/);
   if (mMatch) {
-    totalMinutes += parseFloat(mMatch[1], 10);
+    totalMinutes += parseFloat(mMatch[1]);
   }
 
   if (totalMinutes > 0) return totalMinutes;
 
   const onlyNumber = normalized.match(/^(\d+(?:\.\d+)?)\s*$/);
   if (onlyNumber) {
-    const val = parseFloat(onlyNumber[1], 10);
+    const val = parseFloat(onlyNumber[1]);
     if (Number.isFinite(val) && val > 0) return Math.round(val * 60);
   }
 
