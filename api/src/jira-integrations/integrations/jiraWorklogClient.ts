@@ -1,5 +1,5 @@
 import { HttpClient, HttpClientConfig } from './baseClient';
-import { IJiraWorklogClient, CreateWorklogRequestPayload, WorklogResponse } from '../domain/interfaces';
+import { IJiraWorklogClient, CreateWorklogRequestPayload, WorklogResponse, GetWorklogsOptions, WorklogEntry, GetWorklogsResponse } from '../domain/interfaces';
 
 /** Single configurable Jira worklog client. Use with config from getJiraInstanceConfig(instanceName). */
 export class JiraWorklogClient implements IJiraWorklogClient {
@@ -53,10 +53,46 @@ export class JiraWorklogClient implements IJiraWorklogClient {
     return response;
   }
 
-  async getWorklogs(issueKey: string): Promise<{ worklogs: Array<{ started: string; timeSpentSeconds: number; author: { accountId: string } }> }> {
-    const response = await this.httpClient.get<{ worklogs: Array<{ started: string; timeSpentSeconds: number; author: { accountId: string } }> }>(
-      `/rest/api/3/issue/${issueKey}/worklog`
-    );
-    return response;
+  async getWorklogs(issueKey: string, options?: GetWorklogsOptions): Promise<GetWorklogsResponse> {
+    const { startAt = 0, maxResults = 50, fetchAll = false } = options ?? {};
+
+    // Single page fetch
+    const fetchPage = async (pageStartAt: number, pageMaxResults: number): Promise<GetWorklogsResponse> => {
+      const response = await this.httpClient.get<GetWorklogsResponse>(
+        `/rest/api/3/issue/${issueKey}/worklog?startAt=${pageStartAt}&maxResults=${pageMaxResults}`
+      );
+      return response;
+    };
+
+    // If fetchAll is true, fetch all worklogs by paginating
+    if (fetchAll) {
+      const allWorklogs: WorklogEntry[] = [];
+      let currentStartAt = 0;
+      const pageSize = 1000; // Use large page size for efficiency
+      let total = 0;
+
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const page = await fetchPage(currentStartAt, pageSize);
+        allWorklogs.push(...page.worklogs);
+        total = page.total;
+
+        // Check if we've fetched all worklogs
+        if (currentStartAt + page.worklogs.length >= total) {
+          break;
+        }
+        currentStartAt += page.worklogs.length;
+      }
+
+      return {
+        worklogs: allWorklogs,
+        startAt: 0,
+        maxResults: allWorklogs.length,
+        total,
+      };
+    }
+
+    // Single page fetch
+    return fetchPage(startAt, maxResults);
   }
 }

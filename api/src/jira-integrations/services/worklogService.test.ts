@@ -6,6 +6,7 @@ import { IJiraWorklogClient, ISubmissionRepository, WorklogServiceDeps } from '.
 function createMockWorklogClient(): IJiraWorklogClient {
   return {
     createWorklog: vi.fn().mockResolvedValue({ id: 'wl-123', issueId: '1', started: '2024-01-15T09:00:00.000+0000', timeSpentSeconds: 3600, comment: '', author: { accountId: 'test' } }),
+    getWorklogs: vi.fn().mockResolvedValue({ worklogs: [], startAt: 0, maxResults: 50, total: 0 }),
   };
 }
 

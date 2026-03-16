@@ -19,6 +19,29 @@ export interface WorklogResponse {
   author: { accountId: string };
 }
 
+export interface WorklogEntry {
+  started: string;
+  timeSpentSeconds: number;
+  author: { accountId: string };
+}
+
+export interface GetWorklogsOptions {
+  /** Number of results to return per page (default: 50, max: 5000) */
+  maxResults?: number;
+  /** Index of the first result to return (0-based) */
+  startAt?: number;
+  /** If true, fetch all worklogs automatically (handles pagination internally) */
+  fetchAll?: boolean;
+}
+
+export interface GetWorklogsResponse {
+  worklogs: WorklogEntry[];
+  /** Pagination metadata from Jira API */
+  startAt: number;
+  maxResults: number;
+  total: number;
+}
+
 export interface Transition {
   id: string;
   name: string;
@@ -27,6 +50,7 @@ export interface Transition {
 
 export interface IJiraWorklogClient {
   createWorklog(request: CreateWorklogRequestPayload): Promise<WorklogResponse>;
+  getWorklogs(issueKey: string, options?: GetWorklogsOptions): Promise<GetWorklogsResponse>;
 }
 
 export interface IJiraIssueClient {

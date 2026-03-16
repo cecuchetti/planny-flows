@@ -208,17 +208,37 @@ export async function exportToTempo(req: Request, res: Response): Promise<void> 
     // Extract date part if startDate is an ISO datetime string
     const workDate = startDate.includes('T') ? startDate.split('T')[0] : startDate;
     
-    // Set startedAt to 4:30 PM Argentina time (UTC-3) = 19:30 UTC
-    // Format: YYYY-MM-DDTHH:mm:ssZ
-    const startedAt = `${workDate}T19:30:00Z`;
+    // Get configurable worklog start time (default: 19:30 UTC = 4:30 PM Argentina time)
+    const worklogStartTime = appConfig.maintenance.worklogStartTime;
+    // Parse the time (format: HH:mm) and validate
+    const timeParts = worklogStartTime.split(':');
+    if (timeParts.length !== 2) {
+      res.status(500).json({
+        error: {
+          code: 'CONFIG_ERROR',
+          message: 'Invalid MAINTENANCE_WORKLOG_START_TIME format. Expected HH:mm',
+        },
+      });
+      return;
+    }
+    const [hours, minutes] = timeParts;
+    const startedAt = `${workDate}T${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:00Z`;
+    
+    // Determine the issue key (hardcoded to VIS-2 for internal Tempo)
+    const issueKey = 'VIS-2';
+    
+    // Build description: use provided description or configurable default with {issueKey} placeholder
+    const finalDescription = description && description.trim() 
+      ? description.trim() 
+      : appConfig.maintenance.worklogDefaultDescription.replace('{issueKey}', issueKey);
     
     // Create worklog for internal Tempo (VIS-2)
     const result = await worklogService.createWorklog({
       target: WorklogTarget.TEMPO, // Only internal Tempo
       workDate,
-      startedAt, // Explicitly set to 4:30 PM Argentina time
+      startedAt, // Configurable start time (default: 19:30 UTC)
       timeSpentSeconds: durationMinutes * 60, // Convert minutes to seconds
-      description: description && description.trim() ? description.trim() : 'Working on issue VIS-2', // Default description
+      description: finalDescription,
     });
     
     if (result.overallStatus === 'SUCCESS') {
@@ -299,16 +319,17 @@ export async function getHoursLogged(req: Request, res: Response): Promise<void>
     const issueKey = internalConfig.fixedIssueKey ?? 'VIS-2';
 
     // Fetch worklogs directly from Tempo/Jira API
-    const response = await client.getWorklogs(issueKey);
+    // Use fetchAll to ensure we get all worklogs for the issue (Jira API returns max 5000 by default)
+    const response = await client.getWorklogs(issueKey, { fetchAll: true });
 
     // Filter worklogs by date and sum up timeSpentSeconds
     // The 'started' field is in format like "2026-03-16T19:30:00.000+0000"
     const totalSeconds = response.worklogs
-      .filter((worklog) => {
+      .filter((worklog: { started: string; timeSpentSeconds: number }) => {
         const worklogDate = worklog.started.split('T')[0];
         return worklogDate === date;
       })
-      .reduce((sum, worklog) => sum + worklog.timeSpentSeconds, 0);
+      .reduce((sum: number, worklog: { timeSpentSeconds: number }) => sum + worklog.timeSpentSeconds, 0);
 
     const hoursLogged = totalSeconds / 3600;
     const isComplete = hoursLogged >= appConfig.maintenance.workdayHours;

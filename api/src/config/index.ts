@@ -47,6 +47,10 @@ export const appConfig = {
       apiKey: getEnv('OUTLOOK_CLEANER_API_KEY') || '',
     },
     workdayHours: Number(getEnv('MAINTENANCE_WORKDAY_HOURS', '8')),
+    // Worklog start time in HH:mm format (UTC). Default: 19:30 UTC = 4:30 PM Argentina time (UTC-3)
+    worklogStartTime: getEnv('MAINTENANCE_WORKLOG_START_TIME', '19:30')!,
+    // Default description for worklogs when none provided. Use {issueKey} as placeholder.
+    worklogDefaultDescription: getEnv('MAINTENANCE_WORKLOG_DEFAULT_DESCRIPTION', 'Working on issue {issueKey}')!,
   },
 };
 
