@@ -1,7 +1,7 @@
 import styled from 'styled-components';
 import { NavLink } from 'react-router-dom';
 
-import { color, sizes, font, fontSizes, lineHeights, mixin, radius } from 'shared/utils/styles';
+import { color, sizes, font, fontSizes, lineHeights, mixin, radius, media } from 'shared/utils/styles';
 
 const NAV_TEXT    = '#292a2e';
 const ACTIVE_BG   = '#eaecf4';
@@ -20,12 +20,31 @@ export const Sidebar = styled.aside`
   ${mixin.scrollableY}
   ${mixin.customScrollbar()}
 
+  ${props => props.$isMobile && `
+    width: 100%;
+    border-right: none;
+    padding-top: 0;
+  `}
+
   @media (max-width: 1100px) {
     width: ${sizes.secondarySideBarWidth - 10}px;
   }
-  @media (max-width: 999px) {
-    display: none;
+  
+  ${media.tablet} {
+    display: ${props => props.$isMobile ? 'flex' : 'none'};
   }
+`;
+
+export const MobileHeader = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 14px;
+  background: linear-gradient(135deg, #1c1f2e 0%, #2d2060 100%);
+  color: #fff;
+  font-weight: 600;
+  font-size: 16px;
+  margin-bottom: 8px;
 `;
 
 /* kept for import compatibility */
@@ -77,6 +96,10 @@ export const LinkItem = styled(NavLink)`
     svg, span[role="img"] {
       color: ${ACTIVE_ICON};
     }
+  }
+
+  ${media.tablet} {
+    padding: 14px 16px;
   }
 `;
 

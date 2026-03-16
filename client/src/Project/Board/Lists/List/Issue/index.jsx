@@ -1,7 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import { useLocation } from 'react-router-dom';
-import { Draggable } from 'react-beautiful-dnd';
+import { Draggable } from '@hello-pangea/dnd';
 
 import { IssueStatusCopy, IssueTypeCopy } from 'shared/constants/issues';
 import { issueStatusColors, issueStatusBackgroundColors, issueTypeColors } from 'shared/utils/styles';
@@ -59,7 +59,7 @@ const ProjectBoardListIssue = ({ project, projectUsers, issue, index }) => {
           {...provided.draggableProps}
           {...provided.dragHandleProps}
         >
-          <Issue isBeingDragged={snapshot.isDragging && !snapshot.isDropAnimating}>
+          <Issue $isBeingDragged={snapshot.isDragging && !snapshot.isDropAnimating}>
             <PriorityStrip $priority={Number(issue.priority)} />
             <CardBody>
               <IssueKey>{getIssueKey(project, issue.id)}</IssueKey>

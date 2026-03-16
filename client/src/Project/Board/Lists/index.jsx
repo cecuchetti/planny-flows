@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import PropTypes from 'prop-types';
-import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { moveItemWithinArray, insertItemIntoArray } from 'shared/utils/javascript';
 import { IssueStatus } from 'shared/constants/issues';
 

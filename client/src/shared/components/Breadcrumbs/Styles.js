@@ -1,12 +1,16 @@
 import styled from 'styled-components';
 
-import { color, font, fontSizes, lineHeights } from 'shared/utils/styles';
+import { color, font, fontSizes, lineHeights, media } from 'shared/utils/styles';
 
 export const Container = styled.nav`
   color: ${color.textMedium};
   ${font.size(fontSizes.caption)}
   line-height: ${lineHeights.normal};
   ${font.regular}
+
+  ${media.tablet} {
+    display: none;
+  }
 `;
 
 export const Divider = styled.span`

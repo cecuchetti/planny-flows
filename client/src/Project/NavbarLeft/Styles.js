@@ -1,7 +1,7 @@
 import styled from 'styled-components';
 import { NavLink } from 'react-router-dom';
 
-import { font, fontSizes, lineHeights, sizes, color, mixin, zIndexValues } from 'shared/utils/styles';
+import { font, fontSizes, lineHeights, sizes, color, mixin, zIndexValues, media } from 'shared/utils/styles';
 import { Logo } from 'shared/components';
 
 export const NavLeft = styled.aside`
@@ -20,6 +20,10 @@ export const NavLeft = styled.aside`
   &:hover {
     width: 200px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  }
+
+  ${media.tablet} {
+    display: none;
   }
 `;
 

@@ -9,10 +9,6 @@ const propTypes = {
   onChange: PropTypes.func.isRequired,
 };
 
-const defaultProps = {
-  value: undefined,
-};
-
 const InputDebounced = ({ onChange, value: propsValue, ...inputProps }) => {
   const [value, setValue] = useState(propsValue);
   const isControlled = propsValue !== undefined;
@@ -44,6 +40,5 @@ const InputDebounced = ({ onChange, value: propsValue, ...inputProps }) => {
 };
 
 InputDebounced.propTypes = propTypes;
-InputDebounced.defaultProps = defaultProps;
 
 export default InputDebounced;

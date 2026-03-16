@@ -14,6 +14,7 @@ const propTypes = {
   iconSize: PropTypes.number,
   disabled: PropTypes.bool,
   isWorking: PropTypes.bool,
+  isActive: PropTypes.bool,
   onClick: PropTypes.func,
 };
 
@@ -25,11 +26,12 @@ const defaultProps = {
   iconSize: 18,
   disabled: false,
   isWorking: false,
+  isActive: false,
   onClick: () => { },
 };
 
 const Button = forwardRef(
-  ({ children, variant, icon, iconSize, disabled, isWorking, onClick, ...buttonProps }, ref) => {
+  ({ children, variant, icon, iconSize, disabled, isWorking, isActive, onClick, ...buttonProps }, ref) => {
     const handleClick = () => {
       if (!disabled && !isWorking) {
         onClick();
@@ -44,6 +46,7 @@ const Button = forwardRef(
         disabled={disabled || isWorking}
         $isWorking={isWorking}
         $iconOnly={!children}
+        $isActive={isActive}
         ref={ref}
       >
         {isWorking && <StyledSpinner size={26} color={getIconColor(variant)} />}

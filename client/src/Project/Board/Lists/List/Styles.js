@@ -1,6 +1,6 @@
 import styled from 'styled-components';
 
-import { color, font, fontSizes, lineHeights, mixin, radius } from 'shared/utils/styles';
+import { color, font, fontSizes, lineHeights, mixin, radius, media } from 'shared/utils/styles';
 
 export const List = styled.div`
   display: flex;
@@ -10,6 +10,12 @@ export const List = styled.div`
   width: ${props => (props.$fullWidth ? '100%' : '25%')};
   border-radius: ${radius.medium}px;
   background: transparent;
+
+  ${media.tablet} {
+    flex-shrink: 0;
+    width: 280px;
+    min-width: 280px;
+  }
 `;
 
 export const Title = styled.div`
