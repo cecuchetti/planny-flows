@@ -277,6 +277,18 @@ export async function getHoursLogged(req: Request, res: Response): Promise<void>
     return;
   }
 
+  // Validate date is semantically correct (e.g., reject 2026-02-30)
+  const parsedDate = new Date(date);
+  if (isNaN(parsedDate.getTime())) {
+    res.status(400).json({
+      error: {
+        code: 'INVALID_DATE',
+        message: 'Date is not valid',
+      },
+    });
+    return;
+  }
+
   try {
     const { JiraWorklogClient } = await import('../jira-integrations/integrations/jiraWorklogClient');
     const { getJiraInstanceConfig, getWorklogInstanceNames } = await import('../jira-integrations/config/instances');
@@ -292,11 +304,14 @@ export async function getHoursLogged(req: Request, res: Response): Promise<void>
     // Filter worklogs by date and sum up timeSpentSeconds
     // The 'started' field is in format like "2026-03-16T19:30:00.000+0000"
     const totalSeconds = response.worklogs
-      .filter((worklog) => worklog.started.startsWith(date))
+      .filter((worklog) => {
+        const worklogDate = worklog.started.split('T')[0];
+        return worklogDate === date;
+      })
       .reduce((sum, worklog) => sum + worklog.timeSpentSeconds, 0);
 
     const hoursLogged = totalSeconds / 3600;
-    const isComplete = hoursLogged >= 8;
+    const isComplete = hoursLogged >= appConfig.maintenance.workdayHours;
 
     res.status(200).json({
       hoursLogged: Math.round(hoursLogged * 100) / 100,

@@ -64,11 +64,15 @@ export class SubmissionRepository implements ISubmissionRepository {
     page: number;
     size: number;
   }): Promise<{ items: WorklogSubmissionRow[]; total: number }> {
+    // Validate and sanitize pagination parameters
+    const safePage = Math.max(0, filters.page);
+    const safeSize = Math.min(100, Math.max(1, filters.size));
+
     const qb = this.submissionRepo
       .createQueryBuilder('s')
       .orderBy('s.createdAt', 'DESC')
-      .skip(filters.page * filters.size)
-      .take(filters.size);
+      .skip(safePage * safeSize)
+      .take(safeSize);
 
     if (filters.target) qb.andWhere('s.target = :target', { target: filters.target });
     if (filters.status) qb.andWhere('s.overallStatus = :status', { status: filters.status });

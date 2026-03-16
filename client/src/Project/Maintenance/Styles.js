@@ -91,3 +91,17 @@ export const HoursStatus = styled.div`
   color: ${props => props.$isComplete ? '#166534' : '#92400e'};
   border: 1px solid ${props => props.$isComplete ? '#86efac' : '#fcd34d'};
 `;
+
+export const HoursFetchError = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  ${font.size(12)}
+  ${font.medium}
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+`;

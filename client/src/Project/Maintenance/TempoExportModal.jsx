@@ -65,6 +65,7 @@ export default function TempoExportModal({ isOpen = false, onClose, onSubmitted 
   const [description, setDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hoursStatus, setHoursStatus] = useState(null);
+  const [hoursFetchError, setHoursFetchError] = useState(false);
 
   // Fetch hours for a specific date
   const fetchHoursForDate = useCallback(async (date) => {
@@ -72,10 +73,12 @@ export default function TempoExportModal({ isOpen = false, onClose, onSubmitted 
     try {
       const data = await api.get(`/maintenance/actions/tempo-export/hours?date=${date}`);
       setHoursStatus(data);
+      setHoursFetchError(false);
     } catch (err) {
-      // Silently fail
+      // Silently fail but indicate error
       console.error('Failed to fetch hours for date:', err);
       setHoursStatus(null);
+      setHoursFetchError(true);
     }
   }, []);
 
@@ -93,6 +96,7 @@ export default function TempoExportModal({ isOpen = false, onClose, onSubmitted 
     setHoursError('');
     setDescription('');
     setHoursStatus(null);
+    setHoursFetchError(false);
   }, []);
   
   // Handle date change - extract just the date part if it's an ISO string
@@ -193,6 +197,11 @@ export default function TempoExportModal({ isOpen = false, onClose, onSubmitted 
                   onChange={handleDateChange}
                   placeholder="Select date"
                 />
+                {hoursFetchError && (
+                  <Hint style={{ color: '#991b1b', fontWeight: '500', marginTop: '6px' }}>
+                    {t('tempoExport.hoursFetchError')}
+                  </Hint>
+                )}
               </div>
             </Field>
 

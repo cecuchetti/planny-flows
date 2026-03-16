@@ -16,6 +16,7 @@ import {
   CardTitle,
   CardSubtitle,
   HoursStatus,
+  HoursFetchError,
 } from './Styles';
 import TempoExportModal from './TempoExportModal';
 
@@ -32,8 +33,8 @@ const ACTIONS = [
   },
   {
     id: 'tempo-export',
-    titleKey: 'maintenance.actions.cargarTempo.title',
-    subtitleKey: 'maintenance.actions.cargarTempo.subtitle',
+    titleKey: 'maintenance.actions.logHours.title',
+    subtitleKey: 'maintenance.actions.logHours.subtitle',
     iconType: 'reports',
     iconBg: '#6554C0',
     iconColor: '#fff',
@@ -57,6 +58,7 @@ export default function Maintenance() {
   const [loadingId, setLoadingId] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [todayHoursStatus, setTodayHoursStatus] = useState(null);
+  const [hoursFetchError, setHoursFetchError] = useState(false);
   const pollTimeoutRef = useRef(null);
   const pollIntervalRef = useRef(null);
 
@@ -66,9 +68,11 @@ export default function Maintenance() {
       const today = moment().format('YYYY-MM-DD');
       const data = await api.get(`/maintenance/actions/tempo-export/hours?date=${today}`);
       setTodayHoursStatus(data);
+      setHoursFetchError(false);
     } catch (err) {
-      // Silently fail - don't block the UI
+      // Silently fail - don't block the UI but indicate error
       console.error('Failed to fetch hours:', err);
+      setHoursFetchError(true);
     }
   }, []);
 
@@ -185,6 +189,12 @@ export default function Maintenance() {
               <HoursStatus $isComplete={todayHoursStatus.isComplete}>
                 {t('tempoExport.hoursLoggedToday', { hours: todayHoursStatus.hoursLogged })}
               </HoursStatus>
+            )}
+            {action.id === 'tempo-export' && hoursFetchError && (
+              <HoursFetchError>
+                <Icon type="alert" size={12} />
+                {t('tempoExport.hoursFetchError')}
+              </HoursFetchError>
             )}
           </ActionCard>
         ))}
