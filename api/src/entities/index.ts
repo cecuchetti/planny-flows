@@ -7,3 +7,4 @@ export { default as User } from './User';
 // Jira integration entities
 export { default as WorklogSubmission } from './WorklogSubmission';
 export { default as WorklogSubmissionResult } from './WorklogSubmissionResult';
+export { default as ExternalHoursDaily } from './ExternalHoursDaily';

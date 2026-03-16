@@ -1,4 +1,10 @@
-import { createWorklogRequestSchema, getSubmissionHistoryQuerySchema, parseWithZod } from '../domain/validation';
+import {
+  createWorklogRequestSchema,
+  getSubmissionHistoryQuerySchema,
+  getHoursByDateQuerySchema,
+  updateHoursForDateBodySchema,
+  parseWithZod,
+} from '../domain/validation';
 import { WorklogTarget } from '../domain/types';
 import { catchErrors, BadUserInputError } from 'errors';
 import { getJiraContainer } from '../container';
@@ -46,4 +52,36 @@ export const getSubmissionHistory = catchErrors(async (req, res) => {
     size: query.size,
     total,
   });
+});
+
+export const getHoursByDate = catchErrors(async (req, res) => {
+  let query;
+  try {
+    query = parseWithZod(getHoursByDateQuerySchema, req.query);
+  } catch (error) {
+    throw new BadUserInputError({
+      message: error instanceof Error ? error.message : 'Invalid query parameters',
+    });
+  }
+  const { externalHoursDailyRepository } = getJiraContainer();
+  const items = await externalHoursDailyRepository.getByDateRange(query.from, query.to);
+  res.respond({ items });
+});
+
+export const updateHoursForDate = catchErrors(async (req, res) => {
+  const workDate = req.params.date as string;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(workDate)) {
+    throw new BadUserInputError({ message: 'Invalid date format. Use YYYY-MM-DD.' });
+  }
+  let body;
+  try {
+    body = parseWithZod(updateHoursForDateBodySchema, req.body);
+  } catch (error) {
+    throw new BadUserInputError({
+      message: error instanceof Error ? error.message : 'Invalid request body',
+    });
+  }
+  const { externalHoursDailyRepository } = getJiraContainer();
+  await externalHoursDailyRepository.setHours(workDate, body.totalSeconds);
+  res.respond({ workDate, totalSeconds: body.totalSeconds });
 });

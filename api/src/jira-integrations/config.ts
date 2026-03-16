@@ -1,4 +1,5 @@
 import { appConfig } from 'config';
+import { getWorklogInstanceNames, getJiraInstanceConfig } from './config/instances';
 
 export const jiraConfig = {
   app: appConfig.jira.app,
@@ -8,9 +9,20 @@ export const jiraConfig = {
 };
 
 export function isJiraIntegrationsConfigured(): boolean {
-  return !!(
-    jiraConfig.internal.atlassianBaseUrl &&
-    jiraConfig.external.atlassianBaseUrl &&
-    (jiraConfig.internal.jiraApiToken || jiraConfig.external.jiraApiToken)
-  );
+  try {
+    const { internal, external } = getWorklogInstanceNames();
+    const internalConfig = getJiraInstanceConfig(internal);
+    const externalConfig = getJiraInstanceConfig(external);
+    return !!(
+      internalConfig.baseURL &&
+      externalConfig.baseURL &&
+      (internalConfig.apiToken || externalConfig.apiToken)
+    );
+  } catch {
+    return !!(
+      jiraConfig.internal.atlassianBaseUrl &&
+      jiraConfig.external.atlassianBaseUrl &&
+      (jiraConfig.internal.jiraApiToken || jiraConfig.external.jiraApiToken)
+    );
+  }
 }

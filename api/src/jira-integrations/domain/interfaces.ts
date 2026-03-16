@@ -59,10 +59,17 @@ export interface ISubmissionRepository {
   }): Promise<{ items: WorklogSubmissionRow[]; total: number }>;
 }
 
+export interface IExternalHoursDailyRepository {
+  addHours(workDate: string, secondsToAdd: number): Promise<void>;
+  getByDateRange(fromDate: string, toDate: string): Promise<{ workDate: string; totalSeconds: number }[]>;
+  setHours(workDate: string, totalSeconds: number): Promise<void>;
+}
+
 export interface WorklogServiceDeps {
   internalClient: IJiraWorklogClient;
   externalClient: IJiraWorklogClient;
   submissionRepository: ISubmissionRepository;
+  externalHoursDailyRepository?: IExternalHoursDailyRepository;
   tempoIssueKey: string;
   externalAccountId?: string;
 }

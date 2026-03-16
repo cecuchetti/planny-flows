@@ -9,16 +9,16 @@ import {
   TargetResult,
 } from '../domain/types';
 import { IJiraWorklogClient, ISubmissionRepository, WorklogServiceDeps } from '../domain/interfaces';
-import { InternalJiraWorklogClient } from '../integrations/internalJiraWorklogClient';
-import { ExternalJiraWorklogClient } from '../integrations/externalJiraWorklogClient';
+import { JiraWorklogClient } from '../integrations/jiraWorklogClient';
 import { SubmissionRepository } from '../persistence/submissionRepository';
-import { jiraConfig } from '../config';
+import { getWorklogInstanceNames, getJiraInstanceConfig } from '../config/instances';
 import { logger } from 'utils/logger';
 
 export class WorklogService {
   private internalClient: IJiraWorklogClient;
   private externalClient: IJiraWorklogClient;
   private submissionRepository: ISubmissionRepository;
+  private externalHoursDailyRepository?: WorklogServiceDeps['externalHoursDailyRepository'];
   private tempoIssueKey: string;
   private externalAccountId?: string;
 
@@ -27,14 +27,18 @@ export class WorklogService {
       this.internalClient = deps.internalClient;
       this.externalClient = deps.externalClient;
       this.submissionRepository = deps.submissionRepository;
+      this.externalHoursDailyRepository = deps.externalHoursDailyRepository;
       this.tempoIssueKey = deps.tempoIssueKey;
       this.externalAccountId = deps.externalAccountId;
     } else {
-      this.internalClient = new InternalJiraWorklogClient();
-      this.externalClient = new ExternalJiraWorklogClient();
+      const { internal, external } = getWorklogInstanceNames();
+      const internalConfig = getJiraInstanceConfig(internal);
+      const externalConfig = getJiraInstanceConfig(external);
+      this.internalClient = new JiraWorklogClient(internalConfig);
+      this.externalClient = new JiraWorklogClient(externalConfig);
       this.submissionRepository = new SubmissionRepository();
-      this.tempoIssueKey = jiraConfig.internal.jiraFixedIssueKey || 'VIS-2';
-      this.externalAccountId = jiraConfig.external.myAccountId ?? undefined;
+      this.tempoIssueKey = internalConfig.fixedIssueKey ?? 'VIS-2';
+      this.externalAccountId = externalConfig.myAccountId ?? undefined;
     }
   }
 
@@ -83,6 +87,13 @@ export class WorklogService {
 
     const overallStatus = this.calculateOverallStatus(results);
     await this.submissionRepository.updateSubmissionStatus(requestId, overallStatus);
+
+    if (
+      this.externalHoursDailyRepository &&
+      (request.target === WorklogTarget.JIRA || request.target === WorklogTarget.BOTH)
+    ) {
+      await this.externalHoursDailyRepository.addHours(workDate, request.timeSpentSeconds);
+    }
 
     return {
       requestId,

@@ -1,6 +1,7 @@
 import { IJiraIssueClient, Transition } from '../domain/interfaces';
 import type { IssueSummary } from '../domain/types';
-import { ExternalJiraIssueClient } from '../integrations/externalJiraIssueClient';
+import { JiraIssueClient } from '../integrations/jiraIssueClient';
+import { getWorklogInstanceNames, getJiraInstanceConfig } from '../config/instances';
 
 export interface JiraIssueServiceDeps {
   issueClient: IJiraIssueClient;
@@ -13,7 +14,9 @@ export class IssueService {
     if (deps) {
       this.issueClient = deps.issueClient;
     } else {
-      this.issueClient = new ExternalJiraIssueClient();
+      const { external } = getWorklogInstanceNames();
+      const config = getJiraInstanceConfig(external);
+      this.issueClient = new JiraIssueClient(config);
     }
   }
 

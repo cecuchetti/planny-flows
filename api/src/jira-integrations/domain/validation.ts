@@ -46,6 +46,19 @@ export const getSubmissionHistoryQuerySchema = z.object({
 
 export type GetSubmissionHistoryQuery = z.infer<typeof getSubmissionHistoryQuerySchema>;
 
+export const getHoursByDateQuerySchema = z.object({
+  from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+});
+
+export type GetHoursByDateQuery = z.infer<typeof getHoursByDateQuerySchema>;
+
+export const updateHoursForDateBodySchema = z.object({
+  totalSeconds: z.number().int().min(0),
+});
+
+export type UpdateHoursForDateBody = z.infer<typeof updateHoursForDateBodySchema>;
+
 export function parseWithZod<T>(schema: z.ZodSchema<T>, data: unknown): T {
   const result = schema.safeParse(data);
   if (!result.success) {

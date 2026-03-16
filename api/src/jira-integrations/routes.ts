@@ -19,6 +19,8 @@ router.use(requireJiraConfig);
 
 router.post('/worklogs', worklogController.createWorklog);
 router.get('/worklogs', worklogController.getSubmissionHistory);
+router.get('/worklogs/hours-by-date', worklogController.getHoursByDate);
+router.patch('/worklogs/hours-by-date/:date', worklogController.updateHoursForDate);
 
 router.get('/issues', issueController.searchIssues);
 router.get('/issues/:issueKey', issueController.getIssueByKey);
