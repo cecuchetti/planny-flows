@@ -9,8 +9,8 @@ export const ModalContents = styled.div`
 
 /* ── Header ─────────────────────────────────────────── */
 export const ModalHeader = styled.div`
-  background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
-  border-bottom: 1px solid #ddd6fe;
+  background: linear-gradient(135deg, ${color.violetGradientStart} 0%, ${color.violetGradientEnd} 100%);
+  border-bottom: 1px solid ${color.violetBorderLight};
   padding: 20px 28px 18px;
 `;
 
@@ -26,9 +26,9 @@ export const TaskKeyBadge = styled.div`
   align-items: center;
   padding: 3px 10px;
   border-radius: ${radius.pill}px;
-  background: #ede9fe;
-  border: 1px solid #c4b5fd;
-  color: #6d28d9;
+  background: ${color.statusViolet.bg};
+  border: 1px solid ${color.statusViolet.border};
+  color: ${color.statusViolet.text};
   ${font.medium}
   ${font.size(fontSizes.caption)}
   line-height: 1.4;
@@ -100,10 +100,10 @@ export const WarningBanner = styled.div`
   gap: 10px;
   padding: 12px 16px;
   margin-bottom: 20px;
-  background: #fffbeb;
-  border: 1px solid #fcd34d;
+  background: ${color.statusWarning.bg};
+  border: 1px solid ${color.statusWarning.border};
   border-radius: ${radius.button}px;
-  color: #92400e;
+  color: ${color.statusWarning.text};
   ${font.size(fontSizes.bodySmall)}
   line-height: ${lineHeights.normal};
 
@@ -111,4 +111,17 @@ export const WarningBanner = styled.div`
     font-size: 18px;
     flex-shrink: 0;
   }
+`;
+
+/* ── Input wrapper for max-width constraints ─────────── */
+export const InputWrapper = styled.div`
+  max-width: ${props => props.$maxWidth || '250px'};
+`;
+
+export const DatePickerWrapper = styled.div`
+  max-width: 250px;
+`;
+
+export const DescriptionWrapper = styled.div`
+  max-width: 400px;
 `;

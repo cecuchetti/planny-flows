@@ -30,7 +30,7 @@ export const ActionCard = styled.button`
   align-items: flex-start;
   text-align: left;
   padding: 20px;
-  background: #fff;
+  background: ${color.backgroundLightest};
   border-radius: 8px;
   border: 2px solid ${color.borderLight};
   cursor: pointer;
@@ -87,9 +87,9 @@ export const HoursStatus = styled.div`
   border-radius: 12px;
   ${font.size(12)}
   ${font.medium}
-  background: ${props => props.$isComplete ? '#dcfce7' : '#fef3c7'};
-  color: ${props => props.$isComplete ? '#166534' : '#92400e'};
-  border: 1px solid ${props => props.$isComplete ? '#86efac' : '#fcd34d'};
+  background: ${props => props.$isComplete ? color.statusSuccess.bg : color.statusWarning.bg};
+  color: ${props => props.$isComplete ? color.statusSuccess.text : color.statusWarning.text};
+  border: 1px solid ${props => props.$isComplete ? color.statusSuccess.border : color.statusWarning.border};
 `;
 
 export const HoursFetchError = styled.div`
@@ -101,7 +101,7 @@ export const HoursFetchError = styled.div`
   border-radius: 12px;
   ${font.size(12)}
   ${font.medium}
-  background: #fef2f2;
-  color: #991b1b;
-  border: 1px solid #fecaca;
+  background: ${color.statusError.bg};
+  color: ${color.statusError.text};
+  border: 1px solid ${color.statusError.border};
 `;
