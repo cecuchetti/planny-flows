@@ -6,6 +6,7 @@ import { WorklogTarget } from '../jira-integrations/domain/types';
 import { WorklogService } from '../jira-integrations/services/worklogService';
 import { JiraWorklogClient } from '../jira-integrations/integrations/jiraWorklogClient';
 import { getJiraInstanceConfig, getWorklogInstanceNames } from '../jira-integrations/config/instances';
+import { TempoHoursRepository } from '../jira-integrations/persistence/tempoHoursRepository';
 
 const OUTLOOK_CLEANER_NOT_CONFIGURED = 'OUTLOOK_CLEANER_NOT_CONFIGURED';
 
@@ -271,7 +272,9 @@ export async function exportToTempo(req: Request, res: Response): Promise<void> 
 
 /**
  * GET /maintenance/actions/tempo-export/hours
- * Returns the total hours logged for VIS-2 on a specific date (fetched from Tempo API).
+ * Returns the total hours logged for VIS-2 on a specific date.
+ * Checks database first, then fetches from Tempo API if not found.
+ * Only saves to database when hours >= 8 (complete workday).
  */
 export async function getHoursLogged(req: Request, res: Response): Promise<void> {
   const { date } = req.query;
@@ -311,17 +314,30 @@ export async function getHoursLogged(req: Request, res: Response): Promise<void>
   }
 
   try {
+    const tempoHoursRepo = new TempoHoursRepository();
+
+    // 1. Check tempo_hours_daily database first
+    const dbRecord = await tempoHoursRepo.getByDate(date);
+    if (dbRecord) {
+      const isComplete = dbRecord.hoursLogged >= appConfig.maintenance.workdayHours;
+      res.status(200).json({
+        hoursLogged: Math.round(dbRecord.hoursLogged * 100) / 100,
+        source: 'database',
+        isComplete,
+      });
+      return;
+    }
+
+    // 2. Fetch from Tempo API
     const { internal } = getWorklogInstanceNames();
     const internalConfig = getJiraInstanceConfig(internal);
     const client = new JiraWorklogClient(internalConfig);
     const issueKey = internalConfig.fixedIssueKey ?? 'VIS-2';
 
     // Fetch worklogs directly from Tempo/Jira API
-    // Use fetchAll to ensure we get all worklogs for the issue (Jira API returns max 5000 by default)
     const response = await client.getWorklogs(issueKey, { fetchAll: true });
 
     // Filter worklogs by date and sum up timeSpentSeconds
-    // The 'started' field is in format like "2026-03-16T19:30:00.000+0000"
     const totalSeconds = response.worklogs
       .filter((worklog: { started: string; timeSpentSeconds: number }) => {
         const worklogDate = worklog.started.split('T')[0];
@@ -332,13 +348,187 @@ export async function getHoursLogged(req: Request, res: Response): Promise<void>
     const hoursLogged = totalSeconds / 3600;
     const isComplete = hoursLogged >= appConfig.maintenance.workdayHours;
 
+    // 3. Only save to database if hours >= 8 (complete workday)
+    if (isComplete) {
+      await tempoHoursRepo.save(date, hoursLogged);
+    }
+
     res.status(200).json({
       hoursLogged: Math.round(hoursLogged * 100) / 100,
+      source: 'tempo',
       isComplete,
     });
   } catch (error) {
     const err = error as Error;
     logger.error({ error: err.message, stack: err.stack }, 'Failed to get hours logged from Tempo');
+    res.status(500).json({
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: err.message,
+      },
+    });
+  }
+}
+
+/**
+ * GET /maintenance/actions/tempo-export/week
+ * Returns hours for the current week (Monday to Sunday).
+ * Returns array of { date, hours, source } for all 7 days.
+ */
+export async function getWeekHours(req: Request, res: Response): Promise<void> {
+  const { startDate } = req.query;
+
+  // Determine the Monday of the current week
+  let monday: Date;
+  if (startDate && typeof startDate === 'string') {
+    // Validate date format
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(startDate)) {
+      res.status(400).json({
+        error: {
+          code: 'INVALID_DATE_FORMAT',
+          message: 'startDate must be in YYYY-MM-DD format',
+        },
+      });
+      return;
+    }
+    const parsedDate = new Date(startDate);
+    if (isNaN(parsedDate.getTime())) {
+      res.status(400).json({
+        error: {
+          code: 'INVALID_DATE',
+          message: 'startDate is not valid',
+        },
+      });
+      return;
+    }
+    // Find Monday of the week containing the given date
+    const dayOfWeek = parsedDate.getDay();
+    const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    monday = new Date(parsedDate);
+    monday.setDate(parsedDate.getDate() + diff);
+  } else {
+    // Default to current week's Monday
+    const today = new Date();
+    const dayOfWeek = today.getDay();
+    const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    monday = new Date(today);
+    monday.setDate(today.getDate() + diff);
+  }
+
+  // Generate all 7 dates for the week
+  const weekDates: string[] = [];
+  for (let i = 0; i < 7; i++) {
+    const date = new Date(monday);
+    date.setDate(monday.getDate() + i);
+    weekDates.push(date.toISOString().split('T')[0]);
+  }
+
+  try {
+    const tempoHoursRepo = new TempoHoursRepository();
+
+    // Get all records for the week from database
+    const fromDate = weekDates[0];
+    const toDate = weekDates[6];
+    const dbRecords = await tempoHoursRepo.getByDateRange(fromDate, toDate);
+
+    // Create a map for quick lookup
+    const dbMap = new Map(dbRecords.map((r) => [r.workDate, r]));
+
+    // Build result for all 7 days
+    const days = weekDates.map((date) => {
+      const record = dbMap.get(date);
+      return {
+        date,
+        hoursLogged: record ? Math.round(record.hoursLogged * 100) / 100 : 0,
+        source: record ? 'database' : null,
+      };
+    });
+
+    res.status(200).json({ days });
+  } catch (error) {
+    const err = error as Error;
+    logger.error({ error: err.message, stack: err.stack }, 'Failed to get week hours');
+    res.status(500).json({
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: err.message,
+      },
+    });
+  }
+}
+
+/**
+ * PUT /maintenance/actions/tempo-export/hours
+ * Updates hours for a specific date (manual override for Tempo hours).
+ * Body: { date, hours }
+ */
+export async function updateHours(req: Request, res: Response): Promise<void> {
+  const { date, hours } = req.body;
+
+  // Validation: Required fields
+  if (!date || hours === undefined || hours === null) {
+    res.status(400).json({
+      error: {
+        code: 'INVALID_REQUEST',
+        message: 'date and hours are required',
+      },
+    });
+    return;
+  }
+
+  // Validate date format
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!dateRegex.test(date)) {
+    res.status(400).json({
+      error: {
+        code: 'INVALID_DATE_FORMAT',
+        message: 'Date must be in YYYY-MM-DD format',
+      },
+    });
+    return;
+  }
+
+  // Validate date is semantically correct
+  const parsedDate = new Date(date);
+  if (isNaN(parsedDate.getTime())) {
+    res.status(400).json({
+      error: {
+        code: 'INVALID_DATE',
+        message: 'Date is not valid',
+      },
+    });
+    return;
+  }
+
+  // Validate hours is a non-negative number
+  if (typeof hours !== 'number' || hours < 0) {
+    res.status(400).json({
+      error: {
+        code: 'INVALID_HOURS',
+        message: 'hours must be a non-negative number',
+      },
+    });
+    return;
+  }
+
+  try {
+    const tempoHoursRepo = new TempoHoursRepository();
+
+    // Save hours to tempo_hours_daily (manual override)
+    await tempoHoursRepo.save(date, hours);
+
+    const isComplete = hours >= appConfig.maintenance.workdayHours;
+
+    res.status(200).json({
+      date,
+      hours: Math.round(hours * 100) / 100,
+      source: 'manual',
+      isComplete,
+    });
+  } catch (error) {
+    const err = error as Error;
+    logger.error({ error: err.message, stack: err.stack }, 'Failed to update hours');
     res.status(500).json({
       error: {
         code: 'INTERNAL_ERROR',

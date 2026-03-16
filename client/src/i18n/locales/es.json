@@ -38,6 +38,10 @@
         "title": "Cargar horas en Tempo",
         "subtitle": "Carga horas en Tempo para el ticket VIS-2"
       },
+      "weeklyHours": {
+        "title": "Ver horas de Tempo (VIS-2)",
+        "subtitle": "Visualiza y confirma las horas de Tempo para VIS-2 de la semana"
+      },
       "archiveOld": {
         "title": "Archivar elementos antiguos",
         "subtitle": "Archivar issues y comentarios antiguos (placeholder)."
@@ -65,6 +69,27 @@
     "hoursLoggedToday": "{{hours}} horas cargadas",
     "hoursLoading": "Cargando horas...",
     "hoursFetchError": "No se pudieron cargar las horas"
+  },
+  "weeklyHours": {
+    "title": "Horas de Tempo (VIS-2)",
+    "subtitle": "Horas de Tempo registradas para VIS-2 esta semana",
+    "totalHours": "Total de la semana",
+    "hoursSaved": "Horas actualizadas correctamente.",
+    "saveFailed": "Error al actualizar las horas.",
+    "days": {
+      "mon": "Lun",
+      "tue": "Mar",
+      "wed": "Mié",
+      "thu": "Jue",
+      "fri": "Vie",
+      "sat": "Sáb",
+      "sun": "Dom"
+    },
+    "status": {
+      "complete": "Completo",
+      "inProgress": "En progreso",
+      "incomplete": "Incompleto"
+    }
   },
   "myJiraIssues": {
     "title": "Mis issues Jira",

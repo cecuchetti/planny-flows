@@ -48,6 +48,8 @@ export const attachPrivateRoutes = (app: any): void => {
   app.get('/maintenance/actions/outlook-clean/status', maintenance.getOutlookCleanStatus);
   app.post('/maintenance/actions/outlook-clean', maintenance.triggerOutlookClean);
   app.get('/maintenance/actions/tempo-export/hours', tempoExportRateLimiter, maintenance.getHoursLogged);
+  app.get('/maintenance/actions/tempo-export/week', tempoExportRateLimiter, maintenance.getWeekHours);
+  app.put('/maintenance/actions/tempo-export/hours', tempoExportRateLimiter, maintenance.updateHours);
   app.post('/maintenance/actions/tempo-export', tempoExportRateLimiter, maintenance.exportToTempo);
 
   // External Jira integrations - worklogs and issue management

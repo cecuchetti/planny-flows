@@ -1,6 +1,7 @@
 import { DataSource } from 'typeorm';
 import { IssueSummary } from './types';
 import { WorklogTarget, SubmissionStatus, WorklogSubmissionRow, WorklogSubmissionResultRow } from './types';
+import { HoursSource } from 'entities/ExternalHoursDaily';
 
 export interface CreateWorklogRequestPayload {
   issueKey: string;
@@ -86,7 +87,8 @@ export interface ISubmissionRepository {
 export interface IExternalHoursDailyRepository {
   addHours(workDate: string, secondsToAdd: number): Promise<void>;
   getByDateRange(fromDate: string, toDate: string): Promise<{ workDate: string; totalSeconds: number }[]>;
-  setHours(workDate: string, totalSeconds: number): Promise<void>;
+  getByDate(workDate: string): Promise<{ workDate: string; totalSeconds: number; source: HoursSource } | null>;
+  setHours(workDate: string, totalSeconds: number, source?: HoursSource): Promise<void>;
 }
 
 export interface WorklogServiceDeps {

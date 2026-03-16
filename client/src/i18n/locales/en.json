@@ -38,6 +38,10 @@
         "title": "Log Hours to Tempo",
         "subtitle": "Log hours to Tempo for ticket VIS-2"
       },
+      "weeklyHours": {
+        "title": "View Tempo Hours (VIS-2)",
+        "subtitle": "View and confirm Tempo hours for VIS-2 this week"
+      },
       "archiveOld": {
         "title": "Archive old items",
         "subtitle": "Archive old issues and comments (placeholder)."
@@ -65,6 +69,27 @@
     "hoursLoggedToday": "{{hours}} hours logged",
     "hoursLoading": "Loading hours...",
     "hoursFetchError": "Could not load hours"
+  },
+  "weeklyHours": {
+    "title": "Tempo Hours (VIS-2)",
+    "subtitle": "Tempo hours logged for VIS-2 this week",
+    "totalHours": "Week total",
+    "hoursSaved": "Hours updated successfully.",
+    "saveFailed": "Failed to update hours.",
+    "days": {
+      "mon": "Mon",
+      "tue": "Tue",
+      "wed": "Wed",
+      "thu": "Thu",
+      "fri": "Fri",
+      "sat": "Sat",
+      "sun": "Sun"
+    },
+    "status": {
+      "complete": "Complete",
+      "inProgress": "In progress",
+      "incomplete": "Incomplete"
+    }
   },
   "myJiraIssues": {
     "title": "My Jira issues",

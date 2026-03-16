@@ -19,6 +19,7 @@ import {
   HoursFetchError,
 } from './Styles';
 import TempoExportModal from './TempoExportModal';
+import WeeklyHoursModal from './WeeklyHoursModal';
 
 const ACTIONS = [
   {
@@ -40,11 +41,19 @@ const ACTIONS = [
     iconColor: '#fff',
   },
   {
+    id: 'weekly-hours',
+    titleKey: 'maintenance.actions.weeklyHours.title',
+    subtitleKey: 'maintenance.actions.weeklyHours.subtitle',
+    iconType: 'calendar',
+    iconBg: '#0B875B',
+    iconColor: '#fff',
+  },
+  {
     id: 'placeholder-2',
     titleKey: 'maintenance.actions.archiveOld.title',
     subtitleKey: 'maintenance.actions.archiveOld.subtitle',
-    iconType: 'calendar',
-    iconBg: '#0B875B',
+    iconType: 'page',
+    iconBg: '#6B7280',
     iconColor: '#fff',
     placeholder: true,
   },
@@ -57,6 +66,7 @@ export default function Maintenance() {
   const { t } = useTranslation();
   const [loadingId, setLoadingId] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isWeeklyModalOpen, setIsWeeklyModalOpen] = useState(false);
   const [todayHoursStatus, setTodayHoursStatus] = useState(null);
   const [hoursFetchError, setHoursFetchError] = useState(false);
   const [isLoadingHours, setIsLoadingHours] = useState(true);
@@ -114,6 +124,11 @@ export default function Maintenance() {
 
     if (action.id === 'tempo-export') {
       setIsModalOpen(true);
+      return;
+    }
+
+    if (action.id === 'weekly-hours') {
+      setIsWeeklyModalOpen(true);
       return;
     }
 
@@ -234,6 +249,12 @@ export default function Maintenance() {
       <TempoExportModal
         isOpen={isModalOpen}
         onClose={handleModalClose}
+        onSubmitted={fetchTodayHours}
+      />
+
+      <WeeklyHoursModal
+        isOpen={isWeeklyModalOpen}
+        onClose={() => setIsWeeklyModalOpen(false)}
         onSubmitted={fetchTodayHours}
       />
     </Page>

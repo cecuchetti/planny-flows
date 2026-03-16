@@ -8,3 +8,5 @@ export { default as User } from './User';
 export { default as WorklogSubmission } from './WorklogSubmission';
 export { default as WorklogSubmissionResult } from './WorklogSubmissionResult';
 export { default as ExternalHoursDaily } from './ExternalHoursDaily';
+export { default as DailyHours } from './DailyHours';
+export { default as TempoHoursDaily } from './TempoHoursDaily';
