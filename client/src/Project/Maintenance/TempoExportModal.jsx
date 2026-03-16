@@ -150,6 +150,11 @@ export default function TempoExportModal({ isOpen = false, onClose, onSubmitted 
     }
   };
 
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    handleExport();
+  };
+
   const handleHoursBlur = () => {
     if (hoursInput.trim()) validateHours(hoursInput);
   };
@@ -179,88 +184,90 @@ export default function TempoExportModal({ isOpen = false, onClose, onSubmitted 
             <TaskSummary>{t('tempoExport.taskSummary')}</TaskSummary>
           </ModalHeader>
 
-          <FormBody>
-            {hoursStatus?.hoursLogged >= 8 && (
-              <WarningBanner>
-                <span className="warning-icon">⚠️</span>
-                {t('tempoExport.hoursCompleteWarning', { hours: hoursStatus.hoursLogged })}
-              </WarningBanner>
-            )}
+          <form onSubmit={handleSubmit}>
+            <FormBody>
+              {hoursStatus?.hoursLogged >= 8 && (
+                <WarningBanner>
+                  <span className="warning-icon">⚠️</span>
+                  {t('tempoExport.hoursCompleteWarning', { hours: hoursStatus.hoursLogged })}
+                </WarningBanner>
+              )}
 
-            <Field>
-              <Label>{t('tempoExport.date')} *</Label>
-              <div style={{ maxWidth: '250px' }}>
-                <DatePicker
-                  withTime={false}
-                  label={t('tempoExport.date')}
-                  value={startDate}
-                  onChange={handleDateChange}
-                  placeholder="Select date"
-                />
-                {hoursFetchError && (
-                  <Hint style={{ color: '#991b1b', fontWeight: '500', marginTop: '6px' }}>
-                    {t('tempoExport.hoursFetchError')}
-                  </Hint>
-                )}
-              </div>
-            </Field>
+              <Field>
+                <Label>{t('tempoExport.date')} *</Label>
+                <div style={{ maxWidth: '250px' }}>
+                  <DatePicker
+                    withTime={false}
+                    label={t('tempoExport.date')}
+                    value={startDate}
+                    onChange={handleDateChange}
+                    placeholder="Select date"
+                  />
+                  {hoursFetchError && (
+                    <Hint style={{ color: '#991b1b', fontWeight: '500', marginTop: '6px' }}>
+                      {t('tempoExport.hoursFetchError')}
+                    </Hint>
+                  )}
+                </div>
+              </Field>
 
-            <Field>
-              <Label>{t('tempoExport.duration')} *</Label>
-              <div style={{ maxWidth: '250px' }}>
-                <input
-                  type="text"
-                  value={hoursInput}
-                  onChange={(e) => setHoursInput(e.target.value)}
-                  onBlur={handleHoursBlur}
-                  placeholder={t('tempoExport.durationPlaceholder')}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    border: hoursError ? '1px solid #e74c3c' : '1px solid #d1d5db',
-                    borderRadius: '6px',
-                    fontSize: '14px',
-                    outline: 'none',
-                    transition: 'border-color 0.2s',
-                  }}
-                />
-                <Hint>{t('tempoExport.durationHint')}</Hint>
-                {hoursError && <Hint style={{ color: '#e74c3c', fontWeight: '500' }}>{hoursError}</Hint>}
-              </div>
-            </Field>
+              <Field>
+                <Label>{t('tempoExport.duration')} *</Label>
+                <div style={{ maxWidth: '250px' }}>
+                  <input
+                    type="text"
+                    value={hoursInput}
+                    onChange={(e) => setHoursInput(e.target.value)}
+                    onBlur={handleHoursBlur}
+                    placeholder={t('tempoExport.durationPlaceholder')}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      border: hoursError ? '1px solid #e74c3c' : '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      fontSize: '14px',
+                      outline: 'none',
+                      transition: 'border-color 0.2s',
+                    }}
+                  />
+                  <Hint>{t('tempoExport.durationHint')}</Hint>
+                  {hoursError && <Hint style={{ color: '#e74c3c', fontWeight: '500' }}>{hoursError}</Hint>}
+                </div>
+              </Field>
 
-            <Field>
-              <Label>{t('tempoExport.description')}</Label>
-              <div style={{ maxWidth: '400px' }}>
-                <input
-                  type="text"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder={t('tempoExport.descriptionPlaceholder')}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '6px',
-                    fontSize: '14px',
-                    outline: 'none',
-                    transition: 'border-color 0.2s',
-                  }}
-                />
-              </div>
-            </Field>
+              <Field>
+                <Label>{t('tempoExport.description')}</Label>
+                <div style={{ maxWidth: '400px' }}>
+                  <input
+                    type="text"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder={t('tempoExport.descriptionPlaceholder')}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      fontSize: '14px',
+                      outline: 'none',
+                      transition: 'border-color 0.2s',
+                    }}
+                  />
+                </div>
+              </Field>
 
-            <Actions>
-              <ActionsRight>
-                <Button variant="empty" onClick={handleCancel}>
-                  {t('common.cancel')}
-                </Button>
-                <Button variant="primary" isWorking={isSubmitting} onClick={handleExport}>
-                  {t('tempoExport.exportButton')}
-                </Button>
-              </ActionsRight>
-            </Actions>
-          </FormBody>
+              <Actions>
+                <ActionsRight>
+                  <Button type="button" variant="empty" onClick={handleCancel}>
+                    {t('common.cancel')}
+                  </Button>
+                  <Button type="submit" variant="primary" isWorking={isSubmitting}>
+                    {t('tempoExport.exportButton')}
+                  </Button>
+                </ActionsRight>
+              </Actions>
+            </FormBody>
+          </form>
         </ModalContents>
       )}
     />

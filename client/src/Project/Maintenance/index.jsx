@@ -61,6 +61,7 @@ export default function Maintenance() {
   const [hoursFetchError, setHoursFetchError] = useState(false);
   const pollTimeoutRef = useRef(null);
   const pollIntervalRef = useRef(null);
+  const isMountedRef = useRef(true);
 
   // Fetch hours logged today for VIS-2
   const fetchTodayHours = useCallback(async () => {
@@ -96,7 +97,9 @@ export default function Maintenance() {
       clearTimeout(pollTimeoutRef.current);
       pollTimeoutRef.current = null;
     }
-    setLoadingId(null);
+    if (isMountedRef.current) {
+      setLoadingId(null);
+    }
   }, []);
 
   const handleAction = async (action) => {
@@ -121,6 +124,12 @@ export default function Maintenance() {
 
         const start = Date.now();
         pollIntervalRef.current = setInterval(async () => {
+          // Check if component is still mounted before any state updates
+          if (!isMountedRef.current) {
+            stopPolling();
+            return;
+          }
+          
           if (Date.now() - start > POLL_TIMEOUT_MS) {
             stopPolling();
             toast.error(t('maintenance.actions.error'));
@@ -128,6 +137,13 @@ export default function Maintenance() {
           }
           try {
             const statusData = await api.get(action.statusEndpoint);
+            
+            // Check mount state again after async operation
+            if (!isMountedRef.current) {
+              stopPolling();
+              return;
+            }
+            
             const { status, lastRun } = statusData || {};
 
             if (status === 'success') {
@@ -164,7 +180,13 @@ export default function Maintenance() {
     }
   };
 
-  React.useEffect(() => () => stopPolling(), [stopPolling]);
+  React.useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      stopPolling();
+    };
+  }, [stopPolling]);
 
   return (
     <Page>
