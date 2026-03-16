@@ -14,6 +14,22 @@ import { SubmissionRepository } from '../persistence/submissionRepository';
 import { getWorklogInstanceNames, getJiraInstanceConfig } from '../config/instances';
 import { logger } from 'utils/logger';
 
+/**
+ * Safely extracts error information from an unknown error type.
+ * Handles both standard Error instances and Axios-like error responses.
+ */
+function extractErrorInfo(error: unknown): { message: string; statusCode?: string } {
+  if (error instanceof Error) {
+    // Safely check for Axios-like error structure
+    const axiosLikeError = error as { response?: { status?: number } };
+    return {
+      message: error.message,
+      statusCode: axiosLikeError.response?.status?.toString(),
+    };
+  }
+  return { message: 'Unknown error' };
+}
+
 export class WorklogService {
   private internalClient: IJiraWorklogClient;
   private externalClient: IJiraWorklogClient;
@@ -46,6 +62,13 @@ export class WorklogService {
     const requestId = `wlr_${uuidv4().substring(0, 8)}`;
     const { workDate, startedAt } = this.normalizeDateTime(request.workDate, request.startedAt);
 
+    // Validate externalIssueKey before creating any database records
+    if (request.target === WorklogTarget.JIRA || request.target === WorklogTarget.BOTH) {
+      if (!request.externalIssueKey) {
+        throw new Error('externalIssueKey is required for Jira target');
+      }
+    }
+
     const submission = {
       requestId,
       target: request.target,
@@ -72,11 +95,8 @@ export class WorklogService {
     }
 
     if (request.target === WorklogTarget.JIRA || request.target === WorklogTarget.BOTH) {
-      if (!request.externalIssueKey) {
-        throw new Error('externalIssueKey is required for Jira target');
-      }
       const jiraResult = await this.createExternalWorklog(savedSubmission.id, {
-        issueKey: request.externalIssueKey,
+        issueKey: request.externalIssueKey!,
         startedAt: startedAt ?? this.toIsoString(workDate),
         timeSpentSeconds: request.timeSpentSeconds,
         description: request.description,
@@ -129,8 +149,8 @@ export class WorklogService {
         message: 'Tempo worklog created successfully.',
       };
     } catch (error: unknown) {
-      const err = error as { response?: { status?: number }; message?: string };
-      logger.error({ error: err?.message, request }, 'Tempo worklog creation failed');
+      const errorInfo = extractErrorInfo(error);
+      logger.error({ error: errorInfo.message, request }, 'Tempo worklog creation failed');
       await this.submissionRepository.createSubmissionResult({
         submissionId,
         targetSystem: TargetSystem.TEMPO,
@@ -138,15 +158,15 @@ export class WorklogService {
         externalId: null,
         requestPayload: JSON.stringify(request),
         responsePayload: null,
-        errorCode: err?.response?.status?.toString() ?? 'UNKNOWN',
-        errorMessage: err?.message ?? 'Unknown error',
+        errorCode: errorInfo.statusCode ?? 'UNKNOWN',
+        errorMessage: errorInfo.message,
       });
       return {
         system: TargetSystem.TEMPO,
         issueKey: request.issueKey,
         status: TargetResultStatus.FAILED,
         externalId: null,
-        message: `Tempo worklog creation failed: ${err?.message ?? 'Unknown error'}`,
+        message: `Tempo worklog creation failed: ${errorInfo.message}`,
       };
     }
   }
@@ -181,8 +201,8 @@ export class WorklogService {
         message: 'Jira worklog created successfully.',
       };
     } catch (error: unknown) {
-      const err = error as { response?: { status?: number }; message?: string };
-      logger.error({ error: err?.message, request }, 'Jira worklog creation failed');
+      const errorInfo = extractErrorInfo(error);
+      logger.error({ error: errorInfo.message, request }, 'Jira worklog creation failed');
       await this.submissionRepository.createSubmissionResult({
         submissionId,
         targetSystem: TargetSystem.JIRA,
@@ -190,15 +210,15 @@ export class WorklogService {
         externalId: null,
         requestPayload: JSON.stringify(request),
         responsePayload: null,
-        errorCode: err?.response?.status?.toString() ?? 'UNKNOWN',
-        errorMessage: err?.message ?? 'Unknown error',
+        errorCode: errorInfo.statusCode ?? 'UNKNOWN',
+        errorMessage: errorInfo.message,
       });
       return {
         system: TargetSystem.JIRA,
         issueKey: request.issueKey,
         status: TargetResultStatus.FAILED,
         externalId: null,
-        message: `Jira worklog creation failed: ${err?.message ?? 'Unknown error'}`,
+        message: `Jira worklog creation failed: ${errorInfo.message}`,
       };
     }
   }
