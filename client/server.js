@@ -10,4 +10,9 @@ app.use(express.static(`${__dirname}/build`));
 
 app.use(fallback(`${__dirname}/build/index.html`));
 
-app.listen(process.env.PORT || 8081);
+const PORT = process.env.PORT || 8081;
+const HOST = '0.0.0.0';
+
+app.listen(PORT, HOST, () => {
+  console.log(`Client server running on http://${HOST}:${PORT}`);
+});

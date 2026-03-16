@@ -7,6 +7,8 @@
 
 # environment config
 **/.env
+**/.env.production
+**/.env.local
 
 # production
 **/build
@@ -14,3 +16,6 @@
 
 # SQLite (local dev)
 api/data
+
+# Generated deployment files (contain secrets and user-specific paths)
+.planny-flows/

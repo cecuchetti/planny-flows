@@ -29,7 +29,26 @@ const establishDatabaseConnection = async (): Promise<void> => {
 const initializeExpress = (): void => {
   const app = express();
 
-  app.use(cors({ origin: appConfig.clientUrl }));
+  const corsOrigins = [
+    'http://localhost:8080',
+    'http://localhost:8081',
+    'http://127.0.0.1:8080',
+    'http://127.0.0.1:8081',
+    /^http:\/\/192\.168\.\d{1,3}\.\d{1,3}:(8080|8081)$/,
+    /^http:\/\/10\.\d{1,3}\.\d{1,3}\.\d{1,3}:(8080|8081)$/,
+    /^http:\/\/[\w-]+\.local:(8080|8081)$/,
+  ];
+
+  app.use(cors({
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      const allowed = corsOrigins.some(pattern =>
+        typeof pattern === 'string' ? pattern === origin : pattern.test(origin)
+      );
+      callback(null, allowed);
+    },
+    credentials: true,
+  }));
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
@@ -47,8 +66,8 @@ const initializeExpress = (): void => {
   app.use((req, _res, next) => next(new RouteNotFoundError(req.originalUrl)));
   app.use(handleError);
 
-  app.listen(appConfig.port, () => {
-    logger.info({ port: appConfig.port, env: appConfig.env }, 'API server started');
+  app.listen(appConfig.port, '0.0.0.0', () => {
+    logger.info({ port: appConfig.port, env: appConfig.env, host: '0.0.0.0' }, 'API server started');
   });
 };
 

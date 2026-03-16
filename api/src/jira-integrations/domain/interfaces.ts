@@ -1,4 +1,3 @@
-import { DataSource } from 'typeorm';
 import { IssueSummary } from './types';
 import { WorklogTarget, SubmissionStatus, WorklogSubmissionRow, WorklogSubmissionResultRow } from './types';
 import { HoursSource } from 'entities/ExternalHoursDaily';
