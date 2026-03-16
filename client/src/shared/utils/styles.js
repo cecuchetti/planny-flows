@@ -30,6 +30,33 @@ export const color = {
   borderLightest: '#e5e7eb',
   borderLight: '#d1d5db',
   borderInputFocus: '#3b6cf0',
+
+  // Status badge colors (pastel backgrounds with saturated text/borders)
+  statusSuccess: {
+    bg: '#dcfce7',
+    text: '#166534',
+    border: '#86efac',
+  },
+  statusWarning: {
+    bg: '#fef3c7',
+    text: '#92400e',
+    border: '#fcd34d',
+  },
+  statusError: {
+    bg: '#fef2f2',
+    text: '#991b1b',
+    border: '#fecaca',
+  },
+  statusViolet: {
+    bg: '#ede9fe',
+    text: '#6d28d9',
+    border: '#c4b5fd',
+  },
+
+  // Violet gradient for decorative headers
+  violetGradientStart: '#f5f3ff',
+  violetGradientEnd: '#ede9fe',
+  violetBorderLight: '#ddd6fe',
 };
 
 export const issueTypeColors = {

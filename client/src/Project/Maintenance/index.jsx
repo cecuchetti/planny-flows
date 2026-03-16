@@ -4,7 +4,7 @@ import moment from 'moment';
 
 import api from 'shared/utils/api';
 import toast from 'shared/utils/toast';
-import { Icon } from 'shared/components';
+import { Icon, Spinner } from 'shared/components';
 
 import {
   Page,
@@ -59,12 +59,14 @@ export default function Maintenance() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [todayHoursStatus, setTodayHoursStatus] = useState(null);
   const [hoursFetchError, setHoursFetchError] = useState(false);
+  const [isLoadingHours, setIsLoadingHours] = useState(true);
   const pollTimeoutRef = useRef(null);
   const pollIntervalRef = useRef(null);
   const isMountedRef = useRef(true);
 
   // Fetch hours logged today for VIS-2
   const fetchTodayHours = useCallback(async () => {
+    setIsLoadingHours(true);
     try {
       const today = moment().format('YYYY-MM-DD');
       const data = await api.get(`/maintenance/actions/tempo-export/hours?date=${today}`);
@@ -74,6 +76,8 @@ export default function Maintenance() {
       // Silently fail - don't block the UI but indicate error
       console.error('Failed to fetch hours:', err);
       setHoursFetchError(true);
+    } finally {
+      setIsLoadingHours(false);
     }
   }, []);
 
@@ -180,7 +184,7 @@ export default function Maintenance() {
     }
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
@@ -207,7 +211,12 @@ export default function Maintenance() {
             </CardIconWrap>
             <CardTitle>{t(action.titleKey)}</CardTitle>
             <CardSubtitle>{t(action.subtitleKey)}</CardSubtitle>
-            {action.id === 'tempo-export' && todayHoursStatus?.hoursLogged > 0 && (
+            {action.id === 'tempo-export' && isLoadingHours && (
+              <HoursStatus>
+                <Spinner size={14} />
+              </HoursStatus>
+            )}
+            {action.id === 'tempo-export' && !isLoadingHours && todayHoursStatus?.hoursLogged > 0 && (
               <HoursStatus $isComplete={todayHoursStatus.isComplete}>
                 {t('tempoExport.hoursLoggedToday', { hours: todayHoursStatus.hoursLogged })}
               </HoursStatus>

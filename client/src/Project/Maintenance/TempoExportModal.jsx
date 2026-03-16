@@ -4,7 +4,7 @@ import moment from 'moment';
 
 import api from 'shared/utils/api';
 import toast from 'shared/utils/toast';
-import { Modal, Button, DatePicker } from 'shared/components';
+import { Modal, Button, DatePicker, Input } from 'shared/components';
 
 import {
   ModalContents,
@@ -20,6 +20,9 @@ import {
   Actions,
   ActionsRight,
   WarningBanner,
+  DatePickerWrapper,
+  InputWrapper,
+  DescriptionWrapper,
 } from './TempoExportModalStyles';
 
 const TEMPO_EXPORT_URL = '/maintenance/actions/tempo-export';
@@ -27,6 +30,7 @@ const TASK_KEY = 'VIS-2';
 
 /**
  * Parse duration input: "2h", "2 h", "2.5h", "1h 30m", "30m" -> minutes or null if invalid.
+ * Rejects ambiguous inputs with duplicate units (e.g., "2h 2h" or "30m 45m").
  */
 export function parseDurationToMinutes(input) {
   if (input == null || typeof input !== 'string') return null;
@@ -34,6 +38,15 @@ export function parseDurationToMinutes(input) {
   if (!trimmed) return null;
 
   const normalized = trimmed.replace(/,/g, '.').toLowerCase();
+
+  // Check for duplicate unit patterns (ambiguous input)
+  const hourMatches = normalized.match(/\d+(?:\.\d+)?\s*h/g);
+  const minuteMatches = normalized.match(/\d+(?:\.\d+)?\s*m/g);
+
+  if ((hourMatches && hourMatches.length > 1) || (minuteMatches && minuteMatches.length > 1)) {
+    return null;
+  }
+
   let totalMinutes = 0;
 
   const hMatch = normalized.match(/(\d+(?:\.\d+)?)\s*h/);
@@ -194,66 +207,50 @@ export default function TempoExportModal({ isOpen = false, onClose, onSubmitted 
               )}
 
               <Field>
-                <Label>{t('tempoExport.date')} *</Label>
-                <div style={{ maxWidth: '250px' }}>
+                <Label id="tempo-export-date-label">{t('tempoExport.date')} *</Label>
+                <DatePickerWrapper>
                   <DatePicker
                     withTime={false}
                     label={t('tempoExport.date')}
                     value={startDate}
                     onChange={handleDateChange}
                     placeholder="Select date"
+                    aria-labelledby="tempo-export-date-label"
                   />
                   {hoursFetchError && (
-                    <Hint style={{ color: '#991b1b', fontWeight: '500', marginTop: '6px' }}>
-                      {t('tempoExport.hoursFetchError')}
-                    </Hint>
+                    <Hint $error>{t('tempoExport.hoursFetchError')}</Hint>
                   )}
-                </div>
+                </DatePickerWrapper>
               </Field>
 
               <Field>
-                <Label>{t('tempoExport.duration')} *</Label>
-                <div style={{ maxWidth: '250px' }}>
-                  <input
-                    type="text"
+                <Label id="tempo-export-duration-label">{t('tempoExport.duration')} *</Label>
+                <InputWrapper>
+                  <Input
                     value={hoursInput}
-                    onChange={(e) => setHoursInput(e.target.value)}
+                    onChange={setHoursInput}
                     onBlur={handleHoursBlur}
                     placeholder={t('tempoExport.durationPlaceholder')}
-                    style={{
-                      width: '100%',
-                      padding: '10px 12px',
-                      border: hoursError ? '1px solid #e74c3c' : '1px solid #d1d5db',
-                      borderRadius: '6px',
-                      fontSize: '14px',
-                      outline: 'none',
-                      transition: 'border-color 0.2s',
-                    }}
+                    invalid={!!hoursError}
+                    aria-labelledby="tempo-export-duration-label"
+                    aria-invalid={!!hoursError}
+                    aria-describedby={hoursError ? 'tempo-export-duration-error' : undefined}
                   />
                   <Hint>{t('tempoExport.durationHint')}</Hint>
-                  {hoursError && <Hint style={{ color: '#e74c3c', fontWeight: '500' }}>{hoursError}</Hint>}
-                </div>
+                  {hoursError && <Hint id="tempo-export-duration-error" $error>{hoursError}</Hint>}
+                </InputWrapper>
               </Field>
 
               <Field>
-                <Label>{t('tempoExport.description')}</Label>
-                <div style={{ maxWidth: '400px' }}>
-                  <input
-                    type="text"
+                <Label id="tempo-export-description-label">{t('tempoExport.description')}</Label>
+                <DescriptionWrapper>
+                  <Input
                     value={description}
-                    onChange={(e) => setDescription(e.target.value)}
+                    onChange={setDescription}
                     placeholder={t('tempoExport.descriptionPlaceholder')}
-                    style={{
-                      width: '100%',
-                      padding: '10px 12px',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '6px',
-                      fontSize: '14px',
-                      outline: 'none',
-                      transition: 'border-color 0.2s',
-                    }}
+                    aria-labelledby="tempo-export-description-label"
                   />
-                </div>
+                </DescriptionWrapper>
               </Field>
 
               <Actions>

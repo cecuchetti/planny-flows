@@ -3,6 +3,9 @@ import axios from 'axios';
 import { appConfig } from 'config';
 import { logger } from 'utils/logger';
 import { WorklogTarget } from '../jira-integrations/domain/types';
+import { WorklogService } from '../jira-integrations/services/worklogService';
+import { JiraWorklogClient } from '../jira-integrations/integrations/jiraWorklogClient';
+import { getJiraInstanceConfig, getWorklogInstanceNames } from '../jira-integrations/config/instances';
 
 const OUTLOOK_CLEANER_NOT_CONFIGURED = 'OUTLOOK_CLEANER_NOT_CONFIGURED';
 
@@ -201,8 +204,6 @@ export async function exportToTempo(req: Request, res: Response): Promise<void> 
   }
   
   try {
-    // Dynamically import WorklogService to avoid circular dependencies
-    const { WorklogService } = await import('../jira-integrations/services/worklogService');
     const worklogService = new WorklogService();
     
     // Extract date part if startDate is an ISO datetime string
@@ -310,9 +311,6 @@ export async function getHoursLogged(req: Request, res: Response): Promise<void>
   }
 
   try {
-    const { JiraWorklogClient } = await import('../jira-integrations/integrations/jiraWorklogClient');
-    const { getJiraInstanceConfig, getWorklogInstanceNames } = await import('../jira-integrations/config/instances');
-
     const { internal } = getWorklogInstanceNames();
     const internalConfig = getJiraInstanceConfig(internal);
     const client = new JiraWorklogClient(internalConfig);
