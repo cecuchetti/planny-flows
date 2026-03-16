@@ -1,5 +1,6 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import moment from 'moment';
 
 import api from 'shared/utils/api';
 import toast from 'shared/utils/toast';
@@ -14,7 +15,9 @@ import {
   CardIconWrap,
   CardTitle,
   CardSubtitle,
+  HoursStatus,
 } from './Styles';
+import TempoExportModal from './TempoExportModal';
 
 const ACTIONS = [
   {
@@ -28,13 +31,12 @@ const ACTIONS = [
     statusEndpoint: '/maintenance/actions/outlook-clean/status',
   },
   {
-    id: 'placeholder-1',
-    titleKey: 'maintenance.actions.exportReports.title',
-    subtitleKey: 'maintenance.actions.exportReports.subtitle',
+    id: 'tempo-export',
+    titleKey: 'maintenance.actions.cargarTempo.title',
+    subtitleKey: 'maintenance.actions.cargarTempo.subtitle',
     iconType: 'reports',
     iconBg: '#6554C0',
     iconColor: '#fff',
-    placeholder: true,
   },
   {
     id: 'placeholder-2',
@@ -53,8 +55,33 @@ const POLL_TIMEOUT_MS = 90000;
 export default function Maintenance() {
   const { t } = useTranslation();
   const [loadingId, setLoadingId] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [todayHoursStatus, setTodayHoursStatus] = useState(null);
   const pollTimeoutRef = useRef(null);
   const pollIntervalRef = useRef(null);
+
+  // Fetch hours logged today for VIS-2
+  const fetchTodayHours = useCallback(async () => {
+    try {
+      const today = moment().format('YYYY-MM-DD');
+      const data = await api.get(`/maintenance/actions/tempo-export/hours?date=${today}`);
+      setTodayHoursStatus(data);
+    } catch (err) {
+      // Silently fail - don't block the UI
+      console.error('Failed to fetch hours:', err);
+    }
+  }, []);
+
+  // Fetch hours on mount
+  useEffect(() => {
+    fetchTodayHours();
+  }, [fetchTodayHours]);
+
+  // Refresh hours when modal closes (in case new hours were submitted)
+  const handleModalClose = useCallback(() => {
+    setIsModalOpen(false);
+    fetchTodayHours();
+  }, [fetchTodayHours]);
 
   const stopPolling = useCallback(() => {
     if (pollIntervalRef.current) {
@@ -71,6 +98,11 @@ export default function Maintenance() {
   const handleAction = async (action) => {
     if (action.placeholder) {
       toast.show({ title: t('maintenance.actions.notImplemented') });
+      return;
+    }
+
+    if (action.id === 'tempo-export') {
+      setIsModalOpen(true);
       return;
     }
 
@@ -107,7 +139,6 @@ export default function Maintenance() {
             if (status === 'failed') {
               stopPolling();
               toast.error(t('maintenance.actions.outlookClean.failed', { message: t('maintenance.actions.error') }));
-              return;
             }
           } catch (_) {
             // Keep polling on network errors
@@ -150,9 +181,20 @@ export default function Maintenance() {
             </CardIconWrap>
             <CardTitle>{t(action.titleKey)}</CardTitle>
             <CardSubtitle>{t(action.subtitleKey)}</CardSubtitle>
+            {action.id === 'tempo-export' && todayHoursStatus?.hoursLogged > 0 && (
+              <HoursStatus $isComplete={todayHoursStatus.isComplete}>
+                {t('tempoExport.hoursLoggedToday', { hours: todayHoursStatus.hoursLogged })}
+              </HoursStatus>
+            )}
           </ActionCard>
         ))}
       </ActionGrid>
+
+      <TempoExportModal
+        isOpen={isModalOpen}
+        onClose={handleModalClose}
+        onSubmitted={fetchTodayHours}
+      />
     </Page>
   );
 }

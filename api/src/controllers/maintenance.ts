@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import axios from 'axios';
 import { appConfig } from 'config';
 import { logger } from 'utils/logger';
+import { WorklogTarget } from '../jira-integrations/domain/types';
 
 const OUTLOOK_CLEANER_NOT_CONFIGURED = 'OUTLOOK_CLEANER_NOT_CONFIGURED';
 
@@ -157,4 +158,158 @@ export function getOutlookCleanStatus(_req: Request, res: Response): void {
     payload.lastRun = outlookCleanState.lastRun;
   }
   res.status(200).json(payload);
+}
+
+/**
+ * POST /maintenance/actions/tempo-export
+ * Creates a Tempo worklog for VIS-2 ticket on the internal Jira instance.
+ */
+export async function exportToTempo(req: Request, res: Response): Promise<void> {
+  const { startDate, durationMinutes, taskKey, description } = req.body;
+  
+  // Validation: Required fields
+  if (!startDate || !durationMinutes) {
+    res.status(400).json({
+      error: {
+        code: 'INVALID_REQUEST',
+        message: 'startDate and durationMinutes are required',
+      },
+    });
+    return;
+  }
+  
+  // Validation: durationMinutes must be positive
+  if (typeof durationMinutes !== 'number' || durationMinutes <= 0) {
+    res.status(400).json({
+      error: {
+        code: 'INVALID_DURATION',
+        message: 'durationMinutes must be a positive number',
+      },
+    });
+    return;
+  }
+  
+  // Validation: taskKey must be VIS-2 (internal restriction)
+  if (taskKey && taskKey !== 'VIS-2') {
+    res.status(403).json({
+      error: {
+        code: 'FORBIDDEN',
+        message: 'Only VIS-2 task is allowed for Tempo export',
+      },
+    });
+    return;
+  }
+  
+  try {
+    // Dynamically import WorklogService to avoid circular dependencies
+    const { WorklogService } = await import('../jira-integrations/services/worklogService');
+    const worklogService = new WorklogService();
+    
+    // Extract date part if startDate is an ISO datetime string
+    const workDate = startDate.includes('T') ? startDate.split('T')[0] : startDate;
+    
+    // Set startedAt to 4:30 PM Argentina time (UTC-3) = 19:30 UTC
+    // Format: YYYY-MM-DDTHH:mm:ssZ
+    const startedAt = `${workDate}T19:30:00Z`;
+    
+    // Create worklog for internal Tempo (VIS-2)
+    const result = await worklogService.createWorklog({
+      target: WorklogTarget.TEMPO, // Only internal Tempo
+      workDate,
+      startedAt, // Explicitly set to 4:30 PM Argentina time
+      timeSpentSeconds: durationMinutes * 60, // Convert minutes to seconds
+      description: description && description.trim() ? description.trim() : 'Working on issue VIS-2', // Default description
+    });
+    
+    if (result.overallStatus === 'SUCCESS') {
+      res.status(200).json({
+        success: true,
+        message: 'Tempo worklog created successfully',
+        requestId: result.requestId,
+      });
+    } else {
+      res.status(500).json({
+        error: {
+          code: 'TEMPO_EXPORT_FAILED',
+          message: 'Failed to create Tempo worklog',
+          details: result.results,
+        },
+      });
+    }
+  } catch (error) {
+    const err = error as Error;
+    logger.error({ error: err.message, stack: err.stack }, 'Tempo export failed');
+    res.status(500).json({
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: err.message,
+      },
+    });
+  }
+}
+
+/**
+ * GET /maintenance/actions/tempo-export/hours
+ * Returns the total hours logged for VIS-2 on a specific date (fetched from Tempo API).
+ */
+export async function getHoursLogged(req: Request, res: Response): Promise<void> {
+  const { date } = req.query;
+
+  if (!date || typeof date !== 'string') {
+    res.status(400).json({
+      error: {
+        code: 'INVALID_REQUEST',
+        message: 'Date query parameter is required (YYYY-MM-DD format)',
+      },
+    });
+    return;
+  }
+
+  // Validate date format
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!dateRegex.test(date)) {
+    res.status(400).json({
+      error: {
+        code: 'INVALID_DATE_FORMAT',
+        message: 'Date must be in YYYY-MM-DD format',
+      },
+    });
+    return;
+  }
+
+  try {
+    const { JiraWorklogClient } = await import('../jira-integrations/integrations/jiraWorklogClient');
+    const { getJiraInstanceConfig, getWorklogInstanceNames } = await import('../jira-integrations/config/instances');
+
+    const { internal } = getWorklogInstanceNames();
+    const internalConfig = getJiraInstanceConfig(internal);
+    const client = new JiraWorklogClient(internalConfig);
+    const issueKey = internalConfig.fixedIssueKey ?? 'VIS-2';
+
+    // Fetch worklogs directly from Tempo/Jira API
+    const response = await client.getWorklogs(issueKey);
+
+    // Filter worklogs by date and sum up timeSpentSeconds
+    // The 'started' field is in format like "2026-03-16T19:30:00.000+0000"
+    const totalSeconds = response.worklogs
+      .filter((worklog) => worklog.started.startsWith(date))
+      .reduce((sum, worklog) => sum + worklog.timeSpentSeconds, 0);
+
+    const hoursLogged = totalSeconds / 3600;
+    const isComplete = hoursLogged >= 8;
+
+    res.status(200).json({
+      hoursLogged: Math.round(hoursLogged * 100) / 100,
+      isComplete,
+    });
+  } catch (error) {
+    const err = error as Error;
+    logger.error({ error: err.message, stack: err.stack }, 'Failed to get hours logged from Tempo');
+    res.status(500).json({
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: err.message,
+      },
+    });
+  }
 }

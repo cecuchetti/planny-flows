@@ -34,9 +34,9 @@
         "running": "La limpieza de Outlook se está ejecutando en segundo plano. Serás notificado al finalizar.",
         "failed": "La limpieza de Outlook falló después de 5 intentos: {{message}}"
       },
-      "exportReports": {
-        "title": "Exportar reportes",
-        "subtitle": "Exportar reportes del proyecto (placeholder)."
+      "cargarTempo": {
+        "title": "Cargar horas en Tempo",
+        "subtitle": "Carga horas en Tempo para el ticket VIS-2"
       },
       "archiveOld": {
         "title": "Archivar elementos antiguos",
@@ -45,6 +45,25 @@
       "notImplemented": "Esta acción aún no está implementada.",
       "error": "La acción falló. Intenta de nuevo."
     }
+  },
+  "tempoExport": {
+    "title": "Exportar a Tempo",
+    "taskSummary": "Exportar entradas de tiempo para instancia Jira interna a Tempo",
+    "date": "Fecha",
+    "duration": "Duración",
+    "durationPlaceholder": "ej. 2h, 2 h, 2.5h, 1h 30m",
+    "durationHint": "Usá formato: 2h o 2 h (h = hora), ej. 2.5h o 1h 30m",
+    "hoursRequired": "La duración es obligatoria.",
+    "hoursInvalid": "Usá formato como 2h, 2 h, 2.5h o 1h 30m.",
+    "hoursPositive": "La duración debe ser mayor a cero.",
+    "description": "Descripción",
+    "descriptionPlaceholder": "Descripción opcional",
+    "exportButton": "Confirmar",
+    "exportSuccess": "Exportación a Tempo completada correctamente.",
+    "exportFailed": "Error al exportar entradas de tiempo.",
+    "hoursCompleteWarning": "Ya se han cargado {{hours}} horas para esta fecha. ¿Estás seguro de continuar?",
+    "hoursLoggedToday": "{{hours}} horas cargadas",
+    "hoursLoading": "Cargando horas..."
   },
   "myJiraIssues": {
     "title": "Mis issues Jira",
