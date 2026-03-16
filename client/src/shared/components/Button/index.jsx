@@ -40,10 +40,10 @@ const Button = forwardRef(
       <StyledButton
         {...buttonProps}
         onClick={handleClick}
-        variant={variant}
+        $variant={variant}
         disabled={disabled || isWorking}
-        isWorking={isWorking}
-        iconOnly={!children}
+        $isWorking={isWorking}
+        $iconOnly={!children}
         ref={ref}
       >
         {isWorking && <StyledSpinner size={26} color={getIconColor(variant)} />}
@@ -53,7 +53,7 @@ const Button = forwardRef(
         ) : (
           icon
         )}
-        {children && <Text withPadding={isWorking || icon}>{children}</Text>}
+        {children && <Text $withPadding={isWorking || icon}>{children}</Text>}
       </StyledButton>
     );
   },

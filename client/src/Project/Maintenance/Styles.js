@@ -78,3 +78,16 @@ export const CardSubtitle = styled.div`
   color: ${color.textMedium};
   line-height: 1.4;
 `;
+
+export const HoursStatus = styled.div`
+  display: inline-flex;
+  align-items: center;
+  margin-top: 8px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  ${font.size(12)}
+  ${font.medium}
+  background: ${props => props.$isComplete ? '#dcfce7' : '#fef3c7'};
+  color: ${props => props.$isComplete ? '#166534' : '#92400e'};
+  border: 1px solid ${props => props.$isComplete ? '#86efac' : '#fcd34d'};
+`;

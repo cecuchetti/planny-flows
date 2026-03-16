@@ -34,9 +34,9 @@
         "running": "Outlook clean is running in the background. You will be notified when it finishes.",
         "failed": "Outlook clean failed after 5 attempts: {{message}}"
       },
-      "exportReports": {
-        "title": "Export reports",
-        "subtitle": "Export project reports (placeholder)."
+      "cargarTempo": {
+        "title": "Cargar horas en Tempo",
+        "subtitle": "Carga horas en Tempo para el ticket VIS-2"
       },
       "archiveOld": {
         "title": "Archive old items",
@@ -45,6 +45,25 @@
       "notImplemented": "This action is not implemented yet.",
       "error": "Action failed. Please try again."
     }
+  },
+  "tempoExport": {
+    "title": "Tempo Export",
+    "taskSummary": "Export time entries for internal Jira instance to Tempo",
+    "date": "Date",
+    "duration": "Duration",
+    "durationPlaceholder": "e.g. 2h, 2 h, 2.5h, 1h 30m",
+    "durationHint": "Use format: 2h or 2 h (h = hour), e.g. 2.5h or 1h 30m",
+    "hoursRequired": "Duration is required.",
+    "hoursInvalid": "Use format like 2h, 2 h, 2.5h or 1h 30m.",
+    "hoursPositive": "Duration must be greater than zero.",
+    "description": "Description",
+    "descriptionPlaceholder": "Optional description",
+    "exportButton": "Confirm",
+    "exportSuccess": "Tempo export completed successfully.",
+    "exportFailed": "Failed to export time entries.",
+    "hoursCompleteWarning": "{{hours}} hours have already been logged for this date. Are you sure you want to continue?",
+    "hoursLoggedToday": "{{hours}} hours logged",
+    "hoursLoading": "Loading hours..."
   },
   "myJiraIssues": {
     "title": "My Jira issues",

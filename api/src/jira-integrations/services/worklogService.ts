@@ -211,12 +211,18 @@ export class WorklogService {
       const date = new Date(startedAt);
       return { workDate: date.toISOString().split('T')[0], startedAt };
     }
-    if (workDate) return { workDate, startedAt: null };
+    if (workDate) {
+      // Extract just the date part if workDate is an ISO datetime string
+      const dateOnly = workDate.includes('T') ? workDate.split('T')[0] : workDate;
+      return { workDate: dateOnly, startedAt: null };
+    }
     throw new Error('Either workDate or startedAt must be provided');
   }
 
   private toIsoString(dateStr: string): string {
-    return `${dateStr}T00:00:00Z`;
+    // Ensure we only use the date part (in case an ISO string is passed)
+    const dateOnly = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
+    return `${dateOnly}T00:00:00Z`;
   }
 
   private calculateOverallStatus(results: TargetResult[]): SubmissionStatus {

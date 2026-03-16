@@ -52,4 +52,11 @@ export class JiraWorklogClient implements IJiraWorklogClient {
     );
     return response;
   }
+
+  async getWorklogs(issueKey: string): Promise<{ worklogs: Array<{ started: string; timeSpentSeconds: number; author: { accountId: string } }> }> {
+    const response = await this.httpClient.get<{ worklogs: Array<{ started: string; timeSpentSeconds: number; author: { accountId: string } }> }>(
+      `/rest/api/3/issue/${issueKey}/worklog`
+    );
+    return response;
+  }
 }
