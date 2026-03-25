@@ -3,6 +3,8 @@ import PropTypes from 'prop-types';
 
 import { StyledInput, InputElement, StyledIcon } from './Styles';
 
+/* eslint-disable react/require-default-props */
+
 const propTypes = {
   className: PropTypes.string,
   value: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
@@ -12,16 +14,16 @@ const propTypes = {
   onChange: PropTypes.func,
 };
 
-const defaultProps = {
-  className: undefined,
-  value: undefined,
-  icon: undefined,
-  invalid: false,
-  filter: undefined,
-  onChange: () => { },
-};
 
-const Input = forwardRef(({ icon, className, filter, onChange, invalid, ...inputProps }, ref) => {
+
+const Input = forwardRef(({ 
+  icon = undefined, 
+  className = undefined, 
+  filter = undefined, 
+  onChange = () => {}, 
+  invalid = false, 
+  ...inputProps 
+}, ref) => {
   const handleChange = event => {
     if (!filter || filter.test(event.target.value)) {
       onChange(event.target.value, event);
@@ -37,6 +39,5 @@ const Input = forwardRef(({ icon, className, filter, onChange, invalid, ...input
 });
 
 Input.propTypes = propTypes;
-Input.defaultProps = defaultProps;
 
 export default Input;

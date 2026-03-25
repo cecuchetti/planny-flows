@@ -8,6 +8,8 @@ import { Select, Icon } from 'shared/components';
 import { SectionTitle } from '../Styles';
 import { Status } from './Styles';
 
+/* eslint-disable react/require-default-props */
+
 const propTypes = {
   issue: PropTypes.object.isRequired,
   updateIssue: PropTypes.func.isRequired,
@@ -31,13 +33,13 @@ const ProjectBoardIssueDetailsStatus = ({ issue, updateIssue }) => {
         options={options}
         onChange={status => updateIssue({ status })}
         renderValue={({ value: status }) => (
-          <Status isValue color={status}>
+           <Status $isValue $color={status}>
             <div>{t(`issueStatuses.${status}`)}</div>
             <Icon type="chevron-down" size={18} />
           </Status>
         )}
         renderOption={({ value: status }) => (
-          <Status color={status}>{t(`issueStatuses.${status}`)}</Status>
+           <Status $color={status}>{t(`issueStatuses.${status}`)}</Status>
         )}
       />
     </Fragment>

@@ -21,7 +21,7 @@ export const StyledTextarea = styled.div`
       box-shadow: 0 0 0 1px ${color.borderInputFocus};
     }
     ${props =>
-      props.invalid &&
+      props.$invalid &&
       css`
         &,
         &:focus {

@@ -3,12 +3,14 @@ import PropTypes from 'prop-types';
 
 import { TypeIcon } from './Styles';
 
+/* eslint-disable react/require-default-props */
+
 const propTypes = {
   type: PropTypes.string.isRequired,
 };
 
 const IssueTypeIcon = ({ type, ...otherProps }) => (
-  <TypeIcon type={type} color={type} size={18} {...otherProps} />
+  <TypeIcon type={type} $color={type} size={18} {...otherProps} />
 );
 
 IssueTypeIcon.propTypes = propTypes;

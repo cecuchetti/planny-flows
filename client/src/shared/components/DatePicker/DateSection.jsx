@@ -16,6 +16,8 @@ import {
   Day,
 } from './Styles';
 
+/* eslint-disable react/require-default-props */
+
 const propTypes = {
   withTime: PropTypes.bool,
   value: PropTypes.string,
@@ -23,12 +25,9 @@ const propTypes = {
   setDropdownOpen: PropTypes.func.isRequired,
 };
 
-const defaultProps = {
-  withTime: true,
-  value: undefined,
-};
 
-const DatePickerDateSection = ({ withTime, value, onChange, setDropdownOpen }) => {
+
+const DatePickerDateSection = ({ withTime = true, value = undefined, onChange, setDropdownOpen }) => {
   const [selectedMonth, setSelectedMonth] = useState(moment(value).startOf('month'));
 
   const handleYearChange = year => {
@@ -121,6 +120,5 @@ const generateFillerDaysAfterMonthEnd = selectedMonth => {
 };
 
 DatePickerDateSection.propTypes = propTypes;
-DatePickerDateSection.defaultProps = defaultProps;
 
 export default DatePickerDateSection;

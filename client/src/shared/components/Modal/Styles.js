@@ -16,7 +16,7 @@ export const ScrollOverlay = styled.div`
 export const ClickableOverlay = styled.div`
   min-height: 100%;
   background: rgba(15, 23, 42, 0.35);
-  ${props => clickOverlayStyles[props.variant]}
+  ${props => clickOverlayStyles[props.$variant]}
 `;
 
 const clickOverlayStyles = {
@@ -38,12 +38,12 @@ export const StyledModal = styled.div`
   position: relative;
   width: 100%;
   background: #fff;
-  ${props => modalStyles[props.variant]}
+  ${props => modalStyles[props.$variant]}
 `;
 
 const modalStyles = {
   center: css`
-    max-width: ${props => props.width}px;
+    max-width: ${props => props.$width}px;
     vertical-align: middle;
     border-radius: ${radius.large}px;
     ${mixin.boxShadowCard}
@@ -55,7 +55,7 @@ const modalStyles = {
   `,
   aside: css`
     min-height: 100vh;
-    max-width: ${props => props.width}px;
+    max-width: ${props => props.$width}px;
     box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 10px -5px rgba(0, 0, 0, 0.04);
 
     ${media.tablet} {
@@ -113,7 +113,7 @@ export const CloseButton = styled.button`
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  ${props => closeButtonStyles[props.variant]}
+  ${props => closeButtonStyles[props.$variant]}
   &:hover {
     color: ${color.textDarkest};
   }

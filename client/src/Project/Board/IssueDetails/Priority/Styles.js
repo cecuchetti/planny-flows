@@ -6,7 +6,7 @@ export const Priority = styled.div`
   display: flex;
   align-items: center;
   ${props =>
-    props.isValue &&
+    props.$isValue &&
     css`
       padding: 3px 4px 3px 0px;
       border-radius: 4px;

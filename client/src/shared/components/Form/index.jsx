@@ -8,21 +8,20 @@ import { is, generateErrors } from 'shared/utils/validation';
 
 import Field from './Field';
 
+/* eslint-disable react/require-default-props */
+
 const propTypes = {
   validate: PropTypes.func,
   validations: PropTypes.object,
   validateOnBlur: PropTypes.bool,
 };
 
-const defaultProps = {
-  validate: undefined,
-  validations: undefined,
-  validateOnBlur: false,
-};
 
-const Form = ({ validate, validations, ...otherProps }) => (
+
+const Form = ({ validate = undefined, validations = undefined, validateOnBlur = false, ...otherProps }) => (
   <Formik
     {...otherProps}
+    validateOnBlur={validateOnBlur}
     validate={values => {
       if (validate) {
         return validate(values);
@@ -68,6 +67,5 @@ Form.handleAPIError = (error, form) => {
 Form.is = is;
 
 Form.propTypes = propTypes;
-Form.defaultProps = defaultProps;
 
 export default Form;

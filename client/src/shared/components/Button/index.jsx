@@ -6,6 +6,8 @@ import Icon from 'shared/components/Icon';
 
 import { StyledButton, StyledSpinner, Text } from './Styles';
 
+/* eslint-disable react/require-default-props */
+
 const propTypes = {
   className: PropTypes.string,
   children: PropTypes.node,
@@ -18,20 +20,20 @@ const propTypes = {
   onClick: PropTypes.func,
 };
 
-const defaultProps = {
-  className: undefined,
-  children: undefined,
-  variant: 'secondary',
-  icon: undefined,
-  iconSize: 18,
-  disabled: false,
-  isWorking: false,
-  isActive: false,
-  onClick: () => { },
-};
+
 
 const Button = forwardRef(
-  ({ children, variant, icon, iconSize, disabled, isWorking, isActive, onClick, ...buttonProps }, ref) => {
+  ({ 
+    children = undefined, 
+    variant = 'secondary', 
+    icon = undefined, 
+    iconSize = 18, 
+    disabled = false, 
+    isWorking = false, 
+    isActive = false, 
+    onClick = () => {}, 
+    ...buttonProps 
+  }, ref) => {
     const handleClick = () => {
       if (!disabled && !isWorking) {
         onClick();
@@ -66,6 +68,5 @@ const getIconColor = variant =>
   ['secondary', 'empty'].includes(variant) ? color.textDark : '#fff';
 
 Button.propTypes = propTypes;
-Button.defaultProps = defaultProps;
 
 export default Button;

@@ -3,6 +3,8 @@ import PropTypes from 'prop-types';
 
 import { StyledConfirmModal, Title, Message, Actions, StyledButton } from './Styles';
 
+/* eslint-disable react/require-default-props */
+
 const propTypes = {
   className: PropTypes.string,
   variant: PropTypes.oneOf(['primary', 'danger']),
@@ -14,22 +16,15 @@ const propTypes = {
   renderLink: PropTypes.func.isRequired,
 };
 
-const defaultProps = {
-  className: undefined,
-  variant: 'primary',
-  title: 'Warning',
-  message: 'Are you sure you want to continue with this action?',
-  confirmText: 'Confirm',
-  cancelText: 'Cancel',
-};
+
 
 const ConfirmModal = ({
-  className,
-  variant,
-  title,
-  message,
-  confirmText,
-  cancelText,
+  className = undefined,
+  variant = 'primary',
+  title = 'Warning',
+  message = 'Are you sure you want to continue with this action?',
+  confirmText = 'Confirm',
+  cancelText = 'Cancel',
   onConfirm,
   renderLink,
 }) => {
@@ -74,6 +69,5 @@ const ConfirmModal = ({
 };
 
 ConfirmModal.propTypes = propTypes;
-ConfirmModal.defaultProps = defaultProps;
 
 export default ConfirmModal;

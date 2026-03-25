@@ -3,6 +3,8 @@ import PropTypes from 'prop-types';
 
 import { Image, Letter } from './Styles';
 
+/* eslint-disable react/require-default-props */
+
 const propTypes = {
   className: PropTypes.string,
   avatarUrl: PropTypes.string,
@@ -13,7 +15,7 @@ const propTypes = {
 const Avatar = ({ className, avatarUrl, name, size = 32, ...otherProps }) => {
   const sharedProps = {
     className,
-    size,
+    $size: size,
     'data-testid': name ? `avatar:${name}` : 'avatar',
     ...otherProps,
   };
@@ -23,7 +25,7 @@ const Avatar = ({ className, avatarUrl, name, size = 32, ...otherProps }) => {
   }
 
   return (
-    <Letter color={getColorFromName(name || '')} {...sharedProps}>
+    <Letter $color={getColorFromName(name || '')} {...sharedProps}>
       <span>{(name || '').charAt(0)}</span>
     </Letter>
   );

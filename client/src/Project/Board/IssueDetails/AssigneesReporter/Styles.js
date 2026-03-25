@@ -7,9 +7,9 @@ export const User = styled.div`
   align-items: center;
   ${mixin.clickable}
   ${props =>
-    props.isSelectValue &&
+     props.$isSelectValue &&
     css`
-      margin: 0 10px ${props.withBottomMargin ? 5 : 0}px 0;
+       margin: 0 10px ${props.$withBottomMargin ? 5 : 0}px 0;
       padding: 4px 8px;
       border-radius: 4px;
       background: ${color.backgroundLight};

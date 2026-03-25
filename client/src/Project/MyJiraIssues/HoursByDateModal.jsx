@@ -9,6 +9,8 @@ import api from 'shared/utils/api';
 import toast from 'shared/utils/toast';
 import { Modal, Button, Input } from 'shared/components';
 
+/* eslint-disable react/require-default-props */
+
 import {
   ModalContents,
   ModalHeader,
@@ -114,11 +116,9 @@ const propTypes = {
   onSaved: PropTypes.func,
 };
 
-const defaultProps = {
-  onSaved: () => {},
-};
 
-export default function HoursByDateModal({ isOpen, onClose, onSaved }) {
+
+export default function HoursByDateModal({ isOpen, onClose, onSaved = () => {} }) {
   const { t, i18n } = useTranslation();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -252,4 +252,3 @@ export default function HoursByDateModal({ isOpen, onClose, onSaved }) {
 }
 
 HoursByDateModal.propTypes = propTypes;
-HoursByDateModal.defaultProps = defaultProps;

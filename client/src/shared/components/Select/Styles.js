@@ -8,7 +8,7 @@ export const StyledSelect = styled.div`
   border-radius: 4px;
   cursor: pointer;
   ${font.size(14)}
-  ${props => props.variant === 'empty' && `display: inline-block;`}
+  ${props => props.$variant === 'empty' && `display: inline-block;`}
   ${props =>
     props.variant === 'normal' &&
     css`
@@ -22,8 +22,8 @@ export const StyledSelect = styled.div`
     `}
   &:focus {
     outline: none;
-    ${props =>
-      props.variant === 'normal' &&
+  ${props =>
+    props.$variant === 'normal' &&
       css`
         border: 1px solid ${color.borderInputFocus};
         box-shadow: 0 0 0 1px ${color.borderInputFocus};
@@ -32,7 +32,7 @@ export const StyledSelect = styled.div`
     `}
   }
   ${props =>
-    props.invalid &&
+    props.$invalid &&
     css`
       &,
       &:focus {
@@ -46,12 +46,12 @@ export const ValueContainer = styled.div`
   display: flex;
   align-items: center;
   width: 100%;
-  ${props =>
-    props.variant === 'normal' &&
-    css`
-      min-height: 32px;
-      padding: 5px 5px 5px 10px;
-    `}
+   ${props =>
+     props.$variant === 'normal' &&
+     css`
+       min-height: 32px;
+       padding: 5px 5px 5px 10px;
+     `}
 `;
 
 export const ChevronIcon = styled(Icon)`
@@ -68,7 +68,8 @@ export const ValueMulti = styled.div`
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  ${props => props.variant === 'normal' && `padding-top: 5px;`}
+         ${props =>
+          props.$variant === 'normal' && `padding-top: 5px;`}
 `;
 
 export const ValueMultiItem = styled.div`

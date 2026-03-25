@@ -3,6 +3,8 @@ import PropTypes from 'prop-types';
 
 import { StyledIcon } from './Styles';
 
+/* eslint-disable react/require-default-props */
+
 const fontIconCodes = {
   [`bug`]: '\\e90f',
   [`stopwatch`]: '\\e914',

@@ -6,6 +6,8 @@ import { KeyCodes } from 'shared/constants/keyCodes';
 
 import { ClearIcon, Dropdown, DropdownInput, Options, Option, OptionsNoResults } from './Styles';
 
+/* eslint-disable react/require-default-props */
+
 const propTypes = {
   dropdownWidth: PropTypes.number,
   value: PropTypes.any,
@@ -22,16 +24,11 @@ const propTypes = {
   propsRenderOption: PropTypes.func,
 };
 
-const defaultProps = {
-  dropdownWidth: undefined,
-  value: undefined,
-  onCreate: undefined,
-  propsRenderOption: undefined,
-};
+
 
 const SelectDropdown = ({
-  dropdownWidth,
-  value,
+  dropdownWidth = undefined,
+  value = undefined,
   isValueEmpty,
   searchValue,
   setSearchValue,
@@ -39,10 +36,10 @@ const SelectDropdown = ({
   deactivateDropdown,
   options,
   onChange,
-  onCreate,
+  onCreate = undefined,
   isMulti,
   withClearValue,
-  propsRenderOption,
+  propsRenderOption = undefined,
 }) => {
   const [isCreatingOption, setCreatingOption] = useState(false);
 
@@ -219,6 +216,5 @@ const SelectDropdown = ({
 const activeOptionClass = 'jira-select-option-is-active';
 
 SelectDropdown.propTypes = propTypes;
-SelectDropdown.defaultProps = defaultProps;
 
 export default SelectDropdown;

@@ -6,6 +6,8 @@ import { Avatar, Select, Icon } from 'shared/components';
 import { SectionTitle } from '../Styles';
 import { User, Username } from './Styles';
 
+/* eslint-disable react/require-default-props */
+
 const propTypes = {
   issue: PropTypes.object.isRequired,
   updateIssue: PropTypes.func.isRequired,
@@ -56,8 +58,8 @@ const ProjectBoardIssueDetailsAssigneesReporter = ({ issue, updateIssue, project
 const renderUser = (user, isSelectValue, removeOptionValue) => (
   <User
     key={user.id}
-    isSelectValue={isSelectValue}
-    withBottomMargin={!!removeOptionValue}
+    $isSelectValue={isSelectValue}
+    $withBottomMargin={!!removeOptionValue}
     onClick={() => removeOptionValue && removeOptionValue()}
   >
     <Avatar avatarUrl={user.avatarUrl} name={user.name} size={24} />

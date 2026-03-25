@@ -19,7 +19,7 @@ export const SelectItem = styled.div`
   display: flex;
   align-items: center;
   margin-right: 15px;
-  ${props => props.withBottomMargin && `margin-bottom: 5px;`}
+  ${props => props.$withBottomMargin && `margin-bottom: 5px;`}
 `;
 
 export const SelectItemLabel = styled.div`

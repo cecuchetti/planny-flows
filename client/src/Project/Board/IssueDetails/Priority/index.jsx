@@ -8,6 +8,8 @@ import { Select, IssuePriorityIcon } from 'shared/components';
 import { SectionTitle } from '../Styles';
 import { Priority, Label } from './Styles';
 
+/* eslint-disable react/require-default-props */
+
 const propTypes = {
   issue: PropTypes.object.isRequired,
   updateIssue: PropTypes.func.isRequired,
@@ -20,7 +22,7 @@ const ProjectBoardIssueDetailsPriority = ({ issue, updateIssue }) => {
     label: t(`issuePriorities.${priority}`),
   }));
   const renderPriorityItem = (priority, isValue) => (
-    <Priority isValue={isValue}>
+     <Priority $isValue={isValue}>
       <IssuePriorityIcon priority={priority} />
       <Label>{t(`issuePriorities.${priority}`)}</Label>
     </Priority>

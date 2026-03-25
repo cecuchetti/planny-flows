@@ -1,4 +1,4 @@
-import styled from 'styled-components';
+import styled, { css } from 'styled-components';
 
 import { color, font, mixin, radius } from 'shared/utils/styles';
 import { Avatar } from 'shared/components';
@@ -46,6 +46,29 @@ export const Card = styled.div`
     border-color: #c4b5fd;
     box-shadow: 0 4px 16px rgba(109, 40, 217, 0.10);
     transform: translateY(-1px);
+  }
+
+  ${props =>
+    props.$isBeingDragged &&
+    css`
+      transform: rotate(1.5deg) translateY(-2px);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
+      border-color: #a78bfa;
+    `}
+
+  /* Respect user motion preferences */
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+    
+    &:hover {
+      transform: none;
+    }
+    
+    ${props =>
+      props.$isBeingDragged &&
+      css`
+        transform: none;
+      `}
   }
 `;
 

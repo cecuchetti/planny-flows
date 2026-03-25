@@ -11,6 +11,7 @@ export { default as Input } from './Input';
 export { default as InputDebounced } from './InputDebounced';
 export { default as IssueTypeIcon } from './IssueTypeIcon';
 export { default as IssuePriorityIcon } from './IssuePriorityIcon';
+export { default as IssueCard } from './IssueCard';
 export { default as Logo } from './Logo';
 export { default as Modal } from './Modal';
 export { default as PageError } from './PageError';

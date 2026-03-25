@@ -22,6 +22,8 @@ import {
   ActionButton,
 } from './Styles';
 
+/* eslint-disable react/require-default-props */
+
 const propTypes = {
   project: PropTypes.object.isRequired,
   fetchProject: PropTypes.func.isRequired,
@@ -160,7 +162,7 @@ const renderUser = project => ({ value: userId, removeOptionValue }) => {
   return (
     <SelectItem
       key={user.id}
-      withBottomMargin={!!removeOptionValue}
+       $withBottomMargin={!!removeOptionValue}
       onClick={() => removeOptionValue && removeOptionValue()}
     >
       <Avatar size={20} avatarUrl={user.avatarUrl} name={user.name} />

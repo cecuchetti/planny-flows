@@ -10,6 +10,8 @@ import DatePicker from 'shared/components/DatePicker';
 
 import { StyledField, FieldLabel, FieldTip, FieldError } from './Styles';
 
+/* eslint-disable react/require-default-props */
+
 const propTypes = {
   className: PropTypes.string,
   label: PropTypes.string,
@@ -18,22 +20,16 @@ const propTypes = {
   name: PropTypes.string,
 };
 
-const defaultProps = {
-  className: undefined,
-  label: undefined,
-  tip: undefined,
-  error: undefined,
-  name: undefined,
-};
+
 
 const generateField = FormComponent => {
-  const FieldComponent = ({ className, label, tip, error, name, ...otherProps }) => {
+  const FieldComponent = ({ className = undefined, label = undefined, tip = undefined, error = undefined, name = undefined, ...otherProps }) => {
     const fieldId = uniqueId('form-field-');
 
     return (
-      <StyledField
+       <StyledField
         className={className}
-        hasLabel={!!label}
+        $hasLabel={!!label}
         data-testid={name ? `form-field:${name}` : 'form-field'}
       >
         {label && <FieldLabel htmlFor={fieldId}>{label}</FieldLabel>}
@@ -45,7 +41,6 @@ const generateField = FormComponent => {
   };
 
   FieldComponent.propTypes = propTypes;
-  FieldComponent.defaultProps = defaultProps;
 
   return FieldComponent;
 };

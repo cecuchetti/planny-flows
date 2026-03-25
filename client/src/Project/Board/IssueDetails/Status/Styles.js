@@ -4,9 +4,9 @@ import { issueStatusColors, issueStatusBackgroundColors, mixin } from 'shared/ut
 
 export const Status = styled.div`
   transition: all 0.15s;
-  ${props => mixin.tag(issueStatusBackgroundColors[props.color], issueStatusColors[props.color])}
+  ${props => mixin.tag(issueStatusBackgroundColors[props.$color], issueStatusColors[props.$color])}
   ${props =>
-    props.isValue &&
+    props.$isValue &&
     css`
       padding: 0 14px;
       height: 28px;

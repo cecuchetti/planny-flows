@@ -8,23 +8,25 @@ import useOnEscapeKeyDown from 'shared/hooks/onEscapeKeyDown';
 
 import { ScrollOverlay, ClickableOverlay, StyledModal, CloseButton, CloseIcon } from './Styles';
 
+/* eslint-disable react/require-default-props */
+
 const FOCUSABLE_SELECTOR =
   'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
 const getFocusables = (el) =>
   el ? Array.from(el.querySelectorAll(FOCUSABLE_SELECTOR)) : [];
 
-const Modal = ({
-  className,
-  testid,
-  variant,
-  width,
-  withCloseIcon,
-  isOpen: propsIsOpen,
-  onClose: tellParentToClose,
-  renderLink,
+function Modal({
+  className = undefined,
+  testid = 'modal',
+  variant = 'center',
+  width = 600,
+  withCloseIcon = true,
+  isOpen: propsIsOpen = undefined,
+  onClose: tellParentToClose = () => {},
+  renderLink = () => {},
   renderContent,
-}) => {
+}) {
   const { t } = useTranslation();
   const [stateIsOpen, setStateOpen] = useState(false);
   const isControlled = typeof propsIsOpen === 'boolean';
@@ -76,11 +78,9 @@ const Modal = ({
           e.preventDefault();
           last.focus();
         }
-      } else {
-        if (document.activeElement === last) {
-          e.preventDefault();
-          first.focus();
-        }
+      } else if (document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
       }
     };
     el.addEventListener('keydown', handleKeyDown);
@@ -96,11 +96,11 @@ const Modal = ({
       {isOpen &&
         ReactDOM.createPortal(
           <ScrollOverlay>
-            <ClickableOverlay variant={variant} ref={$clickableOverlayRef}>
+            <ClickableOverlay $variant={variant} ref={$clickableOverlayRef}>
               <StyledModal
                 className={className}
-                variant={variant}
-                width={width}
+                $variant={variant}
+                $width={width}
                 data-testid={testid}
                 ref={$modalRef}
                 role="dialog"
@@ -111,7 +111,7 @@ const Modal = ({
                 {withCloseIcon && (
                   <CloseButton
                     type="button"
-                    variant={variant}
+                    $variant={variant}
                     onClick={closeModal}
                     aria-label={t('common.closeDialog')}
                   >
@@ -140,18 +140,6 @@ const propTypes = {
   renderContent: PropTypes.func.isRequired,
 };
 
-const defaultProps = {
-  className: undefined,
-  testid: 'modal',
-  variant: 'center',
-  width: 600,
-  withCloseIcon: true,
-  isOpen: undefined,
-  onClose: () => {},
-  renderLink: () => {},
-};
-
 Modal.propTypes = propTypes;
-Modal.defaultProps = defaultProps;
 
 export default Modal;

@@ -5,6 +5,8 @@ import 'quill/dist/quill.snow.css';
 
 import { EditorCont } from './Styles';
 
+/* eslint-disable react/require-default-props */
+
 const propTypes = {
   className: PropTypes.string,
   placeholder: PropTypes.string,
@@ -14,25 +16,18 @@ const propTypes = {
   getEditor: PropTypes.func,
 };
 
-const defaultProps = {
-  className: undefined,
-  placeholder: undefined,
-  defaultValue: undefined,
-  value: undefined,
-  onChange: () => {},
-  getEditor: () => {},
-};
+
 
 const TextEditor = ({
-  className,
-  placeholder,
-  defaultValue,
+  className = undefined,
+  placeholder = undefined,
+  defaultValue = undefined,
   // we're not really feeding new value to quill instance on each render because it's too
   // expensive, but we're still accepting 'value' prop as alias for defaultValue because
   // other components like <Form.Field> feed their children with data via the 'value' prop
-  value: alsoDefaultValue,
-  onChange,
-  getEditor,
+  value: alsoDefaultValue = undefined,
+  onChange = () => {},
+  getEditor = () => {},
 }) => {
   const $editorContRef = useRef();
   const $editorRef = useRef();
@@ -83,6 +78,5 @@ const quillConfig = {
 };
 
 TextEditor.propTypes = propTypes;
-TextEditor.defaultProps = defaultProps;
 
 export default TextEditor;

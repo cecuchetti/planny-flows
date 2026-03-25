@@ -16,13 +16,7 @@ const propTypes = {
   onChange: PropTypes.func.isRequired,
 };
 
-const defaultProps = {
-  className: undefined,
-  withTime: true,
-  value: undefined,
-};
-
-const DatePicker = ({ className, withTime, value, onChange, ...inputProps }) => {
+const DatePicker = ({ className = undefined, withTime = true, value = undefined, onChange, ...inputProps }) => {
   const [isDropdownOpen, setDropdownOpen] = useState(false);
   const [inputText, setInputText] = useState('');
   const $containerRef = useRef();
@@ -150,6 +144,5 @@ const getFormattedInputValue = (value, withTime) => {
 };
 
 DatePicker.propTypes = propTypes;
-DatePicker.defaultProps = defaultProps;
 
 export default DatePicker;

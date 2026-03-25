@@ -64,14 +64,10 @@ const propTypes = {
     status: PropTypes.string,
   }).isRequired,
   onClose: PropTypes.func.isRequired,
-  onSaved: PropTypes.func,
+  onSaved: PropTypes.func, // eslint-disable-line react/require-default-props
 };
 
-const defaultProps = {
-  onSaved: () => {},
-};
-
-export default function TimeEntryModal({ issue, onClose, onSaved }) {
+export default function TimeEntryModal({ issue, onClose, onSaved = () => {} }) {
   const { t } = useTranslation();
   const [hoursInput, setHoursInput] = useState('');
   const [dateTime, setDateTime] = useState(() =>
@@ -92,9 +88,9 @@ export default function TimeEntryModal({ issue, onClose, onSaved }) {
       api.get(`${ISSUES_URL}/${issue.key}/transitions`)
         .then((data) => {
           const transitions = data.transitions || [];
-          const closeTransition = transitions.find((t) => 
-            t.toStatus && (t.toStatus.toLowerCase() === 'closed' || t.toStatus.toLowerCase() === 'done')
-          );
+           const closeTransition = transitions.find((transition) => 
+             transition.toStatus && (transition.toStatus.toLowerCase() === 'closed' || transition.toStatus.toLowerCase() === 'done')
+           );
           if (closeTransition) {
             setCanClose(true);
             setCloseTransitionId(closeTransition.id);
@@ -245,4 +241,3 @@ export default function TimeEntryModal({ issue, onClose, onSaved }) {
 }
 
 TimeEntryModal.propTypes = propTypes;
-TimeEntryModal.defaultProps = defaultProps;

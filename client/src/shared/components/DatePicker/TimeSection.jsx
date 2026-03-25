@@ -7,17 +7,17 @@ import { formatDate, formatDateTimeForAPI } from 'shared/utils/dateTime';
 
 import { TimeSection, Time } from './Styles';
 
+/* eslint-disable react/require-default-props */
+
 const propTypes = {
   value: PropTypes.string,
   onChange: PropTypes.func.isRequired,
   setDropdownOpen: PropTypes.func.isRequired,
 };
 
-const defaultProps = {
-  value: undefined,
-};
 
-const DatePickerTimeSection = ({ value, onChange, setDropdownOpen }) => {
+
+const DatePickerTimeSection = ({ value = undefined, onChange, setDropdownOpen }) => {
   const $sectionRef = useRef();
 
   useLayoutEffect(() => {
@@ -71,6 +71,5 @@ const generateTimes = () =>
   });
 
 DatePickerTimeSection.propTypes = propTypes;
-DatePickerTimeSection.defaultProps = defaultProps;
 
 export default DatePickerTimeSection;
