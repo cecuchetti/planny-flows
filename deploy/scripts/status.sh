@@ -204,7 +204,7 @@ function main() {
     if [[ "$https_enabled" == "true" ]]; then
         echo -e "  HTTPS:  https://${hostname}.local"
         if [[ -n "$tailscale_ip" ]]; then
-            echo -e "  ${CYAN}Tailscale: https://${tailsscale_ip}${NC}"
+            echo -e "  ${CYAN}Tailscale: https://${tailscale_ip}${NC}"
         fi
     fi
 }
