@@ -30,8 +30,8 @@ Planny-Flows is a full-stack application consisting of:
 
 | Component | Technology | Port | Purpose |
 |-----------|------------|------|---------|
-| **API** | Express + TypeScript | 3000 | Backend REST API |
-| **Client** | React + Vite | 8081 | Frontend web application |
+| **API** | Express + TypeScript | 3824 | Backend REST API |
+| **Client** | React + Vite | 8193 | Frontend web application |
 | **Database** | SQLite | — | Persistent data storage |
 
 This deployment guide covers setting up Planny-Flows as a production service on macOS that:
@@ -70,7 +70,7 @@ This deployment guide covers setting up Planny-Flows as a production service on 
 │   ┌───────────────────────┐  ┌───────────────────────┐              │
 │   │   API Server          │  │   Client Server       │              │
 │   │   (Express/Node.js)   │  │   (Static file server)│              │
-│   │   Port: 3000          │  │   Port: 8081          │              │
+│   │   Port: 3824          │  │   Port: 8193          │              │
 │   │   Bind: 0.0.0.0       │  │   Bind: 0.0.0.0       │              │
 │   └───────────────────────┘  └───────────────────────┘              │
 │              │                           │                           │
@@ -87,8 +87,8 @@ This deployment guide covers setting up Planny-Flows as a production service on 
 ┌─────────────────────────────────────────────────────────────────────┐
 │                      Local Network Access                            │
 │                                                                      │
-│   http://your-macbook.local:8081  ◄─── Other devices on LAN        │
-│   http://localhost:8081           ◄─── Local access                 │
+│   http://your-macbook.local:8193  ◄─── Other devices on LAN        │
+│   http://localhost:8193           ◄─── Local access                 │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -161,12 +161,12 @@ sudo cp ~/.planny-flows/com.plannyflows.plist /Library/LaunchDaemons/
 sudo launchctl bootstrap system /Library/LaunchDaemons/com.plannyflows.plist
 
 # 3. Verify the service is running
-curl -s http://localhost:3000/health
-curl -s http://localhost:8081
+curl -s http://localhost:3824/health
+curl -s http://localhost:8193
 
 # 4. Access the application
-# Local:    http://localhost:8081
-# Network:  http://your-macbook.local:8081
+# Local:    http://localhost:8193
+# Network:  http://your-macbook.local:8193
 ```
 
 ---
@@ -264,10 +264,10 @@ sudo launchctl load /Library/LaunchDaemons/com.plannyflows.plist
 sudo launchctl print system/com.plannyflows
 
 # Test API health endpoint
-curl -s http://localhost:3000/health
+curl -s http://localhost:3824/health
 
 # Test client server
-curl -s -o /dev/null -w "%{http_code}" http://localhost:8081
+curl -s -o /dev/null -w "%{http_code}" http://localhost:8193
 # Expected: 200
 
 # Check process status
@@ -284,8 +284,8 @@ Configuration is stored in `~/.planny-flows/.env.production`:
 
 ```bash
 # --- Server ---
-PORT=3000
-CLIENT_URL=http://your-macbook.local:8081
+PORT=3824
+CLIENT_URL=http://your-macbook.local:8193
 
 # --- Database (SQLite) ---
 DB_TYPE=sqlite
@@ -383,16 +383,16 @@ kill $(cat ~/.planny-flows/pids/client.pid)
 
 | Service | URL |
 |---------|-----|
-| Frontend | http://localhost:8081 |
-| API | http://localhost:3000 |
-| Health Check | http://localhost:3000/health |
+| Frontend | http://localhost:8193 |
+| API | http://localhost:3824 |
+| Health Check | http://localhost:3824/health |
 
 ### Network Access (from other devices)
 
 | Service | URL |
 |---------|-----|
-| Frontend | http://your-macbook.local:8081 |
-| API | http://your-macbook.local:3000 |
+| Frontend | http://your-macbook.local:8193 |
+| API | http://your-macbook.local:3824 |
 
 > **Note:** Replace `your-macbook` with your actual hostname. Find it with `hostname | sed 's/\.local$//'`
 
@@ -462,14 +462,14 @@ tail -100 ~/.planny-flows/logs/api-error.log
 tail -100 ~/.planny-flows/logs/api.log
 
 # Check if port is in use
-lsof -i :3000
+lsof -i :3824
 ```
 
 **Common Causes:**
 
 | Issue | Solution |
 |-------|----------|
-| Port 3000 in use | `kill $(lsof -t -i :3000)` |
+| Port 3824 in use | `kill $(lsof -t -i :3824)` |
 | Database path error | Check `DB_PATH` in `.env.production` |
 | Missing dependencies | `cd api && npm ci` |
 | Build missing | `cd api && npm run build` |
@@ -486,13 +486,13 @@ lsof -i :3000
 tail -100 ~/.planny-flows/logs/client-error.log
 
 # Check if port is in use
-lsof -i :8081
+lsof -i :8193
 ```
 
 **Solutions:**
 ```bash
-# Kill process on port 8081
-kill $(lsof -t -i :8081)
+# Kill process on port 8193
+kill $(lsof -t -i :8193)
 
 # Rebuild client
 cd client && npm run build
@@ -507,14 +507,14 @@ cd client && npm run build
 **Diagnosis:**
 ```bash
 # Check if server binds to all interfaces
-lsof -i :3000 -i :8081 | grep LISTEN
-# Should show *.3000 and *.8081, not localhost:3000
+lsof -i :3824 -i :8193 | grep LISTEN
+# Should show *.3824 and *.8193, not localhost:3824
 
 # Check firewall status
 /usr/libexec/ApplicationFirewall/socketfilterfw --getglobalstate
 
 # Test from Mac itself using hostname
-curl http://$(hostname):8081
+curl http://$(hostname):8193
 ```
 
 **Solutions:**
@@ -531,7 +531,7 @@ curl http://$(hostname):8081
    ipconfig getifaddr en0
    
    # Access via IP
-   # http://192.168.1.xxx:8081
+   # http://192.168.1.xxx:8193
    ```
 
 ---
@@ -670,7 +670,7 @@ cd client && npm ci && npm run build
 sudo launchctl load /Library/LaunchDaemons/com.plannyflows.plist
 
 # 6. Verify
-curl -s http://localhost:3000/health
+curl -s http://localhost:3824/health
 ```
 
 ### Updating the Application
@@ -707,7 +707,7 @@ Create a simple health check cron:
 crontab -e
 
 # Add this line (checks every 5 minutes)
-*/5 * * * * curl -sf http://localhost:3000/health > /dev/null || echo "Planny-Flows health check failed at $(date)" >> ~/.planny-flows/logs/health-monitor.log
+*/5 * * * * curl -sf http://localhost:3824/health > /dev/null || echo "Planny-Flows health check failed at $(date)" >> ~/.planny-flows/logs/health-monitor.log
 ```
 
 ---
@@ -819,16 +819,16 @@ tail -f ~/.planny-flows/logs/*.log   # All logs
 tail -100 ~/.planny-flows/logs/api-error.log  # API errors
 
 # --- Health Checks ---
-curl -s http://localhost:3000/health  # API health
-curl -s http://localhost:8081         # Client
+curl -s http://localhost:3824/health  # API health
+curl -s http://localhost:8193         # Client
 
 # --- Ports ---
-lsof -i :3000  # Check API port
-lsof -i :8081  # Check Client port
+lsof -i :3824  # Check API port
+lsof -i :8193  # Check Client port
 
 # --- Access URLs ---
-# Local:   http://localhost:8081
-# Network: http://your-macbook.local:8081
+# Local:   http://localhost:8193
+# Network: http://your-macbook.local:8193
 
 # --- Rebuild ---
 ./deploy/setup.sh --skip-build  # Quick rebuild

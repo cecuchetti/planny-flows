@@ -20,7 +20,7 @@ RUN npm ci --omit=dev
 COPY --from=builder /app/build ./build
 COPY tsconfig.json tsconfig-paths.js ./
 
-EXPOSE 3000
+EXPOSE 3824
 
 ENV NODE_ENV=production
 CMD ["node", "-r", "./tsconfig-paths.js", "build/index.js"]

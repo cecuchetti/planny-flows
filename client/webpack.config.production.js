@@ -54,7 +54,7 @@ module.exports = {
     new webpack.DefinePlugin({
       'process.env': {
         NODE_ENV: JSON.stringify('production'),
-        API_URL: JSON.stringify(process.env.API_URL || 'http://localhost:3000'),
+        API_URL: JSON.stringify(process.env.API_URL || 'http://localhost:3824'),
       },
     }),
     new webpack.IgnorePlugin({ resourceRegExp: /^\.\/locale$/, contextRegExp: /moment$/ }),

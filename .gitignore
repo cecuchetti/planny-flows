@@ -19,3 +19,16 @@ api/data
 
 # Generated deployment files (contain secrets and user-specific paths)
 .planny-flows/
+
+# Log files
+*.log
+client-logs*.log
+
+# Backup files
+*.backup
+
+# IDE and editor files
+.idea/
+.vscode/
+.cursor/
+.DS_Store

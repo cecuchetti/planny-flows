@@ -8,7 +8,7 @@ const router = Router();
 function requireJiraConfig(_req: Request, res: Response, next: () => void): void {
   if (!isJiraIntegrationsConfigured()) {
     res.status(503).json({
-      error: 'Jira integrations not configured. Set SANTEX_ATLASSIAN_BASE_URL, VISTAGE_ATLASSIAN_BASE_URL and API tokens in .env',
+      error: 'Jira integrations not configured. Set INTERNAL_ATLASSIAN_BASE_URL, EXTERNAL_ATLASSIAN_BASE_URL and API tokens in .env',
     });
     return;
   }

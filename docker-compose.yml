@@ -8,7 +8,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "5832:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -20,10 +20,10 @@ services:
       context: ./api
       dockerfile: Dockerfile
     ports:
-      - "3000:3000"
+      - "3824:3824"
     environment:
       NODE_ENV: production
-      PORT: 3000
+      PORT: 3824
       DB_HOST: db
       DB_PORT: 5432
       DB_USERNAME: postgres
@@ -39,9 +39,9 @@ services:
       context: ./client
       dockerfile: Dockerfile
       args:
-        API_URL: http://localhost:3000
+        API_URL: http://localhost:3824
     ports:
-      - "8081:8081"
+      - "8193:8193"
     depends_on:
       - api
 

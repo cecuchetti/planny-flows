@@ -30,9 +30,9 @@
         <key>NODE_ENV</key>
         <string>production</string>
         <key>PORT</key>
-        <string>3000</string>
+        <string>3824</string>
         <key>CLIENT_URL</key>
-        <string>http://__HOSTNAME__.local:8081</string>
+        <string>http://__HOSTNAME__.local:8193</string>
         <key>DB_TYPE</key>
         <string>sqlite</string>
         <key>DB_PATH</key>

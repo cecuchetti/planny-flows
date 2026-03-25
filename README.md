@@ -30,7 +30,7 @@ Planny Flows sits in front of your real Jira (one or two instances): you see you
 **Prerequisites:** Node.js 18+, npm.
 
 ```bash
-git clone https://github.com/cecuchetti/planny-flows.git
+git clone https://github.com/cecuchetti/planny-flows.git  # If you forked, replace 'cecuchetti' with your GitHub username
 cd planny-flows
 npm run install-dependencies
 ```
@@ -45,8 +45,8 @@ cd api && npm start
 cd client && npm start
 ```
 
-- **Client:** http://localhost:8080  
-- **API:** http://localhost:3000  
+- **Client:** http://localhost:8192  
+- **API:** http://localhost:3824  
 
 ---
 
@@ -66,7 +66,7 @@ cd client && npm start
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/cecuchetti/planny-flows.git
+git clone https://github.com/cecuchetti/planny-flows.git  # If you forked, replace 'cecuchetti' with your GitHub username
 cd planny-flows
 npm run install-dependencies
 ```
@@ -116,8 +116,8 @@ cd api && npm run start:production
 cd client && npm run start:production   # other terminal
 ```
 
-- Dev client: http://localhost:8080 — Production client: http://localhost:8081  
-- API: http://localhost:3000  
+- Dev client: http://localhost:8192 — Production client: http://localhost:8193  
+- API: http://localhost:3824  
 
 ---
 
@@ -129,8 +129,8 @@ From the repo root:
 docker compose up --build
 ```
 
-- Client: http://localhost:8081  
-- API: http://localhost:3000  
+- Client: http://localhost:8193  
+- API: http://localhost:3824  
 - Compose uses PostgreSQL; override with env or compose file if you prefer.
 
 ---

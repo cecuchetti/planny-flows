@@ -3,8 +3,8 @@ const getEnv = (key: string, defaultValue?: string): string | undefined =>
 
 export const appConfig = {
   env: getEnv('NODE_ENV', 'development') as 'development' | 'production' | 'test',
-  port: Number(getEnv('PORT', '3000')),
-  clientUrl: getEnv('CLIENT_URL', 'http://localhost:8080')!,
+  port: Number(getEnv('PORT', '3824')),
+  clientUrl: getEnv('CLIENT_URL', 'http://localhost:8192')!,
   jwt: {
     secret: getEnv('JWT_SECRET', 'jira-clone-dev-secret')!,
     expiresIn: getEnv('JWT_EXPIRES_IN', '180 days')!,
