@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "author": "Ivor Reic",
   "license": "MIT",
+  "engines": {
+    "node": ">=25"
+  },
   "scripts": {
     "start": "webpack serve",
     "start:production": "node server.js",

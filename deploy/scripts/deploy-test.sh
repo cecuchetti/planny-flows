@@ -124,10 +124,10 @@ test_section "4. Node.js Version Check"
 
 if command -v node &>/dev/null; then
     NODE_VERSION=$(node -v | cut -d'v' -f2 | cut -d'.' -f1)
-    if [[ "$NODE_VERSION" -ge 18 ]]; then
-        test_passed "Node.js version >= 18 (found: $NODE_VERSION)"
+    if [[ "$NODE_VERSION" -ge 25 ]]; then
+        test_passed "Node.js version >= 25 (found: $NODE_VERSION)"
     else
-        test_failed "Node.js version < 18 (found: $NODE_VERSION, required: >= 18)"
+        test_failed "Node.js version < 25 (found: $NODE_VERSION, required: >= 25)"
     fi
 else
     test_failed "Node.js is not installed"

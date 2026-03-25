@@ -4,7 +4,7 @@
   "author": "Ivor Reic",
   "license": "MIT",
   "engines": {
-    "node": ">=18"
+    "node": ">=25"
   },
   "scripts": {
     "start": "nodemon --exec ts-node --files src/index.ts",

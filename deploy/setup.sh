@@ -71,8 +71,8 @@ function check_prerequisites() {
     echo -e "${YELLOW}[1/8] Checking prerequisites...${NC}"
 
     NODE_VERSION=$(node -v 2>/dev/null | sed 's/v//' | cut -d. -f1)
-    if [[ -z "$NODE_VERSION" || "$NODE_VERSION" -lt 18 ]]; then
-        echo -e "${RED}✗ Node.js 18+ is required. Current: $(node -v 2>/dev/null || echo 'not installed')${NC}"
+    if [[ -z "$NODE_VERSION" || "$NODE_VERSION" -lt 25 ]]; then
+        echo -e "${RED}✗ Node.js 25+ is required. Current: $(node -v 2>/dev/null || echo 'not installed')${NC}"
         exit 1
     fi
     echo -e "${GREEN}✓ Node.js $(node -v)${NC}"
