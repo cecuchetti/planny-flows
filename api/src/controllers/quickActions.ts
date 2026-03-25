@@ -36,7 +36,7 @@ function delay(ms: number): Promise<void> {
 }
 
 async function callOutlookCleanerOnce(): Promise<{ ok: boolean; status: number; message?: string }> {
-  const { url, apiKey } = appConfig.maintenance.outlookCleaner;
+  const { url, apiKey } = appConfig.quickActions.outlookCleaner;
   const response = await axios.post(
     url,
     {},
@@ -56,7 +56,7 @@ async function callOutlookCleanerOnce(): Promise<{ ok: boolean; status: number; 
 }
 
 async function runOutlookCleanInBackground(): Promise<void> {
-  const { apiKey } = appConfig.maintenance.outlookCleaner;
+  const { apiKey } = appConfig.quickActions.outlookCleaner;
   if (!apiKey) return;
 
   outlookCleanState.status = 'running';
@@ -107,7 +107,7 @@ async function runOutlookCleanInBackground(): Promise<void> {
  * Returns 202 Accepted. Use GET .../status to poll for result.
  */
 export async function triggerOutlookClean(_req: Request, res: Response): Promise<void> {
-  const { apiKey } = appConfig.maintenance.outlookCleaner;
+  const { apiKey } = appConfig.quickActions.outlookCleaner;
 
   if (!apiKey) {
     res.status(503).json({
@@ -211,14 +211,14 @@ export async function exportToTempo(req: Request, res: Response): Promise<void> 
     const workDate = startDate.includes('T') ? startDate.split('T')[0] : startDate;
     
     // Get configurable worklog start time (default: 19:30 UTC = 4:30 PM Argentina time)
-    const worklogStartTime = appConfig.maintenance.worklogStartTime;
+    const worklogStartTime = appConfig.quickActions.worklogStartTime;
     // Parse the time (format: HH:mm) and validate
     const timeParts = worklogStartTime.split(':');
     if (timeParts.length !== 2) {
       res.status(500).json({
         error: {
           code: 'CONFIG_ERROR',
-          message: 'Invalid MAINTENANCE_WORKLOG_START_TIME format. Expected HH:mm',
+          message: 'Invalid QUICK_ACTIONS_WORKLOG_START_TIME format. Expected HH:mm',
         },
       });
       return;
@@ -232,7 +232,7 @@ export async function exportToTempo(req: Request, res: Response): Promise<void> 
     // Build description: use provided description or configurable default with {issueKey} placeholder
     const finalDescription = description && description.trim() 
       ? description.trim() 
-      : appConfig.maintenance.worklogDefaultDescription.replace('{issueKey}', issueKey);
+      : appConfig.quickActions.worklogDefaultDescription.replace('{issueKey}', issueKey);
     
     // Create worklog for internal Tempo (VIS-2)
     const result = await worklogService.createWorklog({
@@ -319,7 +319,7 @@ export async function getHoursLogged(req: Request, res: Response): Promise<void>
     // 1. Check tempo_hours_daily database first
     const dbRecord = await tempoHoursRepo.getByDate(date);
     if (dbRecord) {
-      const isComplete = dbRecord.hoursLogged >= appConfig.maintenance.workdayHours;
+      const isComplete = dbRecord.hoursLogged >= appConfig.quickActions.workdayHours;
       res.status(200).json({
         hoursLogged: Math.round(dbRecord.hoursLogged * 100) / 100,
         source: 'database',
@@ -346,7 +346,7 @@ export async function getHoursLogged(req: Request, res: Response): Promise<void>
       .reduce((sum: number, worklog: { timeSpentSeconds: number }) => sum + worklog.timeSpentSeconds, 0);
 
     const hoursLogged = totalSeconds / 3600;
-    const isComplete = hoursLogged >= appConfig.maintenance.workdayHours;
+    const isComplete = hoursLogged >= appConfig.quickActions.workdayHours;
 
     // 3. Only save to database if hours >= 8 (complete workday)
     if (isComplete) {
@@ -518,7 +518,7 @@ export async function updateHours(req: Request, res: Response): Promise<void> {
     // Save hours to tempo_hours_daily (manual override)
     await tempoHoursRepo.save(date, hours);
 
-    const isComplete = hours >= appConfig.maintenance.workdayHours;
+    const isComplete = hours >= appConfig.quickActions.workdayHours;
 
     res.status(200).json({
       date,

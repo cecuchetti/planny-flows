@@ -50,6 +50,7 @@ TAILSCALE_FUNNEL=false
 export PROJECT_ROOT="${PROJECT_ROOT:-$(cd "$(dirname "$0")/../.." && pwd)}"
 export DEPLOY_DIR="${DEPLOY_DIR:-$HOME/.planny-flows}"
 export TEMPLATES_DIR="$PROJECT_ROOT/deploy/templates"
+export CUSTOM_DIR="$PROJECT_ROOT/deploy/custom"
 export API_PORT="${API_PORT:-3824}"
 export CLIENT_PORT="${CLIENT_PORT:-8193}"
 export LOG_DIR="${LOG_DIR:-$DEPLOY_DIR/logs}"
@@ -428,12 +429,22 @@ function update_startup_scripts() {
         log WARN "start.sh template not found at $TEMPLATES_DIR/start.sh"
     fi
 
-    # Generate launchd plist from template
-    if [[ -f "$TEMPLATES_DIR/launchd.plist" ]]; then
+    # Check for custom launchd plist template first
+    local launchd_template=""
+    if [[ -f "$CUSTOM_DIR/launchd.plist" ]]; then
+        launchd_template="$CUSTOM_DIR/launchd.plist"
+        log INFO "Using custom launchd.plist template from $CUSTOM_DIR"
+    elif [[ -f "$TEMPLATES_DIR/launchd.plist" ]]; then
+        launchd_template="$TEMPLATES_DIR/launchd.plist"
+        log INFO "Using standard launchd.plist template from $TEMPLATES_DIR"
+    fi
+
+    # Generate launchd plist from template if found
+    if [[ -n "$launchd_template" ]]; then
         sed -e "s|__PROJECT_DIR__|$DEPLOY_DIR|g" \
             -e "s|__DEPLOY_DIR__|$DEPLOY_DIR|g" \
             -e "s|__HOSTNAME__|$hostname|g" \
-            "$TEMPLATES_DIR/launchd.plist" > "$DEPLOY_DIR/com.plannyflows.plist" || exit_on_error 1 "Failed to generate launchd plist"
+            "$launchd_template" > "$DEPLOY_DIR/com.plannyflows.plist" || exit_on_error 1 "Failed to generate launchd plist"
         
         log SUCCESS "Updated launchd plist"
         
@@ -447,7 +458,8 @@ function update_startup_scripts() {
             log SUCCESS "Launchd plist installed to system"
         fi
     else
-        log WARN "launchd.plist template not found at $TEMPLATES_DIR/launchd.plist"
+        log INFO "No launchd.plist template found - skipping plist generation"
+        log INFO "If you have a custom launchd setup, ensure /Library/LaunchDaemons/com.plannyflows.plist exists"
     fi
 }
 
@@ -456,7 +468,11 @@ function start_service() {
     log INFO "Starting production service..."
 
     if [[ ! -f "/Library/LaunchDaemons/com.plannyflows.plist" ]]; then
-        exit_on_error 1 "Launchd plist not found at /Library/LaunchDaemons/com.plannyflows.plist"
+        log ERROR "Launchd plist not found at /Library/LaunchDaemons/com.plannyflows.plist"
+        log ERROR "If you're deploying on macOS, you need to install the launchd service first."
+        log ERROR "Run: sudo cp ~/.planny-flows/com.plannyflows.plist /Library/LaunchDaemons/"
+        log ERROR "Or run './deploy/setup.sh' to generate the service file."
+        exit 1
     fi
 
     sudo launchctl bootstrap system "/Library/LaunchDaemons/com.plannyflows.plist" || {

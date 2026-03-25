@@ -122,32 +122,13 @@ function check_https() {
         https_mode="${HTTPS_MODE:-local}"
     fi
 
-    # Check Caddy process
-    local caddy_running=false
-    if pgrep -f "caddy run" &>/dev/null; then
-        caddy_running=true
-    fi
-
     if [[ "$https_enabled" == "true" ]]; then
         echo -e "  HTTPS:   ${GREEN}Configured${NC} (mode: $https_mode)"
-        
-        if [[ "$caddy_running" == true ]]; then
-            echo -e "  Caddy:   ${GREEN}Running${NC}"
-        else
-            echo -e "  Caddy:   ${YELLOW}Not running${NC}"
-        fi
-
         if [[ -n "$tailscale_ip" ]]; then
             echo -e "  Tailscale IP: ${CYAN}$tailscale_ip${NC}"
         fi
     else
         echo -e "  HTTPS:   ${YELLOW}Not configured${NC}"
-        
-        if [[ "$caddy_running" == true ]]; then
-            echo -e "  Caddy:   ${GREEN}Running${NC} (orphaned?)"
-        else
-            echo -e "  Caddy:   Not running"
-        fi
     fi
 }
 

@@ -32,3 +32,4 @@ client-logs*.log
 .vscode/
 .cursor/
 .DS_Store
+deploy/custom/

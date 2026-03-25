@@ -25,7 +25,7 @@ import {
   DescriptionWrapper,
 } from './TempoExportModalStyles';
 
-const TEMPO_EXPORT_URL = '/maintenance/actions/tempo-export';
+const TEMPO_EXPORT_URL = '/quick-actions/actions/tempo-export';
 const TASK_KEY = 'VIS-2';
 
 /**
@@ -84,7 +84,7 @@ export default function TempoExportModal({ isOpen = false, onClose, onSubmitted 
   const fetchHoursForDate = useCallback(async (date) => {
     if (!date) return;
     try {
-      const data = await api.get(`/maintenance/actions/tempo-export/hours?date=${date}`);
+      const data = await api.get(`/quick-actions/actions/tempo-export/hours?date=${date}`);
       setHoursStatus(data);
       setHoursFetchError(false);
     } catch (err) {

@@ -14,7 +14,7 @@ import IssueSearch from './IssueSearch';
 import IssueCreate from './IssueCreate';
 import ProjectSettings from './ProjectSettings';
 import MyJiraIssues from './MyJiraIssues';
-import Maintenance from './Maintenance';
+import QuickActions from './QuickActions';
 import { ProjectCategoryCopy } from 'shared/constants/projects';
 import { 
   ProjectPage, 
@@ -167,7 +167,7 @@ const Project = () => {
             <Routes>
               <Route path="board/*" element={<Board project={project} fetchProject={fetchProject} updateLocalProjectIssues={updateLocalProjectIssues} />} />
               <Route path="my-jira-issues" element={<MyJiraIssues />} />
-              <Route path="maintenance" element={<Maintenance />} />
+              <Route path="quick-actions" element={<QuickActions />} />
               <Route path="settings" element={<ProjectSettings project={project} fetchProject={fetchProject} />} />
               <Route index element={<Navigate to="board" replace />} />
             </Routes>

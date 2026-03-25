@@ -12,7 +12,6 @@ HTTPS_CONFIG="$DEPLOY_DIR/.https-config"
 
 # HTTPS mode detection
 HTTPS_ENABLED=false
-USE_CADDY=false
 
 function usage() {
     cat <<EOM
@@ -25,8 +24,6 @@ usage: ${SCRIPT_NAME} [options]
 options:
     -h|--help             Show this help message
     --version             Show version information
-    --https               Force HTTPS mode (start Caddy if configured)
-    --http                Force HTTP mode (skip Caddy)
 
 dependencies: ${DEPENDENCIES[*]}
 
@@ -56,73 +53,16 @@ function check_https_config() {
         
         if [[ "${HTTPS_ENABLED:-false}" == "true" ]]; then
             HTTPS_ENABLED=true
-            # Check if Caddy is available
-            if command -v caddy &>/dev/null; then
-                USE_CADDY=true
-            fi
         fi
     fi
 }
 
-function start_caddy() {
-    if [[ "$USE_CADDY" != true ]]; then
-        return 0
-    fi
 
-    local caddyfile="$DEPLOY_DIR/Caddyfile"
-    
-    if [[ ! -f "$caddyfile" ]]; then
-        log "WARNING: HTTPS configured but Caddyfile not found"
-        return 1
-    fi
-
-    # Check if Caddy is already running
-    if pgrep -f "caddy run.*$caddyfile" &>/dev/null; then
-        log "Caddy already running"
-        return 0
-    fi
-
-    log "Starting Caddy (HTTPS proxy)..."
-
-    cd "$DEPLOY_DIR" || return 1
-
-    nohup caddy run --config "$caddyfile" >> "$LOG_DIR/caddy.log" 2>> "$LOG_DIR/caddy-error.log" &
-    local caddy_pid=$!
-    echo "$caddy_pid" > "$PID_DIR/caddy.pid"
-
-    sleep 2
-
-    if ! kill -0 "$caddy_pid" 2>/dev/null; then
-        log "WARNING: Caddy failed to start (HTTPS may not work)"
-        return 1
-    fi
-
-    log "Caddy started (PID: $caddy_pid)"
-    return 0
-}
-
-function stop_caddy() {
-    local caddy_pid_file="$PID_DIR/caddy.pid"
-    
-    if [[ -f "$caddy_pid_file" ]]; then
-        local caddy_pid
-        caddy_pid=$(cat "$caddy_pid_file")
-        if kill -0 "$caddy_pid" 2>/dev/null; then
-            log "Stopping Caddy..."
-            kill "$caddy_pid" 2>/dev/null || true
-        fi
-        rm -f "$caddy_pid_file"
-    fi
-    
-    # Also kill any Caddy processes running our Caddyfile
-    pkill -f "caddy run.*$DEPLOY_DIR/Caddyfile" 2>/dev/null || true
-}
 
 function cleanup() {
     log "Shutting down..."
     [ -f "$PID_DIR/api.pid" ] && kill "$(cat "$PID_DIR/api.pid")" 2>/dev/null || true
     [ -f "$PID_DIR/client.pid" ] && kill "$(cat "$PID_DIR/client.pid")" 2>/dev/null || true
-    stop_caddy
     rm -f "$PID_DIR"/*.pid 2>/dev/null || true
     exit 0
 }
@@ -146,7 +86,7 @@ function start_api() {
         exit 1
     }
 
-    nohup node -r ./tsconfig-paths.js build/index.js >> "$LOG_DIR/api.log" 2>> "$LOG_DIR/api-error.log" &
+    NODE_ENV=production node -r ./tsconfig-paths.js build/index.js >> "$LOG_DIR/api.log" 2>> "$LOG_DIR/api-error.log" &
     local api_pid=$!
     echo "$api_pid" > "$PID_DIR/api.pid"
 
@@ -169,7 +109,7 @@ function start_client() {
         exit 1
     }
 
-    PORT=8193 nohup node server.js >> "$LOG_DIR/client.log" 2>> "$LOG_DIR/client-error.log" &
+    PORT=8193 node server.js >> "$LOG_DIR/client.log" 2>> "$LOG_DIR/client-error.log" &
     local client_pid=$!
     echo "$client_pid" > "$PID_DIR/client.pid"
 
@@ -202,20 +142,11 @@ function monitor_processes() {
 }
 
 function main() {
-    local force_https=false
-    local force_http=false
-
     while [ "$1" != "" ]; do
         case $1 in
         --version)
             echo "${SCRIPT_NAME} version ${VERSION}"
             exit 0
-            ;;
-        --https)
-            force_https=true
-            ;;
-        --http)
-            force_http=true
             ;;
         -h | --help)
             usage
@@ -238,15 +169,6 @@ function main() {
     # Check HTTPS configuration
     check_https_config
 
-    # Handle force flags
-    if [[ "$force_http" == true ]]; then
-        HTTPS_ENABLED=false
-        USE_CADDY=false
-    elif [[ "$force_https" == true ]]; then
-        HTTPS_ENABLED=true
-        USE_CADDY=true
-    fi
-
     trap cleanup SIGTERM SIGINT
 
     load_environment
@@ -261,11 +183,6 @@ function main() {
         kill "$api_pid" 2>/dev/null || true
         exit 1
     }
-
-    # Start Caddy if HTTPS is enabled
-    if [[ "$USE_CADDY" == true ]]; then
-        start_caddy || log "WARNING: HTTPS proxy not available"
-    fi
 
     # Determine display URL
     local display_url

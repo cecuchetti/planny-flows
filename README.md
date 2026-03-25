@@ -119,6 +119,7 @@ cd client && npm run start:production   # other terminal
 ```
 
 - Dev client: http://localhost:8192 — Production client: http://localhost:8193  
+- Dev API: http://localhost:13824 — Production API: http://localhost:3824
 - API: http://localhost:3824  
 
 ---

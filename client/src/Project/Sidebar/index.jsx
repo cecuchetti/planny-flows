@@ -26,8 +26,8 @@ const NAV_ITEMS = [
   { key: 'settings', labelKey: 'sidebar.projectSettings', path: '/settings', icon: '⚙️', bg: '#475569' },
 ];
 
-const MAINTENANCE_ITEMS = [
-  { key: 'maintenance', labelKey: 'sidebar.maintenance', path: '/maintenance', icon: '🔧', bg: '#059669' },
+const QUICK_ACTIONS_ITEMS = [
+  { key: 'quick-actions', labelKey: 'sidebar.quickActions', path: '/quick-actions', icon: '🔧', bg: '#059669' },
 ];
 
 const DISABLED_ITEMS = [
@@ -67,7 +67,7 @@ const ProjectSidebar = ({ project: _project, onNavClick, isMobile }) => {
         <Divider />
         <SectionLabel>Más</SectionLabel>
 
-        {MAINTENANCE_ITEMS.map(item => (
+        {QUICK_ACTIONS_ITEMS.map(item => (
           <LinkItem 
             key={item.key} 
             to={`${basePath}${item.path}`}

@@ -24,34 +24,34 @@ import WeeklyHoursModal from './WeeklyHoursModal';
 const ACTIONS = [
   {
     id: 'outlook-clean',
-    titleKey: 'maintenance.actions.outlookClean.title',
-    subtitleKey: 'maintenance.actions.outlookClean.subtitle',
+    titleKey: 'quickActions.actions.outlookClean.title',
+    subtitleKey: 'quickActions.actions.outlookClean.subtitle',
     iconType: 'trash',
     iconBg: '#E44D42',
     iconColor: '#fff',
-    endpoint: '/maintenance/actions/outlook-clean',
-    statusEndpoint: '/maintenance/actions/outlook-clean/status',
+    endpoint: '/quick-actions/actions/outlook-clean',
+    statusEndpoint: '/quick-actions/actions/outlook-clean/status',
   },
   {
     id: 'tempo-export',
-    titleKey: 'maintenance.actions.logHours.title',
-    subtitleKey: 'maintenance.actions.logHours.subtitle',
+    titleKey: 'quickActions.actions.logHours.title',
+    subtitleKey: 'quickActions.actions.logHours.subtitle',
     iconType: 'reports',
     iconBg: '#6554C0',
     iconColor: '#fff',
   },
   {
     id: 'weekly-hours',
-    titleKey: 'maintenance.actions.weeklyHours.title',
-    subtitleKey: 'maintenance.actions.weeklyHours.subtitle',
+    titleKey: 'quickActions.actions.weeklyHours.title',
+    subtitleKey: 'quickActions.actions.weeklyHours.subtitle',
     iconType: 'calendar',
     iconBg: '#0B875B',
     iconColor: '#fff',
   },
   {
     id: 'placeholder-2',
-    titleKey: 'maintenance.actions.archiveOld.title',
-    subtitleKey: 'maintenance.actions.archiveOld.subtitle',
+    titleKey: 'quickActions.actions.archiveOld.title',
+    subtitleKey: 'quickActions.actions.archiveOld.subtitle',
     iconType: 'page',
     iconBg: '#6B7280',
     iconColor: '#fff',
@@ -62,7 +62,7 @@ const ACTIONS = [
 const POLL_INTERVAL_MS = 2500;
 const POLL_TIMEOUT_MS = 90000;
 
-export default function Maintenance() {
+export default function QuickActions() {
   const { t } = useTranslation();
   const [loadingId, setLoadingId] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -79,7 +79,7 @@ export default function Maintenance() {
     setIsLoadingHours(true);
     try {
       const today = moment().format('YYYY-MM-DD');
-      const data = await api.get(`/maintenance/actions/tempo-export/hours?date=${today}`);
+      const data = await api.get(`/quick-actions/actions/tempo-export/hours?date=${today}`);
       setTodayHoursStatus(data);
       setHoursFetchError(false);
     } catch (err) {
@@ -118,7 +118,7 @@ export default function Maintenance() {
 
   const handleAction = async (action) => {
     if (action.placeholder) {
-      toast.show({ title: t('maintenance.actions.notImplemented') });
+      toast.show({ title: t('quickActions.actions.notImplemented') });
       return;
     }
 
@@ -139,7 +139,7 @@ export default function Maintenance() {
       const data = await api.post(action.endpoint);
 
       if (data?.accepted) {
-        toast.show({ title: t('maintenance.actions.outlookClean.running') });
+        toast.show({ title: t('quickActions.actions.outlookClean.running') });
 
         const start = Date.now();
         pollIntervalRef.current = setInterval(async () => {
@@ -151,7 +151,7 @@ export default function Maintenance() {
           
           if (Date.now() - start > POLL_TIMEOUT_MS) {
             stopPolling();
-            toast.error(t('maintenance.actions.error'));
+            toast.error(t('quickActions.actions.error'));
             return;
           }
           try {
@@ -167,17 +167,17 @@ export default function Maintenance() {
 
             if (status === 'success') {
               stopPolling();
-              toast.success(t('maintenance.actions.outlookClean.success'));
+              toast.success(t('quickActions.actions.outlookClean.success'));
               return;
             }
             if (status === 'failed' && lastRun?.message) {
               stopPolling();
-              toast.error(t('maintenance.actions.outlookClean.failed', { message: lastRun.message }));
+              toast.error(t('quickActions.actions.outlookClean.failed', { message: lastRun.message }));
               return;
             }
             if (status === 'failed') {
               stopPolling();
-              toast.error(t('maintenance.actions.outlookClean.failed', { message: t('maintenance.actions.error') }));
+              toast.error(t('quickActions.actions.outlookClean.failed', { message: t('quickActions.actions.error') }));
             }
           } catch (_) {
             // Keep polling on network errors
@@ -186,14 +186,14 @@ export default function Maintenance() {
 
         pollTimeoutRef.current = setTimeout(() => {
           stopPolling();
-          toast.error(t('maintenance.actions.error'));
+          toast.error(t('quickActions.actions.error'));
         }, POLL_TIMEOUT_MS);
         return;
       }
 
       setLoadingId(null);
     } catch (err) {
-      const message = err?.message || t('maintenance.actions.error');
+      const message = err?.message || t('quickActions.actions.error');
       toast.error(message);
       setLoadingId(null);
     }
@@ -210,7 +210,7 @@ export default function Maintenance() {
   return (
     <Page>
       <PageHeader>
-        <PageTitle>{t('maintenance.pageTitle')}</PageTitle>
+        <PageTitle>{t('quickActions.pageTitle')}</PageTitle>
       </PageHeader>
 
       <ActionGrid>

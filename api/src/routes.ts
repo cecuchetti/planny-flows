@@ -7,7 +7,7 @@ import * as projects from 'controllers/projects';
 import * as test from 'controllers/test';
 import * as users from 'controllers/users';
 import * as health from 'controllers/health';
-import * as maintenance from 'controllers/maintenance';
+import * as quickActions from 'controllers/quickActions';
 import { jiraIntegrationsRouter } from 'jira-integrations/routes';
 import { appConfig } from 'config';
 import { tempoExportRateLimiter } from 'middleware/rateLimiter';
@@ -45,12 +45,12 @@ export const attachPrivateRoutes = (app: any): void => {
 
   app.get('/currentUser', users.getCurrentUser);
 
-  app.get('/maintenance/actions/outlook-clean/status', maintenance.getOutlookCleanStatus);
-  app.post('/maintenance/actions/outlook-clean', maintenance.triggerOutlookClean);
-  app.get('/maintenance/actions/tempo-export/hours', tempoExportRateLimiter, maintenance.getHoursLogged);
-  app.get('/maintenance/actions/tempo-export/week', tempoExportRateLimiter, maintenance.getWeekHours);
-  app.put('/maintenance/actions/tempo-export/hours', tempoExportRateLimiter, maintenance.updateHours);
-  app.post('/maintenance/actions/tempo-export', tempoExportRateLimiter, maintenance.exportToTempo);
+  app.get('/quick-actions/actions/outlook-clean/status', quickActions.getOutlookCleanStatus);
+  app.post('/quick-actions/actions/outlook-clean', quickActions.triggerOutlookClean);
+  app.get('/quick-actions/actions/tempo-export/hours', tempoExportRateLimiter, quickActions.getHoursLogged);
+  app.get('/quick-actions/actions/tempo-export/week', tempoExportRateLimiter, quickActions.getWeekHours);
+  app.put('/quick-actions/actions/tempo-export/hours', tempoExportRateLimiter, quickActions.updateHours);
+  app.post('/quick-actions/actions/tempo-export', tempoExportRateLimiter, quickActions.exportToTempo);
 
   // External Jira integrations - worklogs and issue management
   app.use('/api/v1/jira', jiraIntegrationsRouter);

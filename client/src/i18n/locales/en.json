@@ -22,13 +22,13 @@
     "kanbanBoard": "Kanban Board",
     "externalAssignments": "External Assignments",
     "projectSettings": "Project settings",
-    "maintenance": "Maintenance"
+    "quickActions": "Quick actions"
   },
-  "maintenance": {
-    "pageTitle": "Maintenance",
+  "quickActions": {
+    "pageTitle": "Quick actions",
     "actions": {
       "outlookClean": {
-        "title": "Clean Outlook",
+        "title": "Clean MS Outlook",
         "subtitle": "Trigger the Outlook cleaner service to clean your mailbox.",
         "success": "Outlook clean completed successfully.",
         "running": "Outlook clean is running in the background. You will be notified when it finishes.",

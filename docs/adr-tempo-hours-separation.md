@@ -157,7 +157,7 @@ export interface ITempoHoursDailyRepository {
 ## API Contract
 
 ### Base Path
-All endpoints under `/maintenance/actions/tempo-export`
+All endpoints under `/quick-actions/actions/tempo-export`
 
 ### Endpoints
 

@@ -30,8 +30,8 @@ import {
   DayLoading,
 } from './WeeklyHoursModalStyles';
 
-const WEEK_HOURS_URL = '/maintenance/actions/tempo-export/week';
-const UPDATE_HOURS_URL = '/maintenance/actions/tempo-export/hours';
+const WEEK_HOURS_URL = '/quick-actions/actions/tempo-export/week';
+const UPDATE_HOURS_URL = '/quick-actions/actions/tempo-export/hours';
 const TASK_KEY = 'VIS-2';
 
 /**

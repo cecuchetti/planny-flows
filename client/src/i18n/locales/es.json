@@ -22,13 +22,13 @@
     "kanbanBoard": "Tablero Kanban",
     "externalAssignments": "Asignaciones Externas",
     "projectSettings": "Configuración del proyecto",
-    "maintenance": "Mantenimiento"
+    "quickActions": "Atajos"
   },
-  "maintenance": {
-    "pageTitle": "Mantenimiento",
+  "quickActions": {
+    "pageTitle": "Atajos",
     "actions": {
       "outlookClean": {
-        "title": "Limpiar Outlook",
+        "title": "Limpiar MS Outlook",
         "subtitle": "Ejecuta el servicio de limpieza de Outlook para limpiar tu bandeja.",
         "success": "Limpieza de Outlook completada correctamente.",
         "running": "La limpieza de Outlook se está ejecutando en segundo plano. Serás notificado al finalizar.",

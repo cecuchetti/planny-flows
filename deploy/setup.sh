@@ -21,6 +21,7 @@ fi
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 DEPLOY_DIR="${DEPLOY_DIR:-$HOME/.planny-flows}"
 TEMPLATES_DIR="$PROJECT_DIR/deploy/templates"
+CUSTOM_DIR="$PROJECT_DIR/deploy/custom"
 HOSTNAME=$(hostname | sed 's/\.local$//')
 
 # OS detection
@@ -40,8 +41,6 @@ usage: ${SCRIPT_NAME} [options]
 
 options:
     --skip-build          Skip the build step (use existing builds)
-    --https               Also set up HTTPS with Caddy (for Tailscale access)
-    --tailscale           Use Tailscale IP for HTTPS (requires --https)
     -h|--help             Show this help message
     --version             Show version information
 
@@ -50,8 +49,6 @@ dependencies: ${DEPENDENCIES[*]}
 examples:
     ${SCRIPT_NAME}
     ${SCRIPT_NAME} --skip-build
-    ${SCRIPT_NAME} --https                # Set up HTTPS for local network
-    ${SCRIPT_NAME} --https --tailscale    # Set up HTTPS for Tailscale access
 
 EOM
     exit 1
@@ -267,14 +264,29 @@ function generate_startup_scripts() {
 
     # Generate service file based on OS
     if [[ "$OS_TYPE" == "macos" ]]; then
-        sed -e "s|__PROJECT_DIR__|$DEPLOY_DIR|g" \
-            -e "s|__DEPLOY_DIR__|$DEPLOY_DIR|g" \
-            -e "s|__HOSTNAME__|$HOSTNAME|g" \
-            "$TEMPLATES_DIR/launchd.plist" > "$DEPLOY_DIR/com.plannyflows.plist" || {
-            echo -e "${RED}✗ Failed to generate launchd plist${NC}" >&2
-            exit 1
-        }
-        echo -e "${GREEN}✓ Created launchd plist${NC}"
+        local LAUNCHD_TEMPLATE=""
+        if [[ -f "$CUSTOM_DIR/launchd.plist" ]]; then
+            LAUNCHD_TEMPLATE="$CUSTOM_DIR/launchd.plist"
+            echo -e "${YELLOW}⚠ Using custom launchd template from $CUSTOM_DIR/launchd.plist${NC}"
+        elif [[ -f "$TEMPLATES_DIR/launchd.plist" ]]; then
+            LAUNCHD_TEMPLATE="$TEMPLATES_DIR/launchd.plist"
+        fi
+        
+        if [[ -n "$LAUNCHD_TEMPLATE" ]]; then
+            sed -e "s|__PROJECT_DIR__|$DEPLOY_DIR|g" \
+                -e "s|__DEPLOY_DIR__|$DEPLOY_DIR|g" \
+                -e "s|__HOSTNAME__|$HOSTNAME|g" \
+                "$LAUNCHD_TEMPLATE" > "$DEPLOY_DIR/com.plannyflows.plist" || {
+                echo -e "${RED}✗ Failed to generate launchd plist${NC}" >&2
+                exit 1
+            }
+            echo -e "${GREEN}✓ Created launchd plist${NC}"
+            LAUNCHD_TEMPLATE_EXISTS=true
+        else
+            echo -e "${YELLOW}⚠ macOS launchd template not found - skipping service file generation${NC}"
+            echo -e "${YELLOW}  You can create a custom launchd plist for local macOS setup in $CUSTOM_DIR/${NC}"
+            LAUNCHD_TEMPLATE_EXISTS=false
+        fi
     elif [[ "$OS_TYPE" == "linux" ]]; then
         # Get current user and group for systemd service
         local SERVICE_USER="${SUDO_USER:-$USER}"
@@ -313,7 +325,9 @@ function display_instructions() {
     
     # Show generated service file
     if [[ "$OS_TYPE" == "macos" ]]; then
-        echo -e "  └── com.plannyflows.plist  (launchd service)"
+        if [[ -f "$DEPLOY_DIR/com.plannyflows.plist" ]]; then
+            echo -e "  └── com.plannyflows.plist  (launchd service)"
+        fi
     elif [[ "$OS_TYPE" == "linux" ]]; then
         echo -e "  └── planny-flows.service   (systemd service)"
     fi
@@ -325,8 +339,13 @@ function display_instructions() {
     # Service installation instructions based on OS
     echo -e "  ${YELLOW}1. Install the system service (requires password):${NC}"
     if [[ "$OS_TYPE" == "macos" ]]; then
-        echo -e "     sudo cp $DEPLOY_DIR/com.plannyflows.plist /Library/LaunchDaemons/"
-        echo -e "     sudo launchctl bootstrap system /Library/LaunchDaemons/com.plannyflows.plist"
+        if [[ -f "$DEPLOY_DIR/com.plannyflows.plist" ]]; then
+            echo -e "     sudo cp $DEPLOY_DIR/com.plannyflows.plist /Library/LaunchDaemons/"
+            echo -e "     sudo launchctl bootstrap system /Library/LaunchDaemons/com.plannyflows.plist"
+        else
+            echo -e "     ⚠ macOS launchd service file not generated"
+            echo -e "     Create a custom launchd plist for local macOS setup if needed"
+        fi
     elif [[ "$OS_TYPE" == "linux" ]]; then
         echo -e "     sudo cp $DEPLOY_DIR/planny-flows.service /etc/systemd/system/"
         echo -e "     sudo systemctl daemon-reload"
@@ -381,20 +400,11 @@ function display_instructions() {
 
 function main() {
     local SKIP_BUILD=false
-    local SETUP_HTTPS=false
-    local USE_TAILSCALE=false
 
     while [ "$1" != "" ]; do
         case $1 in
         --skip-build)
             SKIP_BUILD=true
-            ;;
-        --https)
-            SETUP_HTTPS=true
-            ;;
-        --tailscale)
-            USE_TAILSCALE=true
-            SETUP_HTTPS=true
             ;;
         --version)
             echo "${SCRIPT_NAME} version ${VERSION}"
@@ -425,25 +435,6 @@ function main() {
     build_application
     copy_production_files
     generate_startup_scripts
-
-    # Run HTTPS setup if requested
-    if [[ "$SETUP_HTTPS" == true ]]; then
-        echo ""
-        echo -e "${BLUE}═══════════════════════════════════════════════════════════${NC}"
-        echo -e "${BLUE}     Setting up HTTPS...${NC}"
-        echo -e "${BLUE}═══════════════════════════════════════════════════════════${NC}"
-        echo ""
-
-        local https_args=""
-        if [[ "$USE_TAILSCALE" == true ]]; then
-            https_args="--tailscale"
-        fi
-
-        "$PROJECT_DIR/deploy/scripts/setup-https.sh" $https_args || {
-            echo -e "${YELLOW}WARNING: HTTPS setup failed. You can run it manually later:${NC}"
-            echo -e "  ./deploy/scripts/setup-https.sh"
-        }
-    fi
 
     display_instructions
 }

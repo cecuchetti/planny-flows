@@ -37,6 +37,7 @@ module.exports = {
     static: path.join(__dirname, 'dev'),
     historyApiFallback: true,
     hot: true,
+    port: 8192,
   },
   plugins: [
     new webpack.DefinePlugin({
