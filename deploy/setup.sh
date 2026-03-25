@@ -23,10 +23,18 @@ DEPLOY_DIR="${DEPLOY_DIR:-$HOME/.planny-flows}"
 TEMPLATES_DIR="$PROJECT_DIR/deploy/templates"
 HOSTNAME=$(hostname | sed 's/\.local$//')
 
+# OS detection
+OS="$(uname -s)"
+case "$OS" in
+    Linux*)     OS_TYPE="linux";;
+    Darwin*)    OS_TYPE="macos";;
+    *)          OS_TYPE="unknown"
+esac
+
 function usage() {
     cat <<EOM
 
-Prepare planny-flows for production on macOS.
+Prepare planny-flows for production (macOS/Linux).
 
 usage: ${SCRIPT_NAME} [options]
 
@@ -257,14 +265,33 @@ function generate_startup_scripts() {
     chmod +x "$DEPLOY_DIR/start.sh"
     echo -e "${GREEN}✓ Created startup script${NC}"
 
-    sed -e "s|__PROJECT_DIR__|$DEPLOY_DIR|g" \
-        -e "s|__DEPLOY_DIR__|$DEPLOY_DIR|g" \
-        -e "s|__HOSTNAME__|$HOSTNAME|g" \
-        "$TEMPLATES_DIR/launchd.plist" > "$DEPLOY_DIR/com.plannyflows.plist" || {
-        echo -e "${RED}✗ Failed to generate launchd plist${NC}" >&2
-        exit 1
-    }
-    echo -e "${GREEN}✓ Created launchd plist${NC}"
+    # Generate service file based on OS
+    if [[ "$OS_TYPE" == "macos" ]]; then
+        sed -e "s|__PROJECT_DIR__|$DEPLOY_DIR|g" \
+            -e "s|__DEPLOY_DIR__|$DEPLOY_DIR|g" \
+            -e "s|__HOSTNAME__|$HOSTNAME|g" \
+            "$TEMPLATES_DIR/launchd.plist" > "$DEPLOY_DIR/com.plannyflows.plist" || {
+            echo -e "${RED}✗ Failed to generate launchd plist${NC}" >&2
+            exit 1
+        }
+        echo -e "${GREEN}✓ Created launchd plist${NC}"
+    elif [[ "$OS_TYPE" == "linux" ]]; then
+        # Get current user and group for systemd service
+        local SERVICE_USER="${SUDO_USER:-$USER}"
+        local SERVICE_GROUP=$(id -gn "$SERVICE_USER" 2>/dev/null || echo "$SERVICE_USER")
+        
+        sed -e "s|__DEPLOY_DIR__|$DEPLOY_DIR|g" \
+            -e "s|__USER__|$SERVICE_USER|g" \
+            -e "s|__GROUP__|$SERVICE_GROUP|g" \
+            "$TEMPLATES_DIR/planny-flows.service" > "$DEPLOY_DIR/planny-flows.service" || {
+            echo -e "${RED}✗ Failed to generate systemd service file${NC}" >&2
+            exit 1
+        }
+        echo -e "${GREEN}✓ Created systemd service file${NC}"
+    else
+        echo -e "${YELLOW}⚠ Unknown OS: $OS_TYPE - Skipping service file generation${NC}"
+        echo -e "${YELLOW}  You'll need to manually create a service file for your system${NC}"
+    fi
 }
 
 function display_instructions() {
@@ -273,6 +300,7 @@ function display_instructions() {
     echo -e "${GREEN}     Setup Complete!${NC}"
     echo -e "${GREEN}═══════════════════════════════════════════════════════════${NC}"
     echo ""
+
     echo -e "${BLUE}Production files deployed to:${NC}"
     echo -e "  $DEPLOY_DIR/"
     echo -e "  ├── api/          (API server)"
@@ -282,27 +310,72 @@ function display_instructions() {
     echo -e "  ├── pids/         (Process IDs)"
     echo -e "  ├── .env.production"
     echo -e "  └── start.sh"
+    
+    # Show generated service file
+    if [[ "$OS_TYPE" == "macos" ]]; then
+        echo -e "  └── com.plannyflows.plist  (launchd service)"
+    elif [[ "$OS_TYPE" == "linux" ]]; then
+        echo -e "  └── planny-flows.service   (systemd service)"
+    fi
     echo ""
+
     echo -e "${BLUE}Next steps:${NC}"
     echo ""
+
+    # Service installation instructions based on OS
     echo -e "  ${YELLOW}1. Install the system service (requires password):${NC}"
-    echo -e "     sudo cp $DEPLOY_DIR/com.plannyflows.plist /Library/LaunchDaemons/"
-    echo -e "     sudo launchctl bootstrap system /Library/LaunchDaemons/com.plannyflows.plist"
+    if [[ "$OS_TYPE" == "macos" ]]; then
+        echo -e "     sudo cp $DEPLOY_DIR/com.plannyflows.plist /Library/LaunchDaemons/"
+        echo -e "     sudo launchctl bootstrap system /Library/LaunchDaemons/com.plannyflows.plist"
+    elif [[ "$OS_TYPE" == "linux" ]]; then
+        echo -e "     sudo cp $DEPLOY_DIR/planny-flows.service /etc/systemd/system/"
+        echo -e "     sudo systemctl daemon-reload"
+        echo -e "     sudo systemctl enable planny-flows.service"
+        echo -e "     sudo systemctl start planny-flows.service"
+    else
+        echo -e "     ⚠ Unknown OS: Create service file manually for your system"
+    fi
     echo ""
+
     echo -e "  ${YELLOW}2. Access your application:${NC}"
-    echo -e "     http://${HOSTNAME}.local:8193"
+    if [[ "$OS_TYPE" == "macos" ]]; then
+        echo -e "     http://${HOSTNAME}.local:8193"
+    else
+        echo -e "     http://localhost:8193"
+        echo -e "     or http://$(hostname -I | awk '{print $1}' 2>/dev/null || echo 'server-ip'):8193"
+    fi
     echo ""
-    echo -e "  ${YELLOW}3. For HTTPS (Tailscale access from phone):${NC}"
-    echo -e "     ./deploy/scripts/setup-https.sh"
-    echo ""
+
+    # HTTPS setup (optional)
+    if [[ "$OS_TYPE" == "macos" ]]; then
+        echo -e "  ${YELLOW}3. For HTTPS (optional):${NC}"
+        echo -e "     ./deploy/scripts/setup-https.sh"
+        echo ""
+    fi
+
     echo -e "  ${YELLOW}4. Useful commands:${NC}"
-    echo -e "     Status:  ./deploy/scripts/status.sh"
-    echo -e "     Logs:    ./deploy/scripts/logs.sh"
-    echo -e "     Stop:    sudo launchctl bootout system/com.plannyflows"
-    echo -e "     Start:   sudo launchctl bootstrap system /Library/LaunchDaemons/com.plannyflows.plist"
+    if [[ "$OS_TYPE" == "macos" ]]; then
+        echo -e "     Status:  ./deploy/scripts/status.sh"
+        echo -e "     Logs:    ./deploy/scripts/logs.sh"
+        echo -e "     Stop:    sudo launchctl bootout system/com.plannyflows"
+        echo -e "     Start:   sudo launchctl bootstrap system /Library/LaunchDaemons/com.plannyflows.plist"
+    elif [[ "$OS_TYPE" == "linux" ]]; then
+        echo -e "     Status:  sudo systemctl status planny-flows"
+        echo -e "     Logs:    sudo journalctl -u planny-flows -f"
+        echo -e "     Stop:    sudo systemctl stop planny-flows"
+        echo -e "     Start:   sudo systemctl start planny-flows"
+        echo -e "     Restart: sudo systemctl restart planny-flows"
+    fi
     echo ""
+
     echo -e "  ${YELLOW}5. From other devices on your network:${NC}"
-    echo -e "     Open: http://${HOSTNAME}.local:8193"
+    if [[ "$OS_TYPE" == "macos" ]]; then
+        echo -e "     Open: http://${HOSTNAME}.local:8193"
+    else
+        local server_ip=$(hostname -I | awk '{print $1}' 2>/dev/null || echo "SERVER_IP")
+        echo -e "     Open: http://${server_ip}:8193"
+        echo -e "     (Replace ${server_ip} with your server's actual IP address)"
+    fi
     echo ""
 }
 
@@ -341,7 +414,7 @@ function main() {
     exit_on_missing_tools "${DEPENDENCIES[@]}"
 
     echo -e "${BLUE}═══════════════════════════════════════════════════════════${NC}"
-    echo -e "${BLUE}     Planny-Flows Production Setup for macOS${NC}"
+    echo -e "${BLUE}     Planny-Flows Production Setup (${OS_TYPE})${NC}"
     echo -e "${BLUE}═══════════════════════════════════════════════════════════${NC}"
     echo ""
 
