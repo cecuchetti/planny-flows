@@ -92,6 +92,8 @@ cp api/.env.example api/.env
 
 ```bash
 cd api && npm rebuild better-sqlite3
+# or for a fresh build from source:
+BUILD_FROM_SOURCE=1 npm install better-sqlite3
 # or: rm -rf node_modules && npm install
 ```
 

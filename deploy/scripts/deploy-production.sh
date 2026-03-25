@@ -701,7 +701,7 @@ ${BLUE}Requirements:${NC}
 
 ${BLUE}Related Scripts:${NC}
     setup.sh                         - Initial production setup
-    setup-https-tailscale-funnel.sh  - Configure Tailscale Funnel HTTPS
+
     status.sh                        - Check service status
     restart.sh                       - Restart the service
     stop.sh                          - Stop the service
