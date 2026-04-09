@@ -42,7 +42,12 @@ module.exports = {
   plugins: [
     new webpack.DefinePlugin({
       'process.env.API_URL': JSON.stringify(process.env.API_URL || 'http://localhost:3824'),
-      'process.env.REACT_APP_TEMPO_TASK_KEY': JSON.stringify(process.env.REACT_APP_TEMPO_TASK_KEY || 'VIS-2'),
+      'process.env.REACT_APP_TEMPO_TASK_KEY': JSON.stringify(
+        process.env.REACT_APP_TEMPO_TASK_KEY || 'VIS-2',
+      ),
+      'process.env.REACT_APP_DEFAULT_PROJECT_ROUTE': JSON.stringify(
+        process.env.REACT_APP_DEFAULT_PROJECT_ROUTE || 'board',
+      ),
     }),
     new HtmlWebpackPlugin({
       template: path.join(__dirname, 'src/index.html'),

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
-import { get } from 'lodash';
+import get from 'lodash/get';
 import { useTranslation } from 'react-i18next';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
@@ -44,7 +44,9 @@ const loadProjectColumnOrder = () => {
 const saveProjectColumnOrder = (order) => {
   try {
     localStorage.setItem(EXTERNAL_COLUMN_ORDER_KEY, JSON.stringify(order));
-  } catch (_) { /* ignore */ }
+  } catch (_) {
+    /* ignore */
+  }
 };
 
 const loadIssuesFromStorage = () => {
@@ -61,7 +63,9 @@ const loadIssuesFromStorage = () => {
 const saveIssuesToStorage = (data) => {
   try {
     localStorage.setItem(EXTERNAL_ISSUES_CACHE_KEY, JSON.stringify(data));
-  } catch (_) { /* ignore */ }
+  } catch (_) {
+    /* ignore */
+  }
 };
 
 const loadIssueOrder = () => {
@@ -78,10 +82,10 @@ const loadIssueOrder = () => {
 const saveIssueOrder = (order) => {
   try {
     localStorage.setItem(EXTERNAL_ISSUE_ORDER_KEY, JSON.stringify(order));
-  } catch (_) { /* ignore */ }
+  } catch (_) {
+    /* ignore */
+  }
 };
-
-
 
 export default function MyJiraIssues() {
   const { t } = useTranslation();
@@ -90,7 +94,9 @@ export default function MyJiraIssues() {
   const [error, setError] = useState(null);
   const [hasFetchedOnce, setHasFetchedOnce] = useState(false);
   const [timeEntryIssue, setTimeEntryIssue] = useState(null);
-  const [projectColumnOrder, setProjectColumnOrder] = useState(() => loadProjectColumnOrder() || []);
+  const [projectColumnOrder, setProjectColumnOrder] = useState(
+    () => loadProjectColumnOrder() || [],
+  );
   const [issueOrder, setIssueOrder] = useState(() => loadIssueOrder());
   const [hoursTodaySeconds, setHoursTodaySeconds] = useState(null);
   const [showHoursModal, setShowHoursModal] = useState(false);
@@ -99,12 +105,16 @@ export default function MyJiraIssues() {
     setIsLoading(true);
     setError(null);
     try {
-      const issuesRes = await api.get(JIRA_ISSUES_URL, { assignee: 'me', excludeStatus: 'Closed', maxResults: 100 });
+      const issuesRes = await api.get(JIRA_ISSUES_URL, {
+        assignee: 'me',
+        excludeStatus: 'Closed',
+        maxResults: 100,
+      });
       setIssuesData(issuesRes);
       saveIssuesToStorage(issuesRes);
       setHasFetchedOnce(true);
     } catch (err) {
-      const message = typeof err === 'string' ? err : (err?.message || t('myJiraIssues.loadError'));
+      const message = typeof err === 'string' ? err : err?.message || t('myJiraIssues.loadError');
       setError(message);
     } finally {
       setIsLoading(false);
@@ -126,31 +136,35 @@ export default function MyJiraIssues() {
     const map = {};
     issues.forEach((issue) => {
       const key = issue.projectKey || 'Other';
-      if (!map[key]) map[key] = { projectKey: key, projectName: issue.projectName || key, issues: [] };
+      if (!map[key])
+        map[key] = { projectKey: key, projectName: issue.projectName || key, issues: [] };
       map[key].issues.push(issue);
     });
     return map;
   }, [issues]);
 
-  const sortIssuesByOrder = useCallback((issueList, projectKey) => {
-    const order = issueOrder[projectKey];
-    if (!Array.isArray(order) || order.length === 0) return issueList;
-    
-    const issueMap = Object.fromEntries(issueList.map(issue => [issue.key, issue]));
-    const sorted = [];
-    // Add issues in stored order
-    order.forEach(key => {
-      if (issueMap[key]) {
-        sorted.push(issueMap[key]);
-        delete issueMap[key];
-      }
-    });
-    // Append remaining issues (new ones) at the end
-    Object.values(issueMap).forEach(issue => {
-      sorted.push(issue);
-    });
-    return sorted;
-  }, [issueOrder]);
+  const sortIssuesByOrder = useCallback(
+    (issueList, projectKey) => {
+      const order = issueOrder[projectKey];
+      if (!Array.isArray(order) || order.length === 0) return issueList;
+
+      const issueMap = Object.fromEntries(issueList.map((issue) => [issue.key, issue]));
+      const sorted = [];
+      // Add issues in stored order
+      order.forEach((key) => {
+        if (issueMap[key]) {
+          sorted.push(issueMap[key]);
+          delete issueMap[key];
+        }
+      });
+      // Append remaining issues (new ones) at the end
+      Object.values(issueMap).forEach((issue) => {
+        sorted.push(issue);
+      });
+      return sorted;
+    },
+    [issueOrder],
+  );
 
   const sortedProjectGroups = useMemo(() => {
     const map = {};
@@ -166,7 +180,10 @@ export default function MyJiraIssues() {
 
   const issuesByProject = useMemo(() => {
     const data = Object.values(sortedProjectGroups);
-    const saved = Array.isArray(projectColumnOrder) && projectColumnOrder.length > 0 ? projectColumnOrder : null;
+    const saved =
+      Array.isArray(projectColumnOrder) && projectColumnOrder.length > 0
+        ? projectColumnOrder
+        : null;
     if (saved && saved.length > 0) {
       const ordered = [];
       const keysSet = new Set(data.map((d) => d.projectKey));
@@ -181,43 +198,52 @@ export default function MyJiraIssues() {
     return data.sort((a, b) => (a.projectKey || '').localeCompare(b.projectKey || ''));
   }, [sortedProjectGroups, projectColumnOrder]);
 
-  const handleColumnDrop = useCallback((result) => {
-    if (!result.destination || result.source.droppableId !== 'external-columns') return;
-    const keys = issuesByProject.map((p) => p.projectKey);
-    const next = [...keys];
-    const [removed] = next.splice(result.source.index, 1);
-    next.splice(result.destination.index, 0, removed);
-    setProjectColumnOrder(next);
-    saveProjectColumnOrder(next);
-  }, [issuesByProject]);
+  const handleColumnDrop = useCallback(
+    (result) => {
+      if (!result.destination || result.source.droppableId !== 'external-columns') return;
+      const keys = issuesByProject.map((p) => p.projectKey);
+      const next = [...keys];
+      const [removed] = next.splice(result.source.index, 1);
+      next.splice(result.destination.index, 0, removed);
+      setProjectColumnOrder(next);
+      saveProjectColumnOrder(next);
+    },
+    [issuesByProject],
+  );
 
-  const handleCardDrop = useCallback((result) => {
-    const { source, destination, draggableId } = result;
-    if (!destination) return;
-    // Only allow reordering within same project
-    if (source.droppableId !== destination.droppableId) return;
-    // No change in position
-    if (source.index === destination.index) return;
+  const handleCardDrop = useCallback(
+    (result) => {
+      const { source, destination, draggableId } = result;
+      if (!destination) return;
+      // Only allow reordering within same project
+      if (source.droppableId !== destination.droppableId) return;
+      // No change in position
+      if (source.index === destination.index) return;
 
-    const projectKey = source.droppableId.replace(/^project-/, '');
-    const currentOrder = sortedProjectGroups[projectKey]?.issues.map(issue => issue.key) || [];
-    const newOrder = moveItemWithinArray(currentOrder, draggableId, destination.index);
-    
-    const updatedOrder = {
-      ...issueOrder,
-      [projectKey]: newOrder,
-    };
-    setIssueOrder(updatedOrder);
-    saveIssueOrder(updatedOrder);
-  }, [issueOrder, sortedProjectGroups]);
+      const projectKey = source.droppableId.replace(/^project-/, '');
+      const currentOrder = sortedProjectGroups[projectKey]?.issues.map((issue) => issue.key) || [];
+      const newOrder = moveItemWithinArray(currentOrder, draggableId, destination.index);
 
-  const onDragEnd = useCallback((result) => {
-    if (result.source.droppableId === 'external-columns') {
-      handleColumnDrop(result);
-    } else {
-      handleCardDrop(result);
-    }
-  }, [handleColumnDrop, handleCardDrop]);
+      const updatedOrder = {
+        ...issueOrder,
+        [projectKey]: newOrder,
+      };
+      setIssueOrder(updatedOrder);
+      saveIssueOrder(updatedOrder);
+    },
+    [issueOrder, sortedProjectGroups],
+  );
+
+  const onDragEnd = useCallback(
+    (result) => {
+      if (result.source.droppableId === 'external-columns') {
+        handleColumnDrop(result);
+      } else {
+        handleCardDrop(result);
+      }
+    },
+    [handleColumnDrop, handleCardDrop],
+  );
 
   useEffect(() => {
     if (issuesByProject.length > 0) {
@@ -280,7 +306,10 @@ export default function MyJiraIssues() {
   const hoursTodayDisplay =
     hoursTodaySeconds != null
       ? t('myJiraIssues.hoursTodayValue', {
-          hours: hoursTodaySeconds === 0 ? '0' : (hoursTodaySeconds / 3600).toFixed(2).replace(/\.?0+$/, ''),
+          hours:
+            hoursTodaySeconds === 0
+              ? '0'
+              : (hoursTodaySeconds / 3600).toFixed(2).replace(/\.?0+$/, ''),
         })
       : '';
 
@@ -337,63 +366,78 @@ export default function MyJiraIssues() {
           <Droppable droppableId="external-columns" direction="horizontal">
             {(provided) => (
               <ColumnsWrap ref={provided.innerRef} {...provided.droppableProps}>
-                {issuesByProject.map(({ projectKey, projectName, issues: projectIssues }, index) => (
-                  <Draggable key={projectKey} draggableId={`vcol-${projectKey}`} index={index}>
-                    {(colProvided) => (
-                      <Lane
-                        ref={colProvided.innerRef}
-                        {...colProvided.draggableProps}
-                        $flexFixed
-                        style={{ ...colProvided.draggableProps.style, margin: '0 5px' }}
-                      >
-                        <LaneTitle {...colProvided.dragHandleProps} $dragHandle>
-                          {projectName || projectKey}{' '}
-                          <LaneIssuesCount>{projectIssues.length}</LaneIssuesCount>
-                        </LaneTitle>
-                        <LaneContent>
-                          <Droppable droppableId={`project-${projectKey}`} direction="vertical">
-                            {(droppableProvided) => (
-                              <div ref={droppableProvided.innerRef} {...droppableProvided.droppableProps}>
-                           {projectIssues.map((issue, issueIndex) => {
-                            // Add fallback for avatar and display name
-                            const issueWithFallback = {
-                              ...issue,
-                              assigneeAvatarUrl: issue.assigneeAvatarUrl || MY_ATLASSIAN_AVATAR_URL,
-                              assigneeDisplayName: issue.assigneeDisplayName || 'Me',
-                            };
+                {issuesByProject.map(
+                  ({ projectKey, projectName, issues: projectIssues }, index) => (
+                    <Draggable key={projectKey} draggableId={`vcol-${projectKey}`} index={index}>
+                      {(colProvided) => (
+                        <Lane
+                          ref={colProvided.innerRef}
+                          {...colProvided.draggableProps}
+                          $flexFixed
+                          style={{ ...colProvided.draggableProps.style, margin: '0 5px' }}
+                        >
+                          <LaneTitle {...colProvided.dragHandleProps} $dragHandle>
+                            {projectName || projectKey}{' '}
+                            <LaneIssuesCount>{projectIssues.length}</LaneIssuesCount>
+                          </LaneTitle>
+                          <LaneContent>
+                            <Droppable droppableId={`project-${projectKey}`} direction="vertical">
+                              {(droppableProvided) => (
+                                <div
+                                  ref={droppableProvided.innerRef}
+                                  {...droppableProvided.droppableProps}
+                                >
+                                  {projectIssues.map((issue, issueIndex) => {
+                                    // Add fallback for avatar and display name
+                                    const issueWithFallback = {
+                                      ...issue,
+                                      assigneeAvatarUrl:
+                                        issue.assigneeAvatarUrl || MY_ATLASSIAN_AVATAR_URL,
+                                      assigneeDisplayName: issue.assigneeDisplayName || 'Me',
+                                    };
 
-                            // Create click handler for time entry modal
-                            const handleClick = (e) => {
-                              e.stopPropagation();
-                              setTimeEntryIssue(issue);
-                            };
+                                    // Create click handler for time entry modal
+                                    const handleClick = (e) => {
+                                      e.stopPropagation();
+                                      setTimeEntryIssue(issue);
+                                    };
 
-                            // Normalize issue for unified IssueCard
-                            const normalizedIssue = normalizeJiraIssue(issueWithFallback, handleClick);
+                                    // Normalize issue for unified IssueCard
+                                    const normalizedIssue = normalizeJiraIssue(
+                                      issueWithFallback,
+                                      handleClick,
+                                    );
 
-                            return (
-                               <Draggable key={issue.key} draggableId={issue.key} index={issueIndex}>
-                                {(draggableProvided, snapshot) => (
-                                  <IssueCard
-                                    ref={draggableProvided.innerRef}
-                                    issue={normalizedIssue}
-                                    isBeingDragged={snapshot.isDragging && !snapshot.isDropAnimating}
-                                    {...draggableProvided.draggableProps}
-                                    {...draggableProvided.dragHandleProps}
-                                  />
-                                )}
-                              </Draggable>
-                            );
-                          })}
-                          {droppableProvided.placeholder}
-                        </div>
+                                    return (
+                                      <Draggable
+                                        key={issue.key}
+                                        draggableId={issue.key}
+                                        index={issueIndex}
+                                      >
+                                        {(draggableProvided, snapshot) => (
+                                          <IssueCard
+                                            ref={draggableProvided.innerRef}
+                                            issue={normalizedIssue}
+                                            isBeingDragged={
+                                              snapshot.isDragging && !snapshot.isDropAnimating
+                                            }
+                                            {...draggableProvided.draggableProps}
+                                            {...draggableProvided.dragHandleProps}
+                                          />
+                                        )}
+                                      </Draggable>
+                                    );
+                                  })}
+                                  {droppableProvided.placeholder}
+                                </div>
+                              )}
+                            </Droppable>
+                          </LaneContent>
+                        </Lane>
                       )}
-                    </Droppable>
-                  </LaneContent>
-                      </Lane>
-                    )}
-                  </Draggable>
-                ))}
+                    </Draggable>
+                  ),
+                )}
                 {provided.placeholder}
               </ColumnsWrap>
             )}

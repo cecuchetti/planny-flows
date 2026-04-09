@@ -1,6 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import { xor } from 'lodash';
+import xor from 'lodash/xor';
 import { useTranslation } from 'react-i18next';
 
 import {
@@ -31,10 +31,10 @@ const ProjectBoardFilters = ({ projectUsers, defaultFilters, filters, mergeFilte
       <SearchInput
         icon="search"
         value={searchTerm}
-        onChange={value => mergeFilters({ searchTerm: value })}
+        onChange={(value) => mergeFilters({ searchTerm: value })}
       />
       <Avatars>
-        {projectUsers.map(user => (
+        {projectUsers.map((user) => (
           <AvatarIsActiveBorder key={user.id} $isActive={userIds.includes(user.id)}>
             <StyledAvatar
               avatarUrl={user.avatarUrl}

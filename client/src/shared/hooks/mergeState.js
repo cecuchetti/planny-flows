@@ -1,14 +1,14 @@
 import { useState, useCallback } from 'react';
-import { isFunction } from 'lodash';
+import isFunction from 'lodash/isFunction';
 
-const useMergeState = initialState => {
+const useMergeState = (initialState) => {
   const [state, setState] = useState(initialState || {});
 
-  const mergeState = useCallback(newState => {
+  const mergeState = useCallback((newState) => {
     if (isFunction(newState)) {
-      setState(currentState => ({ ...currentState, ...newState(currentState) }));
+      setState((currentState) => ({ ...currentState, ...newState(currentState) }));
     } else {
-      setState(currentState => ({ ...currentState, ...newState }));
+      setState((currentState) => ({ ...currentState, ...newState }));
     }
   }, []);
 

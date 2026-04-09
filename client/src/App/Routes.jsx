@@ -1,10 +1,12 @@
-import React, { useEffect } from 'react';
+import React, { Suspense, lazy, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 
 import { navigationRef } from 'shared/utils/navigationRef';
-import Project from 'Project';
-import Authenticate from 'Auth/Authenticate';
-import PageError from 'shared/components/PageError';
+import PageLoader from 'shared/components/PageLoader';
+
+const Project = lazy(() => import('Project'));
+const Authenticate = lazy(() => import('Auth/Authenticate'));
+const PageError = lazy(() => import('shared/components/PageError'));
 
 const NavigateRefSetter = () => {
   const navigate = useNavigate();
@@ -26,12 +28,14 @@ const RoutesComponent = () => (
   <BrowserRouter future={routesFutureFlags}>
     <>
       <NavigateRefSetter />
-      <Routes>
-        <Route path="/" element={<Navigate to="/project" replace />} />
-        <Route path="/authenticate" element={<Authenticate />} />
-        <Route path="/project/*" element={<Project />} />
-        <Route path="*" element={<PageError />} />
-      </Routes>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route path="/" element={<Navigate to="/project" replace />} />
+          <Route path="/authenticate" element={<Authenticate />} />
+          <Route path="/project/*" element={<Project />} />
+          <Route path="*" element={<PageError />} />
+        </Routes>
+      </Suspense>
     </>
   </BrowserRouter>
 );

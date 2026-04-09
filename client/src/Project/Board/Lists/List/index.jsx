@@ -1,8 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import moment from 'moment';
 import { Droppable } from '@hello-pangea/dnd';
-import { intersection } from 'lodash';
+import intersection from 'lodash/intersection';
 import { useTranslation } from 'react-i18next';
 
 import Issue from './Issue';
@@ -16,7 +15,13 @@ const propTypes = {
   columnDragHandleProps: PropTypes.object,
 };
 
-const ProjectBoardList = ({ status, project, filters, currentUserId = null, columnDragHandleProps = null }) => {
+const ProjectBoardList = ({
+  status,
+  project,
+  filters,
+  currentUserId = null,
+  columnDragHandleProps = null,
+}) => {
   const { t } = useTranslation();
   const filteredIssues = filterIssues(project.issues, filters, currentUserId);
   const filteredListIssues = getSortedListIssues(filteredIssues, status);
@@ -24,7 +29,7 @@ const ProjectBoardList = ({ status, project, filters, currentUserId = null, colu
 
   return (
     <Droppable key={status} droppableId={status}>
-      {provided => (
+      {(provided) => (
         <List $fullWidth={!!columnDragHandleProps}>
           <Title {...columnDragHandleProps}>
             {`${t(`issueStatuses.${status}`)} `}
@@ -57,22 +62,23 @@ const filterIssues = (projectIssues, filters, currentUserId) => {
   let issues = projectIssues;
 
   if (searchTerm) {
-    issues = issues.filter(issue => issue.title.toLowerCase().includes(searchTerm.toLowerCase()));
+    issues = issues.filter((issue) => issue.title.toLowerCase().includes(searchTerm.toLowerCase()));
   }
   if (userIds.length > 0) {
-    issues = issues.filter(issue => intersection(issue.userIds, userIds).length > 0);
+    issues = issues.filter((issue) => intersection(issue.userIds, userIds).length > 0);
   }
   if (myOnly && currentUserId) {
-    issues = issues.filter(issue => issue.userIds.includes(currentUserId));
+    issues = issues.filter((issue) => issue.userIds.includes(currentUserId));
   }
   if (recent) {
-    issues = issues.filter(issue => moment(issue.updatedAt).isAfter(moment().subtract(3, 'days')));
+    const threeDaysAgoTimestamp = Date.now() - 3 * 24 * 60 * 60 * 1000;
+    issues = issues.filter((issue) => new Date(issue.updatedAt).getTime() > threeDaysAgoTimestamp);
   }
   return issues;
 };
 
 const getSortedListIssues = (issues, status) =>
-  issues.filter(issue => issue.status === status).sort((a, b) => a.listPosition - b.listPosition);
+  issues.filter((issue) => issue.status === status).sort((a, b) => a.listPosition - b.listPosition);
 
 const formatIssuesCount = (allListIssues, filteredListIssues) => {
   if (allListIssues.length !== filteredListIssues.length) {

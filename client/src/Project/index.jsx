@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { Suspense, lazy, useState } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
@@ -9,22 +9,18 @@ import { PageLoader, PageError, Modal, Icon } from 'shared/components';
 
 import NavbarLeft from './NavbarLeft';
 import Sidebar from './Sidebar';
-import Board from './Board';
 import IssueSearch from './IssueSearch';
 import IssueCreate from './IssueCreate';
-import ProjectSettings from './ProjectSettings';
-import MyJiraIssues from './MyJiraIssues';
-import QuickActions from './QuickActions';
 import { ProjectCategoryCopy } from 'shared/constants/projects';
-import { 
-  ProjectPage, 
-  ContentCard, 
-  TopBar, 
-  TopBarAvatar, 
-  TopBarTexts, 
-  TopBarName, 
-  TopBarCategory, 
-  BodyRow, 
+import {
+  ProjectPage,
+  ContentCard,
+  TopBar,
+  TopBarAvatar,
+  TopBarTexts,
+  TopBarName,
+  TopBarCategory,
+  BodyRow,
   MainContent,
   MobileMenuButton,
   MobileMenuIcon,
@@ -36,6 +32,18 @@ import {
   MobileLangButton,
 } from './Styles';
 
+const Board = lazy(() => import('./Board'));
+const MyJiraIssues = lazy(() => import('./MyJiraIssues'));
+const QuickActions = lazy(() => import('./QuickActions'));
+const ProjectSettings = lazy(() => import('./ProjectSettings'));
+
+const availableDefaultRoutes = ['board', 'my-jira-issues', 'quick-actions', 'settings'];
+
+const getDefaultProjectRoute = () => {
+  const configuredRoute = process.env.REACT_APP_DEFAULT_PROJECT_ROUTE;
+  return availableDefaultRoutes.includes(configuredRoute) ? configuredRoute : 'board';
+};
+
 const Project = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -44,16 +52,8 @@ const Project = () => {
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const issueSearchModalHelpers = createQueryParamModalHelpers(
-    'issue-search',
-    navigate,
-    location,
-  );
-  const issueCreateModalHelpers = createQueryParamModalHelpers(
-    'issue-create',
-    navigate,
-    location,
-  );
+  const issueSearchModalHelpers = createQueryParamModalHelpers('issue-search', navigate, location);
+  const issueCreateModalHelpers = createQueryParamModalHelpers('issue-create', navigate, location);
 
   const [{ data, error, setLocalData }, fetchProject] = useApi.get('/project');
 
@@ -63,7 +63,7 @@ const Project = () => {
   const { project } = data;
 
   const updateLocalProjectIssues = (issueId, updatedFields) => {
-    setLocalData(currentData => ({
+    setLocalData((currentData) => ({
       project: {
         ...currentData.project,
         issues: updateArrayItemById(currentData.project.issues, issueId, updatedFields),
@@ -101,18 +101,26 @@ const Project = () => {
 
         <BodyRow>
           <Sidebar project={project} />
-          
-          {isMobileMenuOpen && (
-            <MobileDrawerBackdrop onClick={() => setIsMobileMenuOpen(false)} />
-          )}
-          
+
+          {isMobileMenuOpen && <MobileDrawerBackdrop onClick={() => setIsMobileMenuOpen(false)} />}
+
           <MobileDrawer $isOpen={isMobileMenuOpen}>
             <MobileActions>
-              <MobileActionButton onClick={() => { setIsMobileMenuOpen(false); issueSearchModalHelpers.open(); }}>
+              <MobileActionButton
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  issueSearchModalHelpers.open();
+                }}
+              >
                 <Icon type="search" size={18} />
                 {t('nav.searchIssues')}
               </MobileActionButton>
-              <MobileActionButton onClick={() => { setIsMobileMenuOpen(false); issueCreateModalHelpers.open(); }}>
+              <MobileActionButton
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  issueCreateModalHelpers.open();
+                }}
+              >
                 <Icon type="plus" size={18} />
                 {t('nav.createIssue')}
               </MobileActionButton>
@@ -153,7 +161,7 @@ const Project = () => {
                 width={800}
                 withCloseIcon={false}
                 onClose={issueCreateModalHelpers.close}
-                renderContent={modal => (
+                renderContent={(modal) => (
                   <IssueCreate
                     project={project}
                     fetchProject={fetchProject}
@@ -164,13 +172,27 @@ const Project = () => {
               />
             )}
 
-            <Routes>
-              <Route path="board/*" element={<Board project={project} fetchProject={fetchProject} updateLocalProjectIssues={updateLocalProjectIssues} />} />
-              <Route path="my-jira-issues" element={<MyJiraIssues />} />
-              <Route path="quick-actions" element={<QuickActions />} />
-              <Route path="settings" element={<ProjectSettings project={project} fetchProject={fetchProject} />} />
-              <Route index element={<Navigate to="board" replace />} />
-            </Routes>
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                <Route
+                  path="board/*"
+                  element={
+                    <Board
+                      project={project}
+                      fetchProject={fetchProject}
+                      updateLocalProjectIssues={updateLocalProjectIssues}
+                    />
+                  }
+                />
+                <Route path="my-jira-issues" element={<MyJiraIssues />} />
+                <Route path="quick-actions" element={<QuickActions />} />
+                <Route
+                  path="settings"
+                  element={<ProjectSettings project={project} fetchProject={fetchProject} />}
+                />
+                <Route index element={<Navigate to={getDefaultProjectRoute()} replace />} />
+              </Routes>
+            </Suspense>
           </MainContent>
         </BodyRow>
       </ContentCard>

@@ -1,5 +1,5 @@
 import queryString from 'query-string';
-import { omit } from 'lodash';
+import omit from 'lodash/omit';
 
 export const queryStringToObject = (str, options = {}) =>
   queryString.parse(str, {

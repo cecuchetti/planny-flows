@@ -1,6 +1,5 @@
 import React, { useLayoutEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
-import Quill from 'quill';
 import 'quill/dist/quill.snow.css';
 
 import { EditorCont } from './Styles';
@@ -15,8 +14,6 @@ const propTypes = {
   onChange: PropTypes.func,
   getEditor: PropTypes.func,
 };
-
-
 
 const TextEditor = ({
   className = undefined,
@@ -34,23 +31,41 @@ const TextEditor = ({
   const initialValueRef = useRef(defaultValue || alsoDefaultValue || '');
 
   useLayoutEffect(() => {
-    let quill = new Quill($editorRef.current, { placeholder, ...quillConfig });
+    let quill = null;
+    let handleContentsChange = null;
+    let isMounted = true;
 
-    const insertInitialValue = () => {
-      quill.clipboard.dangerouslyPasteHTML(0, initialValueRef.current);
-      quill.blur();
+    const initQuill = async () => {
+      const { default: Quill } = await import('quill');
+      if (!isMounted || !$editorRef.current || !$editorContRef.current) {
+        return;
+      }
+
+      quill = new Quill($editorRef.current, { placeholder, ...quillConfig });
+
+      const insertInitialValue = () => {
+        quill.clipboard.dangerouslyPasteHTML(0, initialValueRef.current);
+        quill.blur();
+      };
+
+      const getHTMLValue = () => $editorContRef.current.querySelector('.ql-editor').innerHTML;
+
+      handleContentsChange = () => {
+        onChange(getHTMLValue());
+      };
+
+      insertInitialValue();
+      getEditor({ getValue: getHTMLValue });
+      quill.on('text-change', handleContentsChange);
     };
-    const handleContentsChange = () => {
-      onChange(getHTMLValue());
-    };
-    const getHTMLValue = () => $editorContRef.current.querySelector('.ql-editor').innerHTML;
 
-    insertInitialValue();
-    getEditor({ getValue: getHTMLValue });
+    initQuill();
 
-    quill.on('text-change', handleContentsChange);
     return () => {
-      quill.off('text-change', handleContentsChange);
+      isMounted = false;
+      if (quill && handleContentsChange) {
+        quill.off('text-change', handleContentsChange);
+      }
       quill = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

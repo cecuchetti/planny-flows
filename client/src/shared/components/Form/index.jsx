@@ -1,7 +1,8 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import { Formik, Form as FormikForm, Field as FormikField } from 'formik';
-import { get, mapValues } from 'lodash';
+import get from 'lodash/get';
+import mapValues from 'lodash/mapValues';
 
 import toast from 'shared/utils/toast';
 import { is, generateErrors } from 'shared/utils/validation';
@@ -16,13 +17,16 @@ const propTypes = {
   validateOnBlur: PropTypes.bool,
 };
 
-
-
-const Form = ({ validate = undefined, validations = undefined, validateOnBlur = false, ...otherProps }) => (
+const Form = ({
+  validate = undefined,
+  validations = undefined,
+  validateOnBlur = false,
+  ...otherProps
+}) => (
   <Formik
     {...otherProps}
     validateOnBlur={validateOnBlur}
-    validate={values => {
+    validate={(values) => {
       if (validate) {
         return validate(values);
       }
@@ -34,9 +38,9 @@ const Form = ({ validate = undefined, validations = undefined, validateOnBlur = 
   />
 );
 
-Form.Element = props => <FormikForm noValidate {...props} />;
+Form.Element = (props) => <FormikForm noValidate {...props} />;
 
-Form.Field = mapValues(Field, FieldComponent => ({ name, validate, ...props }) => (
+Form.Field = mapValues(Field, (FieldComponent) => ({ name, validate, ...props }) => (
   <FormikField name={name} validate={validate}>
     {({ field, form: { touched, errors, setFieldValue } }) => (
       <FieldComponent
@@ -44,7 +48,7 @@ Form.Field = mapValues(Field, FieldComponent => ({ name, validate, ...props }) =
         {...props}
         name={name}
         error={get(touched, name) && get(errors, name)}
-        onChange={value => setFieldValue(name, value)}
+        onChange={(value) => setFieldValue(name, value)}
       />
     )}
   </FormikField>
