@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import moment from 'moment';
+import dayjs from 'shared/utils/dayjs';
 
 import api from 'shared/utils/api';
 import toast from 'shared/utils/toast';
@@ -38,21 +38,21 @@ const TASK_KEY = 'VIS-2';
  * Get the current week (Monday to Sunday)
  */
 function getCurrentWeek() {
-  const startOfWeek = moment().startOf('isoWeek');
+  const startOfWeek = dayjs().startOf('isoWeek');
   const days = [];
-  
+
   for (let i = 0; i < 7; i += 1) {
-    const day = moment(startOfWeek).add(i, 'days');
+    const day = startOfWeek.add(i, 'day');
     days.push({
       date: day.format('YYYY-MM-DD'),
       dayName: day.format('ddd'),
       dayNumber: day.format('D'),
-      isToday: day.isSame(moment(), 'day'),
-      isPast: day.isBefore(moment(), 'day'),
-      isFuture: day.isAfter(moment(), 'day'),
+      isToday: day.isSame(dayjs(), 'day'),
+      isPast: day.isBefore(dayjs(), 'day'),
+      isFuture: day.isAfter(dayjs(), 'day'),
     });
   }
-  
+
   return days;
 }
 
@@ -89,10 +89,10 @@ export default function WeeklyHoursModal({ isOpen = false, onClose, onSubmitted 
     try {
       const data = await api.get(WEEK_HOURS_URL);
       setWeekData(data.days || []);
-      
+
       // Build hours map from response
       const hoursMap = {};
-      (data.days || []).forEach(day => {
+      (data.days || []).forEach((day) => {
         hoursMap[day.date] = day.hoursLogged || 0;
       });
       setHoursByDate(hoursMap);
@@ -102,7 +102,7 @@ export default function WeeklyHoursModal({ isOpen = false, onClose, onSubmitted 
       const weekDays = getCurrentWeek();
       setWeekData(weekDays);
       const hoursMap = {};
-      weekDays.forEach(day => {
+      weekDays.forEach((day) => {
         hoursMap[day.date] = 0;
       });
       setHoursByDate(hoursMap);
@@ -128,7 +128,7 @@ export default function WeeklyHoursModal({ isOpen = false, onClose, onSubmitted 
   const handleHoursChange = useCallback((date, value) => {
     const hours = parseHoursInput(value);
     if (hours !== null) {
-      setHoursByDate(prev => ({
+      setHoursByDate((prev) => ({
         ...prev,
         [date]: hours,
       }));
@@ -136,43 +136,52 @@ export default function WeeklyHoursModal({ isOpen = false, onClose, onSubmitted 
   }, []);
 
   // Save hours for a specific date
-  const saveHours = useCallback(async (date) => {
-    const hours = hoursByDate[date];
-    
-    setSavingDate(date);
-    try {
-      await api.put(UPDATE_HOURS_URL, {
-        date,
-        hours,
-        taskKey: TASK_KEY,
-      });
-      toast.success(t('weeklyHours.hoursSaved'));
-      if (onSubmitted) onSubmitted();
-    } catch (err) {
-      toast.error(err?.message || t('weeklyHours.saveFailed'));
-      // Revert on error
-      fetchWeekHours();
-    } finally {
-      setSavingDate(null);
-      setEditingDate(null);
-    }
-  }, [hoursByDate, t, onSubmitted, fetchWeekHours]);
+  const saveHours = useCallback(
+    async (date) => {
+      const hours = hoursByDate[date];
+
+      setSavingDate(date);
+      try {
+        await api.put(UPDATE_HOURS_URL, {
+          date,
+          hours,
+          taskKey: TASK_KEY,
+        });
+        toast.success(t('weeklyHours.hoursSaved'));
+        if (onSubmitted) onSubmitted();
+      } catch (err) {
+        toast.error(err?.message || t('weeklyHours.saveFailed'));
+        // Revert on error
+        fetchWeekHours();
+      } finally {
+        setSavingDate(null);
+        setEditingDate(null);
+      }
+    },
+    [hoursByDate, t, onSubmitted, fetchWeekHours],
+  );
 
   // Handle input blur
-  const handleBlur = useCallback((date) => {
-    saveHours(date);
-  }, [saveHours]);
+  const handleBlur = useCallback(
+    (date) => {
+      saveHours(date);
+    },
+    [saveHours],
+  );
 
   // Handle key press (Enter to save)
-  const handleKeyPress = useCallback((e, date) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      if (inputRefs.current[date]) {
-        inputRefs.current[date].blur();
+  const handleKeyPress = useCallback(
+    (e, date) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (inputRefs.current[date]) {
+          inputRefs.current[date].blur();
+        }
+        saveHours(date);
       }
-      saveHours(date);
-    }
-  }, [saveHours]);
+    },
+    [saveHours],
+  );
 
   // Handle focus
   const handleFocus = useCallback((date) => {
@@ -185,24 +194,27 @@ export default function WeeklyHoursModal({ isOpen = false, onClose, onSubmitted 
   }, [onClose]);
 
   // Get status for a day
-  const getDayStatus = useCallback((day) => {
-    const hours = hoursByDate[day.date] || 0;
-    
-    // Future days - no status
-    if (day.isFuture) return null;
-    
-    // Past days with 0 hours - incomplete
-    if (day.isPast && hours === 0) return 'incomplete';
-    
-    // Complete (8+ hours)
-    if (hours >= 8) return 'complete';
-    
-    // In progress (some hours but not 8)
-    if (hours > 0) return 'inProgress';
-    
-    // Today with 0 hours
-    return 'incomplete';
-  }, [hoursByDate]);
+  const getDayStatus = useCallback(
+    (day) => {
+      const hours = hoursByDate[day.date] || 0;
+
+      // Future days - no status
+      if (day.isFuture) return null;
+
+      // Past days with 0 hours - incomplete
+      if (day.isPast && hours === 0) return 'incomplete';
+
+      // Complete (8+ hours)
+      if (hours >= 8) return 'complete';
+
+      // In progress (some hours but not 8)
+      if (hours > 0) return 'inProgress';
+
+      // Today with 0 hours
+      return 'incomplete';
+    },
+    [hoursByDate],
+  );
 
   if (!isOpen) {
     return null;
@@ -239,8 +251,8 @@ export default function WeeklyHoursModal({ isOpen = false, onClose, onSubmitted 
                 const isSaving = savingDate === day.date;
 
                 return (
-                  <DayCard 
-                    key={day.date} 
+                  <DayCard
+                    key={day.date}
                     $isToday={day.isToday}
                     $isPast={day.isPast && hours === 0}
                     $isFuture={day.isFuture}
@@ -251,9 +263,11 @@ export default function WeeklyHoursModal({ isOpen = false, onClose, onSubmitted 
                       </DayName>
                       <DayDate $isToday={day.isToday}>{day.dayNumber}</DayDate>
                     </DayHeader>
-                    
+
                     <HoursInput
-                      ref={(el) => { inputRefs.current[day.date] = el; }}
+                      ref={(el) => {
+                        inputRefs.current[day.date] = el;
+                      }}
                       type="number"
                       min="0"
                       max="24"
@@ -266,7 +280,7 @@ export default function WeeklyHoursModal({ isOpen = false, onClose, onSubmitted 
                       disabled={day.isFuture || isSaving}
                       $isEditing={editingDate === day.date}
                     />
-                    
+
                     {isSaving && (
                       <DayLoading>
                         <Spinner size={14} />
@@ -303,10 +317,7 @@ export default function WeeklyHoursModal({ isOpen = false, onClose, onSubmitted 
             <TotalRow>
               <TotalLabel>{t('weeklyHours.totalHours')}</TotalLabel>
               <TotalValue $isComplete={totalHours >= 40}>
-                {totalHours.toFixed(1)}h
-                {totalHours >= 40 && (
-                  <span className="check-icon">✓</span>
-                )}
+                {totalHours.toFixed(1)}h{totalHours >= 40 && <span className="check-icon">✓</span>}
               </TotalValue>
             </TotalRow>
 

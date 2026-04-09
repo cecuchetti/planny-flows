@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { useTranslation } from 'react-i18next';
-import moment from 'moment';
+import dayjs from 'shared/utils/dayjs';
 
 import api from 'shared/utils/api';
 import toast from 'shared/utils/toast';
@@ -34,11 +34,15 @@ export default function TimeEntryModal({ issue, onClose, onSaved = () => {} }) {
   useEffect(() => {
     const statusLower = (issue.status || '').toLowerCase();
     if (statusLower.includes('progress') || statusLower.includes('pending deployment')) {
-      api.get(`${ISSUES_URL}/${issue.key}/transitions`)
+      api
+        .get(`${ISSUES_URL}/${issue.key}/transitions`)
         .then((data) => {
           const transitions = data.transitions || [];
-          const closeTransition = transitions.find((transition) =>
-            transition.toStatus && (transition.toStatus.toLowerCase() === 'closed' || transition.toStatus.toLowerCase() === 'done')
+          const closeTransition = transitions.find(
+            (transition) =>
+              transition.toStatus &&
+              (transition.toStatus.toLowerCase() === 'closed' ||
+                transition.toStatus.toLowerCase() === 'done'),
           );
           if (closeTransition) {
             setCanClose(true);
@@ -49,29 +53,32 @@ export default function TimeEntryModal({ issue, onClose, onSaved = () => {} }) {
     }
   }, [issue.key, issue.status]);
 
-  const handleSubmit = useCallback(async (formData) => {
-    const { parsedTime, date, description } = formData;
+  const handleSubmit = useCallback(
+    async (formData) => {
+      const { parsedTime, date, description } = formData;
 
-    const startedAt = moment(date).utc().format();
-    setIsSubmitting(true);
+      const startedAt = dayjs(date).utc().format();
+      setIsSubmitting(true);
 
-    try {
-      await api.post(WORKLOGS_URL, {
-        target: 'JIRA',
-        externalIssueKey: issue.key,
-        timeSpentSeconds: parsedTime,
-        description,
-        startedAt,
-      });
-      toast.success(t('timeEntry.saved'));
-      onSaved();
-      onClose();
-    } catch (err) {
-      toast.error(err?.message || t('timeEntry.saveFailed'));
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [issue.key, onSaved, onClose, t]);
+      try {
+        await api.post(WORKLOGS_URL, {
+          target: 'JIRA',
+          externalIssueKey: issue.key,
+          timeSpentSeconds: parsedTime,
+          description,
+          startedAt,
+        });
+        toast.success(t('timeEntry.saved'));
+        onSaved();
+        onClose();
+      } catch (err) {
+        toast.error(err?.message || t('timeEntry.saveFailed'));
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    [issue.key, onSaved, onClose, t],
+  );
 
   const handleCloseIssue = useCallback(async () => {
     if (!closeTransitionId) return;

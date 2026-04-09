@@ -1,8 +1,8 @@
 import React, { useLayoutEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
-import moment from 'moment';
-import { range } from 'lodash';
+import range from 'lodash/range';
 
+import dayjs from 'shared/utils/dayjs';
 import { formatDate, formatDateTimeForAPI } from 'shared/utils/dateTime';
 
 import { TimeSection, Time } from './Styles';
@@ -15,8 +15,6 @@ const propTypes = {
   setDropdownOpen: PropTypes.func.isRequired,
 };
 
-
-
 const DatePickerTimeSection = ({ value = undefined, onChange, setDropdownOpen }) => {
   const $sectionRef = useRef();
 
@@ -24,20 +22,21 @@ const DatePickerTimeSection = ({ value = undefined, onChange, setDropdownOpen })
     scrollToSelectedTime($sectionRef.current, value);
   }, [value]);
 
-  const handleTimeChange = newTime => {
+  const handleTimeChange = (newTime) => {
     const [newHour, newMinute] = newTime.split(':');
 
-    const existingDateWithNewTime = moment(value).set({
-      hour: Number(newHour),
-      minute: Number(newMinute),
-    });
+    const existingDateWithNewTime = dayjs(value)
+      .hour(Number(newHour))
+      .minute(Number(newMinute))
+      .second(0)
+      .millisecond(0);
     onChange(formatDateTimeForAPI(existingDateWithNewTime));
     setDropdownOpen(false);
   };
 
   return (
     <TimeSection ref={$sectionRef}>
-      {generateTimes().map(time => (
+      {generateTimes().map((time) => (
         <Time
           key={time}
           data-time={time}
@@ -51,7 +50,7 @@ const DatePickerTimeSection = ({ value = undefined, onChange, setDropdownOpen })
   );
 };
 
-const formatTime = value => formatDate(value, 'HH:mm');
+const formatTime = (value) => formatDate(value, 'HH:mm');
 
 const scrollToSelectedTime = ($scrollCont, value) => {
   if (!$scrollCont) return;
@@ -63,7 +62,7 @@ const scrollToSelectedTime = ($scrollCont, value) => {
 };
 
 const generateTimes = () =>
-  range(48).map(i => {
+  range(48).map((i) => {
     const hour = `${Math.floor(i / 2)}`;
     const paddedHour = hour.length < 2 ? `0${hour}` : hour;
     const minute = i % 2 === 0 ? '00' : '30';

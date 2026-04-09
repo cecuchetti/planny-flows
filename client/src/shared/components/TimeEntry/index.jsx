@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { useTranslation } from 'react-i18next';
-import moment from 'moment';
+import dayjs from 'shared/utils/dayjs';
 
 import { Modal, Button, Input, DatePicker } from 'shared/components';
 import toast from 'shared/utils/toast';
@@ -167,8 +167,11 @@ export default function TimeEntry({
 
   // Default initial values
   // Always default to 16:30 (4:30 PM) even when withTime=false
-  const defaultDate = moment()
-    .set({ hour: 16, minute: 30, second: 0, millisecond: 0 })
+  const defaultDate = dayjs()
+    .hour(16)
+    .minute(30)
+    .second(0)
+    .millisecond(0)
     .format('YYYY-MM-DDTHH:mm');
 
   // Form state
@@ -179,14 +182,14 @@ export default function TimeEntry({
   const [timeError, setTimeError] = useState('');
 
   // Extract date and time for separate inputs
-  const datePart = withTime && dateValue && dateValue.includes('T') 
-    ? dateValue.split('T')[0] 
-    : dateValue;
-  
-  const timePart = withTime && dateValue && dateValue.includes('T')
-    ? formatTimeForDisplay(dateValue.split('T')[1])
-    : '4:30 PM';
-  
+  const datePart =
+    withTime && dateValue && dateValue.includes('T') ? dateValue.split('T')[0] : dateValue;
+
+  const timePart =
+    withTime && dateValue && dateValue.includes('T')
+      ? formatTimeForDisplay(dateValue.split('T')[1])
+      : '4:30 PM';
+
   const [timeInput, setTimeInput] = useState(timePart);
 
   // Reset form when modal opens/closes
@@ -198,18 +201,25 @@ export default function TimeEntry({
       setHoursError('');
       setTimeError('');
       // Reset time input based on initial date
-      const initialTime = withTime && initialValues.date && initialValues.date.includes('T')
-        ? formatTimeForDisplay(initialValues.date.split('T')[1])
-        : '4:30 PM';
+      const initialTime =
+        withTime && initialValues.date && initialValues.date.includes('T')
+          ? formatTimeForDisplay(initialValues.date.split('T')[1])
+          : '4:30 PM';
       setTimeInput(initialTime);
     }
-  }, [isOpen, initialValues.hours, initialValues.date, initialValues.description, defaultDate, withTime]);
+  }, [
+    isOpen,
+    initialValues.hours,
+    initialValues.date,
+    initialValues.description,
+    defaultDate,
+    withTime,
+  ]);
 
   const parseHours = useCallback(
-    (input) => (timeMode === 'seconds'
-      ? parseHoursToSeconds(input)
-      : parseDurationToMinutes(input)),
-    [timeMode]
+    (input) =>
+      timeMode === 'seconds' ? parseHoursToSeconds(input) : parseDurationToMinutes(input),
+    [timeMode],
   );
 
   const validateHoursInternal = useCallback(
@@ -235,7 +245,7 @@ export default function TimeEntry({
       setHoursError('');
       return parsed;
     },
-    [customValidateHours, parseHours, errorMessages, t]
+    [customValidateHours, parseHours, errorMessages, t],
   );
 
   const handleHoursBlur = useCallback(() => {
@@ -261,23 +271,26 @@ export default function TimeEntry({
         onDateChange(newDateValue);
       }
     },
-    [onDateChange, withTime, timeInput]
+    [onDateChange, withTime, timeInput],
   );
 
-  const handleTimeChange = useCallback((value) => {
-    setTimeInput(value);
-    const error = validateTimeInput(value);
-    setTimeError(error || '');
-    
-    // Update dateValue with new time if valid
-    if (!error && datePart) {
-      const parsedTime = parseTimeInput(value);
-      if (parsedTime) {
-        const newDateValue = `${datePart}T${parsedTime.hours}:${parsedTime.minutes}`;
-        setDateValue(newDateValue);
+  const handleTimeChange = useCallback(
+    (value) => {
+      setTimeInput(value);
+      const error = validateTimeInput(value);
+      setTimeError(error || '');
+
+      // Update dateValue with new time if valid
+      if (!error && datePart) {
+        const parsedTime = parseTimeInput(value);
+        if (parsedTime) {
+          const newDateValue = `${datePart}T${parsedTime.hours}:${parsedTime.minutes}`;
+          setDateValue(newDateValue);
+        }
       }
-    }
-  }, [datePart]);
+    },
+    [datePart],
+  );
 
   const handleSubmit = useCallback(
     async (e) => {
@@ -311,7 +324,7 @@ export default function TimeEntry({
       onSubmit,
       errorMessages.descriptionTooLong,
       t,
-    ]
+    ],
   );
 
   const handleCloseEntity = useCallback(async () => {
@@ -335,10 +348,7 @@ export default function TimeEntry({
       withCloseIcon
       renderContent={() => (
         <ModalContents>
-          <ModalHeader
-            $gradientStart={headerGradient.start}
-            $gradientEnd={headerGradient.end}
-          >
+          <ModalHeader $gradientStart={headerGradient.start} $gradientEnd={headerGradient.end}>
             <HeaderRow>
               {entityKey && (
                 <KeyBadge
@@ -364,9 +374,7 @@ export default function TimeEntry({
               )}
 
               <Field>
-                <Label>
-                  {labels.hours || t('timeEntry.hoursLogged')} *
-                </Label>
+                <Label>{labels.hours || t('timeEntry.hoursLogged')} *</Label>
                 <InputWrapper>
                   <Input
                     value={hoursInput}
@@ -387,14 +395,12 @@ export default function TimeEntry({
               </Field>
 
               <Field>
-                <Label>{labels.date || (withTime ? t('timeEntry.dateAndTime') : t('timeEntry.date'))} *</Label>
+                <Label>
+                  {labels.date || (withTime ? t('timeEntry.dateAndTime') : t('timeEntry.date'))} *
+                </Label>
                 <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
                   <DatePickerWrapper style={{ flex: 1 }}>
-                    <DatePicker
-                      withTime={false}
-                      value={datePart}
-                      onChange={handleDateChange}
-                    />
+                    <DatePicker withTime={false} value={datePart} onChange={handleDateChange} />
                   </DatePickerWrapper>
                   {withTime && (
                     <InputWrapper style={{ flex: '0 0 120px' }}>
@@ -427,7 +433,9 @@ export default function TimeEntry({
                     <Input
                       value={description}
                       onChange={setDescription}
-                      placeholder={placeholders.description || t('timeEntry.descriptionPlaceholder')}
+                      placeholder={
+                        placeholders.description || t('timeEntry.descriptionPlaceholder')
+                      }
                     />
                   </DescriptionWrapper>
                 </Field>
@@ -467,42 +475,42 @@ function formatTimeForDisplay(timeStr) {
   const [hoursStr, minutesStr] = timeStr.split(':');
   const hours = parseInt(hoursStr, 10);
   const minutes = parseInt(minutesStr, 10);
-  
+
   if (Number.isNaN(hours) || Number.isNaN(minutes)) return '4:30 PM';
-  
+
   const period = hours >= 12 ? 'PM' : 'AM';
   const displayHours = hours % 12 || 12;
   const displayMinutes = String(minutes).padStart(2, '0');
-  
+
   return `${displayHours}:${displayMinutes} ${period}`;
 }
 
 function parseTimeInput(input) {
   if (!input || typeof input !== 'string') return null;
-  
+
   const trimmed = input.trim().toLowerCase();
-  
+
   // Try "4:30 PM" or "16:30" format
   const match = trimmed.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/);
   if (!match) return null;
-  
+
   let hours = parseInt(match[1], 10);
   const minutes = parseInt(match[2], 10);
   const period = match[3];
-  
+
   if (Number.isNaN(hours) || Number.isNaN(minutes)) return null;
   if (minutes < 0 || minutes > 59) return null;
-  
+
   // Handle AM/PM
   if (period === 'pm' && hours < 12) hours += 12;
   if (period === 'am' && hours === 12) hours = 0;
-  
+
   // Validate hours (0-23)
   if (hours < 0 || hours > 23) return null;
-  
+
   return {
     hours: String(hours).padStart(2, '0'),
-    minutes: String(minutes).padStart(2, '0')
+    minutes: String(minutes).padStart(2, '0'),
   };
 }
 

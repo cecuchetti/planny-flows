@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import moment from 'moment';
+import dayjs from 'shared/utils/dayjs';
 
 import api from 'shared/utils/api';
 import toast from 'shared/utils/toast';
@@ -17,7 +17,7 @@ export default function TempoExportModal({ isOpen = false, onClose, onSubmitted 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hoursStatus, setHoursStatus] = useState(null);
   const [startDate, setStartDate] = useState(() =>
-    moment().set({ hour: 16, minute: 30, second: 0, millisecond: 0 }).format('YYYY-MM-DDTHH:mm')
+    dayjs().hour(16).minute(30).second(0).millisecond(0).format('YYYY-MM-DDTHH:mm'),
   );
 
   // Fetch hours for a specific date
@@ -40,31 +40,35 @@ export default function TempoExportModal({ isOpen = false, onClose, onSubmitted 
     }
   }, [isOpen, startDate, fetchHoursForDate]);
 
-  const handleSubmit = useCallback(async (formData) => {
-    const { parsedTime, date, description } = formData;
+  const handleSubmit = useCallback(
+    async (formData) => {
+      const { parsedTime, date, description } = formData;
 
-    setIsSubmitting(true);
-    try {
-      await api.post(TEMPO_EXPORT_URL, {
-        startDate: date,
-        durationMinutes: parsedTime,
-        taskKey: TASK_KEY,
-        description: description.trim() || undefined,
-      });
-      toast.success(t('tempoExport.exportSuccess'));
-      if (onSubmitted) onSubmitted();
-      onClose();
-    } catch (err) {
-      toast.error(err?.message || t('tempoExport.exportFailed'));
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [onClose, onSubmitted, t]);
+      setIsSubmitting(true);
+      try {
+        await api.post(TEMPO_EXPORT_URL, {
+          startDate: date,
+          durationMinutes: parsedTime,
+          taskKey: TASK_KEY,
+          description: description.trim() || undefined,
+        });
+        toast.success(t('tempoExport.exportSuccess'));
+        if (onSubmitted) onSubmitted();
+        onClose();
+      } catch (err) {
+        toast.error(err?.message || t('tempoExport.exportFailed'));
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    [onClose, onSubmitted, t],
+  );
 
   // Build warning message
-  const warning = hoursStatus?.hoursLogged >= 8
-    ? t('tempoExport.hoursCompleteWarning', { hours: hoursStatus.hoursLogged })
-    : null;
+  const warning =
+    hoursStatus?.hoursLogged >= 8
+      ? t('tempoExport.hoursCompleteWarning', { hours: hoursStatus.hoursLogged })
+      : null;
 
   // Handle date change from TimeEntry component
   const handleDateChange = useCallback((date) => {

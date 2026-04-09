@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import { useTranslation } from 'react-i18next';
-import moment from 'moment';
-import 'moment/locale/es';
 import styled from 'styled-components';
 
 import api from 'shared/utils/api';
+import dayjs from 'shared/utils/dayjs';
 import toast from 'shared/utils/toast';
 import { Modal, Button, Input } from 'shared/components';
 
@@ -84,8 +83,8 @@ const CalendarInputWrap = styled.div`
 const WORKLOGS_HOURS_BY_DATE_URL = '/api/v1/jira/worklogs/hours-by-date';
 
 function getWeekStartEnd() {
-  const monday = moment().clone().isoWeekday(1);
-  const sunday = monday.clone().add(6, 'days');
+  const monday = dayjs().isoWeekday(1);
+  const sunday = monday.add(6, 'day');
   return {
     from: monday.format('YYYY-MM-DD'),
     to: sunday.format('YYYY-MM-DD'),
@@ -93,8 +92,8 @@ function getWeekStartEnd() {
 }
 
 function getWeekDays(fromDate) {
-  const start = moment(fromDate, 'YYYY-MM-DD');
-  return Array.from({ length: 7 }, (_, i) => start.clone().add(i, 'days'));
+  const start = dayjs(fromDate);
+  return Array.from({ length: 7 }, (_, i) => start.add(i, 'day'));
 }
 
 function secondsToHours(seconds) {
@@ -116,8 +115,6 @@ const propTypes = {
   onSaved: PropTypes.func,
 };
 
-
-
 export default function HoursByDateModal({ isOpen, onClose, onSaved = () => {} }) {
   const { t, i18n } = useTranslation();
   const [items, setItems] = useState([]);
@@ -127,7 +124,7 @@ export default function HoursByDateModal({ isOpen, onClose, onSaved = () => {} }
 
   useEffect(() => {
     const lang = i18n.language && i18n.language.startsWith('es') ? 'es' : 'en';
-    moment.locale(lang);
+    dayjs.locale(lang);
   }, [i18n.language]);
 
   const { from, to } = getWeekStartEnd();
@@ -171,8 +168,8 @@ export default function HoursByDateModal({ isOpen, onClose, onSaved = () => {} }
         await api.patch(`${WORKLOGS_HOURS_BY_DATE_URL}/${dateStr}`, { totalSeconds });
         setItems((prev) => {
           const rest = prev.filter((r) => r.workDate !== dateStr);
-          return [...rest, { workDate: dateStr, totalSeconds }].sort(
-            (a, b) => a.workDate.localeCompare(b.workDate)
+          return [...rest, { workDate: dateStr, totalSeconds }].sort((a, b) =>
+            a.workDate.localeCompare(b.workDate),
           );
         });
         toast.success(t('myJiraIssues.hoursSaved'));
@@ -183,7 +180,7 @@ export default function HoursByDateModal({ isOpen, onClose, onSaved = () => {} }
         setSaving(null);
       }
     },
-    [items, onSaved, t]
+    [items, onSaved, t],
   );
 
   return (

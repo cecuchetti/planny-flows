@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import moment from 'moment';
+import dayjs from 'shared/utils/dayjs';
 
 import api from 'shared/utils/api';
 import toast from 'shared/utils/toast';
@@ -78,7 +78,7 @@ export default function QuickActions() {
   const fetchTodayHours = useCallback(async () => {
     setIsLoadingHours(true);
     try {
-      const today = moment().format('YYYY-MM-DD');
+      const today = dayjs().format('YYYY-MM-DD');
       const data = await api.get(`/quick-actions/actions/tempo-export/hours?date=${today}`);
       setTodayHoursStatus(data);
       setHoursFetchError(false);
@@ -148,7 +148,7 @@ export default function QuickActions() {
             stopPolling();
             return;
           }
-          
+
           if (Date.now() - start > POLL_TIMEOUT_MS) {
             stopPolling();
             toast.error(t('quickActions.actions.error'));
@@ -156,13 +156,13 @@ export default function QuickActions() {
           }
           try {
             const statusData = await api.get(action.statusEndpoint);
-            
+
             // Check mount state again after async operation
             if (!isMountedRef.current) {
               stopPolling();
               return;
             }
-            
+
             const { status, lastRun } = statusData || {};
 
             if (status === 'success') {
@@ -172,12 +172,18 @@ export default function QuickActions() {
             }
             if (status === 'failed' && lastRun?.message) {
               stopPolling();
-              toast.error(t('quickActions.actions.outlookClean.failed', { message: lastRun.message }));
+              toast.error(
+                t('quickActions.actions.outlookClean.failed', { message: lastRun.message }),
+              );
               return;
             }
             if (status === 'failed') {
               stopPolling();
-              toast.error(t('quickActions.actions.outlookClean.failed', { message: t('quickActions.actions.error') }));
+              toast.error(
+                t('quickActions.actions.outlookClean.failed', {
+                  message: t('quickActions.actions.error'),
+                }),
+              );
             }
           } catch (_) {
             // Keep polling on network errors
@@ -231,11 +237,13 @@ export default function QuickActions() {
                 <Spinner size={14} />
               </HoursStatus>
             )}
-            {action.id === 'tempo-export' && !isLoadingHours && todayHoursStatus?.hoursLogged > 0 && (
-              <HoursStatus $isComplete={todayHoursStatus.isComplete}>
-                {t('tempoExport.hoursLoggedToday', { hours: todayHoursStatus.hoursLogged })}
-              </HoursStatus>
-            )}
+            {action.id === 'tempo-export' &&
+              !isLoadingHours &&
+              todayHoursStatus?.hoursLogged > 0 && (
+                <HoursStatus $isComplete={todayHoursStatus.isComplete}>
+                  {t('tempoExport.hoursLoggedToday', { hours: todayHoursStatus.hoursLogged })}
+                </HoursStatus>
+              )}
             {action.id === 'tempo-export' && hoursFetchError && (
               <HoursFetchError>
                 <Icon type="alert" size={12} />
