@@ -7,11 +7,13 @@ export const StyledDatePicker = styled.div`
 `;
 
 export const Dropdown = styled.div`
-  z-index: ${zIndexValues.dropdown};
+  z-index: ${zIndexValues.modal + 10};
   position: absolute;
   top: 130%;
   right: 0;
   width: 270px;
+  max-height: 320px;
+  overflow-y: auto;
   border-radius: 3px;
   background: #fff;
   ${mixin.boxShadowDropdown}
@@ -20,6 +22,7 @@ export const Dropdown = styled.div`
     css`
       width: 360px;
       padding-right: 90px;
+      max-height: 360px;
     `}
 `;
 

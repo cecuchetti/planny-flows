@@ -39,12 +39,17 @@ const DatePickerDateSection = ({ withTime = true, value = undefined, onChange, s
   };
 
   const handleDayChange = newDate => {
-    const existingHour = value ? moment(value).hour() : '00';
-    const existingMinute = value ? moment(value).minute() : '00';
+    // When withTime=false, always use 16:30 as the default time
+    // When withTime=true, preserve the existing time or default to 16:30
+    const defaultHour = 16;
+    const defaultMinute = 30;
+
+    const existingHour = value ? moment(value).hour() : defaultHour;
+    const existingMinute = value ? moment(value).minute() : defaultMinute;
 
     const newDateWithExistingTime = newDate.set({
-      hour: existingHour,
-      minute: existingMinute,
+      hour: withTime ? existingHour : defaultHour,
+      minute: withTime ? existingMinute : defaultMinute,
     });
     onChange(formatDateTimeForAPI(newDateWithExistingTime));
 

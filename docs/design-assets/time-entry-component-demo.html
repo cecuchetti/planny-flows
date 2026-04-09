@@ -1,0 +1,1424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Time Entry Component - Design System</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        
+        :root {
+            /* Color Tokens */
+            --color-primary: #3b6cf0;
+            --color-success: #16a34a;
+            --color-danger: #dc2626;
+            --color-warning: #d97706;
+            
+            --color-text-darkest: #111827;
+            --color-text-dark: #374151;
+            --color-text-medium: #6b7280;
+            --color-text-light: #9ca3af;
+            
+            --color-bg-lightest: #f9fafb;
+            --color-bg-light: #f3f4f6;
+            --color-bg-medium: #e5e7eb;
+            
+            --color-border-lightest: #e5e7eb;
+            --color-border-light: #d1d5db;
+            --color-border-focus: #3b6cf0;
+            
+            /* Violet Gradient */
+            --violet-gradient-start: #f5f3ff;
+            --violet-gradient-end: #ede9fe;
+            --violet-border-light: #ddd6fe;
+            --violet-badge-bg: #ede9fe;
+            --violet-badge-border: #c4b5fd;
+            --violet-badge-text: #6d28d9;
+            
+            /* Warning */
+            --warning-bg: #fef3c7;
+            --warning-border: #fcd34d;
+            --warning-text: #92400e;
+            
+            /* Calendar */
+            --calendar-has-hours-bg: #dcfce7;
+            --calendar-has-hours-text: #166534;
+            --calendar-partial-bg: #fef3c7;
+            
+            /* Spacing */
+            --space-1: 4px;
+            --space-2: 8px;
+            --space-3: 12px;
+            --space-4: 16px;
+            --space-6: 24px;
+            --space-8: 32px;
+            
+            /* Radius */
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 16px;
+            --radius-pill: 9999px;
+            
+            /* Shadows */
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            --shadow-dropdown: 0 10px 15px -3px rgba(0, 0, 0, 0.08);
+            
+            /* Typography */
+            --font-family: 'Inter', system-ui, sans-serif;
+            --font-size-xs: 11px;
+            --font-size-sm: 13px;
+            --font-size-base: 14px;
+            --font-size-lg: 16px;
+            --font-size-xl: 20px;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: var(--font-family);
+            background: linear-gradient(135deg, #fce7f3 0%, #ede9fe 100%);
+            min-height: 100vh;
+            padding: var(--space-8);
+            color: var(--color-text-darkest);
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: var(--space-2);
+            color: var(--color-text-darkest);
+        }
+        
+        .subtitle {
+            color: var(--color-text-medium);
+            margin-bottom: var(--space-8);
+            font-size: var(--font-size-base);
+        }
+        
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--space-8);
+            margin-bottom: var(--space-8);
+        }
+        
+        @media (max-width: 1024px) {
+            .comparison-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .variant-card {
+            background: white;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+            overflow: hidden;
+        }
+        
+        .variant-header {
+            padding: var(--space-4) var(--space-6);
+            background: var(--color-bg-lightest);
+            border-bottom: 1px solid var(--color-border-lightest);
+        }
+        
+        .variant-title {
+            font-size: var(--font-size-lg);
+            font-weight: 600;
+            color: var(--color-text-darkest);
+        }
+        
+        .variant-desc {
+            font-size: var(--font-size-sm);
+            color: var(--color-text-medium);
+            margin-top: var(--space-1);
+        }
+        
+        .variant-content {
+            padding: var(--space-6);
+            display: flex;
+            justify-content: center;
+        }
+        
+        /* Modal Component */
+        .modal-overlay {
+            background: rgba(0, 0, 0, 0.5);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .modal {
+            background: white;
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-lg);
+            overflow: hidden;
+            transform: scale(0.95);
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        
+        .modal-overlay.active .modal {
+            transform: scale(1);
+        }
+        
+        .modal-compact {
+            width: 460px;
+        }
+        
+        .modal-full {
+            width: 480px;
+        }
+        
+        /* Modal Header */
+        .modal-header {
+            background: linear-gradient(135deg, var(--violet-gradient-start) 0%, var(--violet-gradient-end) 100%);
+            border-bottom: 1px solid var(--violet-border-light);
+            padding: 20px 28px 18px;
+        }
+        
+        .modal-header-compact {
+            padding: 16px 24px 14px;
+        }
+        
+        .header-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 3px 10px;
+            border-radius: var(--radius-pill);
+            background: var(--violet-badge-bg);
+            border: 1px solid var(--violet-badge-border);
+            color: var(--violet-badge-text);
+            font-weight: 500;
+            font-size: var(--font-size-sm);
+            line-height: 1.4;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        
+        .modal-title {
+            margin: 0;
+            font-weight: 700;
+            font-size: var(--font-size-lg);
+            color: var(--color-text-darkest);
+            line-height: 1.35;
+        }
+        
+        .modal-subtitle {
+            margin: 5px 0 0;
+            font-size: var(--font-size-base);
+            color: var(--color-text-medium);
+            line-height: 1.6;
+            font-weight: normal;
+        }
+        
+        /* Modal Body */
+        .modal-body {
+            padding: 28px 32px 28px;
+        }
+        
+        .modal-body-compact {
+            padding: 24px 28px 24px;
+        }
+        
+        /* Warning Banner */
+        .warning-banner {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            margin-bottom: 20px;
+            background: var(--warning-bg);
+            border: 1px solid var(--warning-border);
+            border-radius: var(--radius-sm);
+            color: var(--warning-text);
+            font-size: var(--font-size-base);
+            line-height: 1.5;
+            animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        
+        .warning-icon {
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+        
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* Form Fields */
+        .field {
+            margin-bottom: 20px;
+        }
+        
+        .field-compact {
+            margin-bottom: 16px;
+        }
+        
+        .label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--color-text-dark);
+            font-weight: 500;
+            font-size: var(--font-size-base);
+            line-height: 1.5;
+        }
+        
+        .label-compact {
+            margin-bottom: 6px;
+            font-size: var(--font-size-sm);
+        }
+        
+        .input-wrapper {
+            position: relative;
+        }
+        
+        .input-wrapper-constrained {
+            max-width: 250px;
+        }
+        
+        .input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--color-border-light);
+            border-radius: var(--radius-sm);
+            font-size: var(--font-size-base);
+            font-family: inherit;
+            background: white;
+            transition: all 0.15s ease;
+            outline: none;
+        }
+        
+        .input:hover {
+            border-color: var(--color-border-focus);
+        }
+        
+        .input:focus {
+            border-color: var(--color-border-focus);
+            box-shadow: 0 0 0 3px rgba(59, 108, 240, 0.1);
+        }
+        
+        .input-invalid {
+            border-color: var(--color-danger);
+            box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+        }
+        
+        .input-with-icon {
+            padding-left: 36px;
+        }
+        
+        .input-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--color-text-light);
+            font-size: 14px;
+        }
+        
+        .hint {
+            margin-top: 6px;
+            font-size: var(--font-size-sm);
+            color: var(--color-text-light);
+            line-height: 1.5;
+        }
+        
+        .hint-error {
+            color: var(--color-danger);
+            font-weight: 500;
+        }
+        
+        /* DatePicker */
+        .datepicker-wrapper {
+            position: relative;
+        }
+        
+        .datepicker-dropdown {
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 0;
+            z-index: 101;
+            background: white;
+            border-radius: var(--radius-sm);
+            box-shadow: var(--shadow-dropdown);
+            padding: 20px;
+            width: 270px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        
+        .datepicker-dropdown.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+        
+        .datepicker-dropdown-wide {
+            width: 360px;
+            padding-right: 90px;
+        }
+        
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .calendar-month {
+            font-weight: 700;
+            font-size: 16px;
+        }
+        
+        .calendar-nav {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .calendar-nav-btn {
+            background: none;
+            border: none;
+            padding: 4px 8px;
+            cursor: pointer;
+            color: var(--color-text-light);
+            font-size: 18px;
+            transition: color 0.15s ease;
+        }
+        
+        .calendar-nav-btn:hover {
+            color: var(--color-text-darkest);
+        }
+        
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 2px;
+            text-align: center;
+        }
+        
+        .calendar-day-name {
+            font-size: var(--font-size-sm);
+            color: var(--color-text-light);
+            padding: 5px;
+            font-weight: 500;
+        }
+        
+        .calendar-day {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            position: relative;
+            transition: all 0.15s ease;
+        }
+        
+        .calendar-day:hover {
+            background: var(--color-bg-medium);
+        }
+        
+        .calendar-day.today {
+            font-weight: 700;
+        }
+        
+        .calendar-day.selected {
+            background: var(--color-primary);
+            color: white;
+        }
+        
+        .calendar-day.selected:hover {
+            background: var(--color-primary);
+        }
+        
+        .calendar-day.has-hours::after {
+            content: '';
+            position: absolute;
+            bottom: 3px;
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: var(--color-success);
+        }
+        
+        .calendar-day.has-hours.selected::after {
+            background: white;
+        }
+        
+        .calendar-day.complete {
+            background: var(--calendar-has-hours-bg);
+            color: var(--calendar-has-hours-text);
+        }
+        
+        .calendar-day.partial {
+            background: var(--calendar-partial-bg);
+        }
+        
+        .calendar-day.other-month {
+            color: var(--color-text-light);
+        }
+        
+        /* Time Section */
+        .time-section {
+            position: absolute;
+            top: 0;
+            right: 0;
+            height: 100%;
+            width: 90px;
+            padding: 5px 0;
+            border-left: 1px solid var(--color-border-lightest);
+            overflow-y: auto;
+        }
+        
+        .time-option {
+            padding: 5px 0 5px 20px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+        
+        .time-option:hover {
+            background: var(--color-bg-medium);
+        }
+        
+        .time-option.selected {
+            background: var(--color-primary);
+            color: white;
+        }
+        
+        /* Actions */
+        .actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-top: 8px;
+            padding-top: 20px;
+            border-top: 1px solid var(--color-border-lightest);
+        }
+        
+        .actions-compact {
+            padding-top: 16px;
+        }
+        
+        .actions-right {
+            display: flex;
+            gap: 8px;
+            margin-left: auto;
+        }
+        
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 16px;
+            border-radius: var(--radius-sm);
+            font-size: var(--font-size-base);
+            font-weight: 500;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            border: none;
+            outline: none;
+        }
+        
+        .btn:focus-visible {
+            outline: 2px solid var(--color-primary);
+            outline-offset: 2px;
+        }
+        
+        .btn-primary {
+            background: var(--color-primary);
+            color: white;
+        }
+        
+        .btn-primary:hover:not(:disabled) {
+            background: #2d5ce0;
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+        
+        .btn-danger {
+            background: var(--color-danger);
+            color: white;
+        }
+        
+        .btn-danger:hover:not(:disabled) {
+            background: #b91c1c;
+        }
+        
+        .btn-empty {
+            background: transparent;
+            color: var(--color-text-dark);
+        }
+        
+        .btn-empty:hover:not(:disabled) {
+            background: var(--color-bg-light);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .btn-working {
+            position: relative;
+            color: transparent;
+        }
+        
+        .btn-working::after {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Demo Controls */
+        .demo-controls {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: var(--space-6);
+            margin-bottom: var(--space-8);
+            box-shadow: var(--shadow-md);
+        }
+        
+        .demo-title {
+            font-size: var(--font-size-lg);
+            font-weight: 600;
+            margin-bottom: var(--space-4);
+        }
+        
+        .control-group {
+            display: flex;
+            gap: var(--space-4);
+            flex-wrap: wrap;
+        }
+        
+        .control-btn {
+            padding: 10px 20px;
+            background: var(--color-primary);
+            color: white;
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.15s ease;
+        }
+        
+        .control-btn:hover {
+            background: #2d5ce0;
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+        
+        /* Design Tokens Section */
+        .tokens-section {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: var(--space-6);
+            margin-bottom: var(--space-8);
+            box-shadow: var(--shadow-md);
+        }
+        
+        .tokens-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: var(--space-4);
+            margin-top: var(--space-4);
+        }
+        
+        .token-item {
+            padding: var(--space-4);
+            background: var(--color-bg-lightest);
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--color-border-lightest);
+        }
+        
+        .token-name {
+            font-weight: 600;
+            font-size: var(--font-size-sm);
+            margin-bottom: var(--space-2);
+        }
+        
+        .token-value {
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: var(--font-size-xs);
+            color: var(--color-text-medium);
+        }
+        
+        .color-preview {
+            width: 100%;
+            height: 30px;
+            border-radius: var(--radius-sm);
+            margin-top: var(--space-2);
+            border: 1px solid var(--color-border-light);
+        }
+        
+        /* States Demo */
+        .states-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: var(--space-4);
+            margin-top: var(--space-4);
+        }
+        
+        .state-card {
+            padding: var(--space-4);
+            background: var(--color-bg-lightest);
+            border-radius: var(--radius-sm);
+            text-align: center;
+        }
+        
+        .state-label {
+            font-weight: 600;
+            font-size: var(--font-size-sm);
+            margin-bottom: var(--space-2);
+        }
+        
+        /* Responsive Demo */
+        .responsive-demos {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--space-4);
+            margin-top: var(--space-4);
+        }
+        
+        @media (max-width: 1024px) {
+            .responsive-demos {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .responsive-frame {
+            border: 2px solid var(--color-border-light);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            background: var(--color-bg-light);
+        }
+        
+        .responsive-label {
+            background: var(--color-bg-medium);
+            padding: var(--space-2) var(--space-4);
+            font-size: var(--font-size-sm);
+            font-weight: 500;
+            text-align: center;
+            border-bottom: 2px solid var(--color-border-light);
+        }
+        
+        .responsive-content {
+            padding: var(--space-4);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 200px;
+        }
+        
+        .mobile-preview {
+            width: 100%;
+            max-width: 320px;
+        }
+        
+        .tablet-preview {
+            width: 100%;
+            max-width: 480px;
+        }
+        
+        .desktop-preview {
+            width: 100%;
+            max-width: 460px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🕐 Time Entry Component</h1>
+        <p class="subtitle">Diseño unificado para External Assignments y Quick Actions</p>
+        
+        <!-- Demo Controls -->
+        <div class="demo-controls">
+            <div class="demo-title">Abrir Modales de Demo</div>
+            <div class="control-group">
+                <button class="control-btn" onclick="openModal('modal-compact')">External Assignments (Compact)</button>
+                <button class="control-btn" onclick="openModal('modal-full')">Quick Actions (Full)</button>
+            </div>
+        </div>
+        
+        <!-- Variantes Comparación -->
+        <div class="comparison-grid">
+            <!-- Variante Compact -->
+            <div class="variant-card">
+                <div class="variant-header">
+                    <div class="variant-title">Variante: Compact</div>
+                    <div class="variant-desc">Para External Assignments - Issue específico, layout reducido</div>
+                </div>
+                <div class="variant-content">
+                    <!-- Preview Compact -->
+                    <div class="modal modal-compact" style="position: relative; box-shadow: 0 20px 40px rgba(0,0,0,0.15);">
+                        <div class="modal-header modal-header-compact">
+                            <div class="header-row">
+                                <span class="badge">PROJ-123</span>
+                                <h2 class="modal-title">Log Time</h2>
+                            </div>
+                            <p class="modal-subtitle">Fix navigation bug in dashboard</p>
+                        </div>
+                        <div class="modal-body modal-body-compact">
+                            <div class="field field-compact">
+                                <label class="label label-compact">Duration *</label>
+                                <div class="input-wrapper input-wrapper-constrained">
+                                    <input type="text" class="input" placeholder="e.g. 2h, 1h 30m, 2.5" value="2h 30m">
+                                </div>
+                                <div class="hint">Format: 2h, 30m, 1h 30m, or 2.5</div>
+                            </div>
+                            
+                            <div class="field field-compact">
+                                <label class="label label-compact">Date & Time *</label>
+                                <div class="input-wrapper input-wrapper-constrained datepicker-wrapper">
+                                    <span class="input-icon">📅</span>
+                                    <input type="text" class="input input-with-icon" value="Apr 9, 2026 4:30 PM">
+                                </div>
+                            </div>
+                            
+                            <div class="field field-compact">
+                                <label class="label label-compact">Description</label>
+                                <div class="input-wrapper">
+                                    <input type="text" class="input" placeholder="What did you work on?">
+                                </div>
+                            </div>
+                            
+                            <div class="actions actions-compact">
+                                <button class="btn btn-danger">Close Issue</button>
+                                <div class="actions-right">
+                                    <button class="btn btn-empty">Cancel</button>
+                                    <button class="btn btn-primary">Save</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Variante Full -->
+            <div class="variant-card">
+                <div class="variant-header">
+                    <div class="variant-title">Variante: Full</div>
+                    <div class="variant-desc">Para Quick Actions - Task genérico, layout espacioso con prefilled data</div>
+                </div>
+                <div class="variant-content">
+                    <!-- Preview Full -->
+                    <div class="modal modal-full" style="position: relative; box-shadow: 0 20px 40px rgba(0,0,0,0.15);">
+                        <div class="modal-header">
+                            <div class="header-row">
+                                <span class="badge">VIS-2</span>
+                                <h2 class="modal-title">Log hours to tempo</h2>
+                            </div>
+                            <p class="modal-subtitle">Internal time tracking and reporting</p>
+                        </div>
+                        <div class="modal-body">
+                            <div class="warning-banner">
+                                <span class="warning-icon">⚠️</span>
+                                <span>You've already logged 8 hours today</span>
+                            </div>
+                            
+                            <div class="field">
+                                <label class="label">Date *</label>
+                                <div class="input-wrapper input-wrapper-constrained datepicker-wrapper">
+                                    <span class="input-icon">📅</span>
+                                    <input type="text" class="input input-with-icon" value="Apr 9, 2026">
+                                </div>
+                            </div>
+                            
+                            <div class="field">
+                                <label class="label">Duration *</label>
+                                <div class="input-wrapper input-wrapper-constrained">
+                                    <input type="text" class="input" placeholder="e.g. 2h, 1h 30m, 2.5">
+                                </div>
+                                <div class="hint">Format: 2h, 30m, 1h 30m, or 2.5</div>
+                            </div>
+                            
+                            <div class="field">
+                                <label class="label">Description</label>
+                                <div class="input-wrapper" style="max-width: 400px;">
+                                    <input type="text" class="input" placeholder="What did you work on?">
+                                </div>
+                            </div>
+                            
+                            <div class="actions">
+                                <div class="actions-right">
+                                    <button class="btn btn-empty">Cancel</button>
+                                    <button class="btn btn-primary">Export</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Design Tokens -->
+        <div class="tokens-section">
+            <div class="demo-title">Design Tokens</div>
+            <div class="tokens-grid">
+                <div class="token-item">
+                    <div class="token-name">Violet Gradient Start</div>
+                    <div class="token-value">#f5f3ff</div>
+                    <div class="color-preview" style="background: #f5f3ff;"></div>
+                </div>
+                <div class="token-item">
+                    <div class="token-name">Violet Gradient End</div>
+                    <div class="token-value">#ede9fe</div>
+                    <div class="color-preview" style="background: #ede9fe;"></div>
+                </div>
+                <div class="token-item">
+                    <div class="token-name">Badge Background</div>
+                    <div class="token-value">#ede9fe</div>
+                    <div class="color-preview" style="background: #ede9fe;"></div>
+                </div>
+                <div class="token-item">
+                    <div class="token-name">Badge Border</div>
+                    <div class="token-value">#c4b5fd</div>
+                    <div class="color-preview" style="background: #c4b5fd;"></div>
+                </div>
+                <div class="token-item">
+                    <div class="token-name">Warning Background</div>
+                    <div class="token-value">#fef3c7</div>
+                    <div class="color-preview" style="background: #fef3c7;"></div>
+                </div>
+                <div class="token-item">
+                    <div class="token-name">Calendar Has Hours</div>
+                    <div class="token-value">#dcfce7</div>
+                    <div class="color-preview" style="background: #dcfce7;"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Estados -->
+        <div class="tokens-section">
+            <div class="demo-title">Estados del Input</div>
+            <div class="states-grid">
+                <div class="state-card">
+                    <div class="state-label">Default</div>
+                    <input type="text" class="input" placeholder="Placeholder" style="width: 100%;">
+                </div>
+                <div class="state-card">
+                    <div class="state-label">Hover</div>
+                    <input type="text" class="input" value="Hover state" style="width: 100%; border-color: var(--color-border-focus);">
+                </div>
+                <div class="state-card">
+                    <div class="state-label">Focus</div>
+                    <input type="text" class="input" value="Focus state" style="width: 100%; border-color: var(--color-border-focus); box-shadow: 0 0 0 3px rgba(59, 108, 240, 0.1);">
+                </div>
+                <div class="state-card">
+                    <div class="state-label">Error</div>
+                    <input type="text" class="input input-invalid" value="Error state" style="width: 100%;">
+                    <div class="hint hint-error">This field is required</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- DatePicker Mejorado -->
+        <div class="tokens-section">
+            <div class="demo-title">DatePicker con Indicadores</div>
+            <div style="display: flex; gap: 40px; flex-wrap: wrap; justify-content: center;">
+                <!-- DatePicker básico -->
+                <div>
+                    <h4 style="margin-bottom: 16px; color: var(--color-text-medium);">Modo Fecha</h4>
+                    <div class="datepicker-wrapper">
+                        <div class="datepicker-dropdown show" style="position: relative;">
+                            <div class="calendar-header">
+                                <span class="calendar-month">Apr 2026</span>
+                                <div class="calendar-nav">
+                                    <button class="calendar-nav-btn">◀</button>
+                                    <button class="calendar-nav-btn">▶</button>
+                                </div>
+                            </div>
+                            <div class="calendar-grid">
+                                <div class="calendar-day-name">Su</div>
+                                <div class="calendar-day-name">Mo</div>
+                                <div class="calendar-day-name">Tu</div>
+                                <div class="calendar-day-name">We</div>
+                                <div class="calendar-day-name">Th</div>
+                                <div class="calendar-day-name">Fr</div>
+                                <div class="calendar-day-name">Sa</div>
+                                
+                                <div class="calendar-day other-month">30</div>
+                                <div class="calendar-day">31</div>
+                                <div class="calendar-day">1</div>
+                                <div class="calendar-day has-hours">2</div>
+                                <div class="calendar-day has-hours">3</div>
+                                <div class="calendar-day">4</div>
+                                <div class="calendar-day">5</div>
+                                
+                                <div class="calendar-day">6</div>
+                                <div class="calendar-day has-hours complete">7</div>
+                                <div class="calendar-day has-hours">8</div>
+                                <div class="calendar-day today selected">9</div>
+                                <div class="calendar-day">10</div>
+                                <div class="calendar-day">11</div>
+                                <div class="calendar-day">12</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="margin-top: 16px; font-size: 12px; color: var(--color-text-medium);">
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                            <span style="width: 8px; height: 8px; background: var(--color-success); border-radius: 50%;"></span>
+                            <span>Has hours logged</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                            <span style="width: 16px; height: 16px; background: var(--calendar-has-hours-bg); border-radius: 4px;"></span>
+                            <span>Complete day (≥8h)</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="width: 16px; height: 16px; background: var(--color-primary); border-radius: 4px;"></span>
+                            <span>Selected</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- DatePicker con tiempo -->
+                <div>
+                    <h4 style="margin-bottom: 16px; color: var(--color-text-medium);">Modo Fecha + Hora</h4>
+                    <div class="datepicker-wrapper">
+                        <div class="datepicker-dropdown datepicker-dropdown-wide show" style="position: relative;">
+                            <div class="calendar-header">
+                                <span class="calendar-month">Apr 2026</span>
+                                <div class="calendar-nav">
+                                    <button class="calendar-nav-btn">◀</button>
+                                    <button class="calendar-nav-btn">▶</button>
+                                </div>
+                            </div>
+                            <div class="calendar-grid">
+                                <div class="calendar-day-name">Su</div>
+                                <div class="calendar-day-name">Mo</div>
+                                <div class="calendar-day-name">Tu</div>
+                                <div class="calendar-day-name">We</div>
+                                <div class="calendar-day-name">Th</div>
+                                <div class="calendar-day-name">Fr</div>
+                                <div class="calendar-day-name">Sa</div>
+                                
+                                <div class="calendar-day other-month">30</div>
+                                <div class="calendar-day">31</div>
+                                <div class="calendar-day">1</div>
+                                <div class="calendar-day has-hours">2</div>
+                                <div class="calendar-day has-hours">3</div>
+                                <div class="calendar-day">4</div>
+                                <div class="calendar-day">5</div>
+                                
+                                <div class="calendar-day">6</div>
+                                <div class="calendar-day has-hours complete">7</div>
+                                <div class="calendar-day has-hours">8</div>
+                                <div class="calendar-day today selected">9</div>
+                                <div class="calendar-day">10</div>
+                                <div class="calendar-day">11</div>
+                                <div class="calendar-day">12</div>
+                            </div>
+                            
+                            <!-- Time Section -->
+                            <div class="time-section">
+                                <div class="time-option">00:00</div>
+                                <div class="time-option">00:30</div>
+                                <div class="time-option">01:00</div>
+                                <div class="time-option">...</div>
+                                <div class="time-option selected">16:30</div>
+                                <div class="time-option">17:00</div>
+                                <div class="time-option">17:30</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Responsive Demo -->
+        <div class="tokens-section">
+            <div class="demo-title">Responsive Design</div>
+            <div class="responsive-demos">
+                <div class="responsive-frame">
+                    <div class="responsive-label">Mobile (320px)</div>
+                    <div class="responsive-content">
+                        <div class="mobile-preview">
+                            <div class="modal" style="width: 100%; border-radius: 0;">
+                                <div class="modal-header modal-header-compact" style="padding: 12px 16px;">
+                                    <div class="header-row">
+                                        <span class="badge">PROJ-123</span>
+                                    </div>
+                                    <h2 class="modal-title" style="font-size: 14px;">Log Time</h2>
+                                </div>
+                                <div class="modal-body modal-body-compact" style="padding: 16px;">
+                                    <div class="field field-compact">
+                                        <label class="label label-compact">Duration *</label>
+                                        <input type="text" class="input" placeholder="2h 30m">
+                                    </div>
+                                    <div class="field field-compact">
+                                        <label class="label label-compact">Date *</label>
+                                        <input type="text" class="input" placeholder="Apr 9, 2026">
+                                    </div>
+                                    <div class="actions actions-compact" style="flex-direction: column; gap: 8px;">
+                                        <button class="btn btn-primary" style="width: 100%;">Save</button>
+                                        <button class="btn btn-empty" style="width: 100%;">Cancel</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="responsive-frame">
+                    <div class="responsive-label">Tablet (480px)</div>
+                    <div class="responsive-content">
+                        <div class="tablet-preview">
+                            <div class="modal" style="width: 100%;">
+                                <div class="modal-header modal-header-compact">
+                                    <div class="header-row">
+                                        <span class="badge">PROJ-123</span>
+                                        <h2 class="modal-title">Log Time</h2>
+                                    </div>
+                                </div>
+                                <div class="modal-body modal-body-compact">
+                                    <div class="field field-compact">
+                                        <label class="label label-compact">Duration *</label>
+                                        <input type="text" class="input" placeholder="2h 30m">
+                                    </div>
+                                    <div class="field field-compact">
+                                        <label class="label label-compact">Date & Time *</label>
+                                        <input type="text" class="input" placeholder="Apr 9, 2026 4:30 PM">
+                                    </div>
+                                    <div class="actions actions-compact">
+                                        <div class="actions-right">
+                                            <button class="btn btn-empty">Cancel</button>
+                                            <button class="btn btn-primary">Save</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="responsive-frame">
+                    <div class="responsive-label">Desktop (460px)</div>
+                    <div class="responsive-content">
+                        <div class="desktop-preview">
+                            <div class="modal modal-compact">
+                                <div class="modal-header modal-header-compact">
+                                    <div class="header-row">
+                                        <span class="badge">PROJ-123</span>
+                                        <h2 class="modal-title">Log Time</h2>
+                                    </div>
+                                    <p class="modal-subtitle">Fix navigation bug</p>
+                                </div>
+                                <div class="modal-body modal-body-compact">
+                                    <div class="field field-compact">
+                                        <label class="label label-compact">Duration *</label>
+                                        <div class="input-wrapper input-wrapper-constrained">
+                                            <input type="text" class="input" placeholder="2h 30m">
+                                        </div>
+                                    </div>
+                                    <div class="field field-compact">
+                                        <label class="label label-compact">Date & Time *</label>
+                                        <div class="input-wrapper input-wrapper-constrained">
+                                            <input type="text" class="input" placeholder="Apr 9, 2026 4:30 PM">
+                                        </div>
+                                    </div>
+                                    <div class="actions actions-compact">
+                                        <button class="btn btn-danger">Close Issue</button>
+                                        <div class="actions-right">
+                                            <button class="btn btn-empty">Cancel</button>
+                                            <button class="btn btn-primary">Save</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal Overlays -->
+    <div id="modal-compact" class="modal-overlay" onclick="closeModal('modal-compact')">
+        <div class="modal modal-compact" onclick="event.stopPropagation()">
+            <div class="modal-header modal-header-compact">
+                <div class="header-row">
+                    <span class="badge">PROJ-123</span>
+                    <h2 class="modal-title">Log Time</h2>
+                </div>
+                <p class="modal-subtitle">Fix navigation bug in dashboard</p>
+            </div>
+            <div class="modal-body modal-body-compact">
+                <div class="field field-compact">
+                    <label class="label label-compact">Duration *</label>
+                    <div class="input-wrapper input-wrapper-constrained">
+                        <input type="text" class="input" placeholder="e.g. 2h, 1h 30m, 2.5" value="2h 30m">
+                    </div>
+                    <div class="hint">Format: 2h, 30m, 1h 30m, or 2.5</div>
+                </div>
+                
+                <div class="field field-compact">
+                    <label class="label label-compact">Date & Time *</label>
+                    <div class="input-wrapper input-wrapper-constrained datepicker-wrapper">
+                        <span class="input-icon">📅</span>
+                        <input type="text" class="input input-with-icon" value="Apr 9, 2026 4:30 PM" onclick="toggleDatepicker(this)">
+                        <!-- DatePicker Dropdown -->
+                        <div class="datepicker-dropdown datepicker-dropdown-wide" id="datepicker-compact">
+                            <div class="calendar-header">
+                                <span class="calendar-month">Apr 2026</span>
+                                <div class="calendar-nav">
+                                    <button class="calendar-nav-btn" onclick="changeMonth(-1)">◀</button>
+                                    <button class="calendar-nav-btn" onclick="changeMonth(1)">▶</button>
+                                </div>
+                            </div>
+                            <div class="calendar-grid" id="calendar-grid-compact">
+                                <!-- Generated by JS -->
+                            </div>
+                            <div class="time-section">
+                                <div class="time-option">08:00</div>
+                                <div class="time-option">08:30</div>
+                                <div class="time-option">09:00</div>
+                                <div class="time-option selected">16:30</div>
+                                <div class="time-option">17:00</div>
+                                <div class="time-option">17:30</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="field field-compact">
+                    <label class="label label-compact">Description</label>
+                    <div class="input-wrapper">
+                        <input type="text" class="input" placeholder="What did you work on?">
+                    </div>
+                </div>
+                
+                <div class="actions actions-compact">
+                    <button class="btn btn-danger">Close Issue</button>
+                    <div class="actions-right">
+                        <button class="btn btn-empty" onclick="closeModal('modal-compact')">Cancel</button>
+                        <button class="btn btn-primary">Save</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="modal-full" class="modal-overlay" onclick="closeModal('modal-full')">
+        <div class="modal modal-full" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <div class="header-row">
+                    <span class="badge">VIS-2</span>
+                    <h2 class="modal-title">Log hours to tempo</h2>
+                </div>
+                <p class="modal-subtitle">Internal time tracking and reporting</p>
+            </div>
+            <div class="modal-body">
+                <div class="warning-banner">
+                    <span class="warning-icon">⚠️</span>
+                    <span>You've already logged 8 hours today</span>
+                </div>
+                
+                <div class="field">
+                    <label class="label">Date *</label>
+                    <div class="input-wrapper input-wrapper-constrained datepicker-wrapper">
+                        <span class="input-icon">📅</span>
+                        <input type="text" class="input input-with-icon" value="Apr 9, 2026" onclick="toggleDatepickerFull(this)">
+                        <!-- DatePicker Dropdown -->
+                        <div class="datepicker-dropdown" id="datepicker-full">
+                            <div class="calendar-header">
+                                <span class="calendar-month">Apr 2026</span>
+                                <div class="calendar-nav">
+                                    <button class="calendar-nav-btn" onclick="changeMonthFull(-1)">◀</button>
+                                    <button class="calendar-nav-btn" onclick="changeMonthFull(1)">▶</button>
+                                </div>
+                            </div>
+                            <div class="calendar-grid" id="calendar-grid-full">
+                                <!-- Generated by JS -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="field">
+                    <label class="label">Duration *</label>
+                    <div class="input-wrapper input-wrapper-constrained">
+                        <input type="text" class="input" placeholder="e.g. 2h, 1h 30m, 2.5">
+                    </div>
+                    <div class="hint">Format: 2h, 30m, 1h 30m, or 2.5</div>
+                </div>
+                
+                <div class="field">
+                    <label class="label">Description</label>
+                    <div class="input-wrapper" style="max-width: 400px;">
+                        <input type="text" class="input" placeholder="What did you work on?">
+                    </div>
+                </div>
+                
+                <div class="actions">
+                    <div class="actions-right">
+                        <button class="btn btn-empty" onclick="closeModal('modal-full')">Cancel</button>
+                        <button class="btn btn-primary">Export</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Modal Functions
+        function openModal(id) {
+            document.getElementById(id).classList.add('active');
+            generateCalendar('calendar-grid-compact', true);
+            generateCalendar('calendar-grid-full', false);
+        }
+        
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('active');
+            // Close any open datepickers
+            document.querySelectorAll('.datepicker-dropdown').forEach(dp => {
+                dp.classList.remove('show');
+            });
+        }
+        
+        // DatePicker Functions
+        function toggleDatepicker(input) {
+            const dropdown = input.nextElementSibling;
+            dropdown.classList.toggle('show');
+        }
+        
+        function toggleDatepickerFull(input) {
+            const dropdown = input.nextElementSibling;
+            dropdown.classList.toggle('show');
+        }
+        
+        function generateCalendar(gridId, showTime) {
+            const grid = document.getElementById(gridId);
+            if (!grid) return;
+            
+            const days = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+            let html = '';
+            
+            // Day names
+            days.forEach(day => {
+                html += `<div class="calendar-day-name">${day}</div>`;
+            });
+            
+            // Days with simulated data
+            const daysInMonth = [
+                { day: 30, otherMonth: true },
+                { day: 31 },
+                { day: 1 },
+                { day: 2, hasHours: true },
+                { day: 3, hasHours: true },
+                { day: 4 },
+                { day: 5 },
+                { day: 6 },
+                { day: 7, hasHours: true, complete: true },
+                { day: 8, hasHours: true },
+                { day: 9, today: true, selected: true },
+                { day: 10 },
+                { day: 11 },
+                { day: 12 },
+                { day: 13 },
+                { day: 14, hasHours: true },
+                { day: 15 },
+                { day: 16 },
+                { day: 17 },
+                { day: 18, hasHours: true },
+                { day: 19 },
+                { day: 20 },
+                { day: 21 },
+                { day: 22 },
+                { day: 23 },
+                { day: 24, hasHours: true },
+                { day: 25 },
+                { day: 26 },
+                { day: 27 },
+                { day: 28 },
+                { day: 29 },
+                { day: 30 },
+                { day: 1, otherMonth: true },
+                { day: 2, otherMonth: true },
+                { day: 3, otherMonth: true },
+            ];
+            
+            daysInMonth.forEach(d => {
+                let className = 'calendar-day';
+                if (d.otherMonth) className += ' other-month';
+                if (d.hasHours) className += ' has-hours';
+                if (d.complete) className += ' complete';
+                if (d.today) className += ' today';
+                if (d.selected) className += ' selected';
+                html += `<div class="${className}">${d.day}</div>`;
+            });
+            
+            grid.innerHTML = html;
+        }
+        
+        function changeMonth(delta) {
+            // Simulated month change
+            console.log('Change month by', delta);
+        }
+        
+        function changeMonthFull(delta) {
+            console.log('Change month full by', delta);
+        }
+        
+        // Close on Escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.modal-overlay.active').forEach(modal => {
+                    modal.classList.remove('active');
+                });
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,160 @@
+Code Analysis Findings
+Critical Issues (3)
+1. Incorrect parseFloat Usage - TempoExportModal.jsx:41,46,54 - parseFloat(value, 10) uses radix but parseFloat() doesn't accept it (unlike parseInt)
+2. Orphaned Database Records - worklogService.ts:74-77 - Submission record created before validation; if externalIssueKey missing for JIRA target, throws error leaving orphaned PENDING record
+3. Unsafe Type Assertions - worklogService.ts:132,184 - Error casting without validation could miss error details
+High Priority (6)
+4. Missing Date Validation - maintenance.ts:269-277 - Regex validates format but not semantic validity (e.g., 2026-02-30 passes)
+5. Fragile Date Filtering - maintenance.ts:295 - worklog.started.startsWith(date) relies on specific API response format
+6. Hardcoded 8-Hour Workday - maintenance.ts:299 - Not configurable for different schedules
+7. Spanish in English Translations - en.json:31-32,38-39 - English file contains untranslated Spanish text
+8. Missing Pagination Validation - submissionRepository.ts:58-71 - No bounds on page/size parameters
+9. Silent Failures - index.jsx:69-72 - Hours fetch errors not shown to user
+Medium Priority (7)
+10. No Rate Limiting - Tempo export endpoints lack rate limiting
+11. Hardcoded Worklog Time - 19:30:00Z not configurable for other timezones
+12. Memory Leak Risk - Polling logic could run after unmount
+13. No Worklog Pagination - Max 5000 worklogs from Jira API
+14. Non-Internationalized Default - Default description hardcoded in English
+15. No Focus Management - Modal lacks focus trap for accessibility
+16. No Enter Key Submission - Form doesn't submit on Enter
+Low Priority (8)
+17. Inconsistent React.useEffect vs destructured useEffect
+18. Duration parser allows duplicates ("2h 2h" = 4 hours)
+19. Inline styles in JSX instead of styled-components
+20. Hardcoded colors, no dark mode support
+21. Missing ARIA labels on inputs
+22. Hardcoded gradient colors
+23. Dynamic imports to avoid circular dependencies
+24. No loading state for hours display
+Observations (7)
+- taskKey validation is intentional but frontend always sends VIS-2
+- API error response structure is consistent but undocumented
+- WorklogTarget.BOTH exists but unused (designed for dual-target)
+- requestId not propagated for distributed tracing
+- Repository uses default DataSource (implicit coupling)
+- Warning doesn't block users from adding more hours
+- No caching for hours API endpoint
+
+powerautomate.default.to=enrique.cuchetti@santexgroup.com;francois.gravel@vistage.com;Carlos.crespo@santexgroup.com;kishan.mistry@vistage.com
+
+
+
+
+--
+**name: designing-scalable-systems**
+
+description: Provides principles and techniques for building scalable architectures. Use when the user asks for system design advice, scalability strategies, or architectural reviews for high-traffic applications.
+
+**Scalable System Design**
+==========================
+
+This Skill provides a structured framework for designing systems that handle growth in users, transactions, and data volume without degrading performance.
+
+**Core Principles**
+-------------------
+
+Apply these principles when evaluating or proposing any system architecture.
+
+### **1\. Scalability vs. Raw Performance**
+
+*   **Definition:** Performance is about speed for a single request; scalability is about the system's ability to handle _increased load_ by adding resources.
+    
+*   **The Trade-off:** Running every component in one box may have higher performance when the load is small, but it is not scalable because performance drops drastically once capacity is reached.
+    
+
+### **2\. Scale Out, Not Scale Up**
+
+*   **Horizontal Scaling (Preferred):** Adding more "commodity" machines to a pool.
+    
+*   **Vertical Scaling (Avoid):** Upgrading to a more powerful single machine, which eventually hits a hardware ceiling and cost-inefficiency.
+    
+
+### **3\. Modularity and Simplicity**
+
+*   Keep code modular and simple to allow for quick optimization experiments.
+    
+*   **Strict Rule:** Never sacrifice code modularity for performance reasons.
+    
+
+### **4\. Measurement-Driven Growth**
+
+*   **Don't Guess, Measure:** Identify bottlenecks (slow code executed frequently). Don't optimize rarely executed code.
+    
+*   **Capacity Planning:** Regularly collect usage statistics and predict growth rates for users, transaction volume, and data volume.
+    
+
+**Common Scalability Techniques**
+---------------------------------
+
+Use this table to identify the right strategy for specific bottlenecks:
+
+| **Technique** | **Use Case** | **Implementation Requirement** |
+
+| **Server Farm** | High volume of independent concurrent requests. | Application must be **stateless**. |
+
+| **Data Partitioning** | Database write/read saturation. | Spread data across multiple DBs based on access patterns. |
+
+| **Map / Reduce** | Batch parallel processing. | Algorithm must be parallelizable with independent steps. |
+
+| **CDN** | Static media content. | Distribute copies geographically to reduce proximity latency. |
+
+| **Cache Engine** | Repeated execution with same inputs. | Space-time trade-off. Use Memcached or EHCache. |
+
+| **Resource Pooling** | Expensive object creation (DBSession/TCP). | Reuse connections across multiple requests. |
+
+| **Asynchronous Processing** | Long-running tasks or high arrival rates. | Use **Callbacks** or **Polling** to free up idle threads. |
+
+| **Filtering at Source** | High data propagation volume. | Process data upstream where it is generated. |
+
+**Implementation Design Checklist**
+-----------------------------------
+
+When reviewing code or logic for scalability, you MUST verify the following:
+
+### **1\. Algorithm & Data Structures**
+
+*   Analyze Time (CPU) and Space (Memory) complexity for "hot spots."
+    
+*   Choose appropriate lookups (e.g., Hash Table vs. Binary Tree).
+    
+
+### **2\. Concurrency & Locking**
+
+*   Analyze synchronization to ensure locking is **fine-grained**.
+    
+*   Check for deadlock possibilities.
+    
+*   Consider using **Lock-Free** data structures.
+    
+
+### **3\. Memory & GC Management**
+
+*   Monitor object creation patterns to avoid high Garbage Collector (GC) load from short-lived objects.
+    
+*   **Readability Rule:** Do not bundle too much logic into a single method just for performance; let the VM handle execution optimization.
+    
+
+### **4\. Functional Trade-offs**
+
+*   **Approximation:** Determine if a degree of inaccuracy is tolerable for a significant gain in speed.
+    
+
+**Example Evaluation Workflow**
+-------------------------------
+
+Follow these steps when tasked with a system review:
+
+1.  **Understand the Workload:** Identify dimensions of growth (Users? Transactions? Data?) and targets (Response time? Throughput?).
+    
+2.  **Prioritize Traffic:** Determine which customers or traffic types to sacrifice if the system cannot handle all load.
+    
+3.  **Locate Bottlenecks:** Use performance unit tests or "hot spot" analysis to find frequently executed slow code.
+    
+4.  **Apply Techniques:** - If the app is stateful, suggest moving to a **Server Farm** by making it stateless.
+    
+
+*   If data access is the bottleneck, suggest **Partitioning** or **Caching**.
+    
+
+1.  **Validation:** Ensure any suggested performance optimization does not break code modularity.

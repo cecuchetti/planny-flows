@@ -22,4 +22,5 @@ export { default as Spinner } from './Spinner';
 export { default as Textarea } from './Textarea';
 export { default as TextEditedContent } from './TextEditedContent';
 export { default as TextEditor } from './TextEditor';
+export { default as TimeEntry } from './TimeEntry';
 export { default as Tooltip } from './Tooltip';

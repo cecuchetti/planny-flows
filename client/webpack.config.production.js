@@ -55,6 +55,7 @@ module.exports = {
       'process.env': {
         NODE_ENV: JSON.stringify('production'),
         API_URL: JSON.stringify(process.env.API_URL || 'http://localhost:3824'),
+        REACT_APP_TEMPO_TASK_KEY: JSON.stringify(process.env.REACT_APP_TEMPO_TASK_KEY || 'VIS-2'),
       },
     }),
     new webpack.IgnorePlugin({ resourceRegExp: /^\.\/locale$/, contextRegExp: /moment$/ }),
