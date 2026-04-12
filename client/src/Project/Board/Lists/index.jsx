@@ -4,6 +4,8 @@ import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { moveItemWithinArray, insertItemIntoArray } from 'shared/utils/javascript';
 import { IssueStatus } from 'shared/constants/issues';
 
+const VALID_ISSUE_STATUSES = Object.values(IssueStatus);
+
 import useCurrentUser from 'shared/hooks/currentUser';
 import api from 'shared/utils/api';
 
@@ -59,6 +61,7 @@ const ProjectBoardLists = ({ project, filters, updateLocalProjectIssues }) => {
   const handleIssueDrop = ({ draggableId, destination, source }) => {
     if (source.droppableId === 'board-columns') return;
     if (!isPositionChanged(source, destination)) return;
+    if (!destination || !VALID_ISSUE_STATUSES.includes(destination.droppableId)) return;
 
     const issueId = Number(draggableId);
 

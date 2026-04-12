@@ -90,6 +90,7 @@ export const normalizeBoardIssue = (issue, project, projectUsers, boardUrl) => {
     .map(userId => projectUsers.find(user => user.id === userId))
     .filter(Boolean)
     .map(user => ({
+      id: user.id,
       avatarUrl: user.avatarUrl,
       name: user.name,
     }));

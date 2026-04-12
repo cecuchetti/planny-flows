@@ -123,8 +123,12 @@ const ProjectIssueCreate = ({ project, fetchProject, onCreate, modalClose }) => 
           name="reporterId"
           label={t('issue.reporter')}
           options={userOptions(project)}
-          renderOption={renderUser(project)}
-          renderValue={renderUser(project)}
+          renderOption={({ value, removeOptionValue }) => (
+            <UserOption userId={value} project={project} removeOptionValue={removeOptionValue} />
+          )}
+          renderValue={({ value, removeOptionValue }) => (
+            <UserOption userId={value} project={project} removeOptionValue={removeOptionValue} />
+          )}
         />
         <Form.Field.Select
           isMulti
@@ -132,8 +136,12 @@ const ProjectIssueCreate = ({ project, fetchProject, onCreate, modalClose }) => 
           label={t('issue.assignees')}
           tip={t('issue.tipAssignees')}
           options={userOptions(project)}
-          renderOption={renderUser(project)}
-          renderValue={renderUser(project)}
+          renderOption={({ value, removeOptionValue }) => (
+            <UserOption userId={value} project={project} removeOptionValue={removeOptionValue} />
+          )}
+          renderValue={({ value, removeOptionValue }) => (
+            <UserOption userId={value} project={project} removeOptionValue={removeOptionValue} />
+          )}
         />
         <Form.Field.Select
           name="priority"
@@ -156,20 +164,22 @@ const ProjectIssueCreate = ({ project, fetchProject, onCreate, modalClose }) => 
   );
 };
 
-const renderUser = project => ({ value: userId, removeOptionValue }) => {
+const UserOption = ({ userId, project, removeOptionValue }) => {
   const user = project.users.find(({ id }) => id === userId);
 
   return (
-    <SelectItem
-      key={user.id}
-       $withBottomMargin={!!removeOptionValue}
-      onClick={() => removeOptionValue && removeOptionValue()}
-    >
+    <SelectItem $withBottomMargin={!!removeOptionValue} onClick={() => removeOptionValue?.()}>
       <Avatar size={20} avatarUrl={user.avatarUrl} name={user.name} />
       <SelectItemLabel>{user.name}</SelectItemLabel>
       {removeOptionValue && <Icon type="close" top={2} />}
     </SelectItem>
   );
+};
+
+UserOption.propTypes = {
+  userId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+  project: PropTypes.object.isRequired, // eslint-disable-line react/forbid-prop-types
+  removeOptionValue: PropTypes.func,
 };
 
 ProjectIssueCreate.propTypes = propTypes;

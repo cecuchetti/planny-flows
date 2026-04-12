@@ -47,13 +47,13 @@ const Tooltip = ({
 
     if (isOpen) {
       setTooltipPosition();
-      window.addEventListener('resize', setTooltipPosition);
-      window.addEventListener('scroll', setTooltipPosition);
+      window.addEventListener('resize', setTooltipPosition, { passive: true });
+      window.addEventListener('scroll', setTooltipPosition, { passive: true });
     }
 
     return () => {
-      window.removeEventListener('resize', setTooltipPosition);
-      window.removeEventListener('scroll', setTooltipPosition);
+      window.removeEventListener('resize', setTooltipPosition, { passive: true });
+      window.removeEventListener('scroll', setTooltipPosition, { passive: true });
     };
   }, [isOpen, offset, placement]);
 

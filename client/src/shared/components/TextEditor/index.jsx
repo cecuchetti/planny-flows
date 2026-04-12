@@ -1,6 +1,5 @@
 import React, { useLayoutEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
-import 'quill/dist/quill.snow.css';
 
 import { EditorCont } from './Styles';
 
@@ -36,6 +35,8 @@ const TextEditor = ({
     let isMounted = true;
 
     const initQuill = async () => {
+      // Load Quill CSS dynamically to avoid blocking initial bundle
+      await import('quill/dist/quill.snow.css');
       const { default: Quill } = await import('quill');
       if (!isMounted || !$editorRef.current || !$editorContRef.current) {
         return;

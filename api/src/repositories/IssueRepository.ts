@@ -3,6 +3,7 @@ import { Issue } from 'entities';
 import { EntityNotFoundError } from 'errors';
 import { IssueType, IssueStatus, IssuePriority } from 'constants/issues';
 import { dataSource as defaultDataSource } from 'database/createConnection';
+import { validateAndSaveEntity } from 'utils/typeorm';
 
 export interface CreateIssueData {
   title: string;
@@ -83,13 +84,13 @@ export class IssueRepository {
       reporterId,
       listPosition: data.listPosition ?? listPosition,
     });
-    return issue.save();
+    return validateAndSaveEntity(issue);
   }
 
   async update(issueId: number, projectId: number, data: UpdateIssueData): Promise<Issue> {
     const issue = await this.findByIdAndProject(issueId, projectId);
     Object.assign(issue, data);
-    return issue.save();
+    return validateAndSaveEntity(issue);
   }
 
   async delete(issueId: number, projectId: number): Promise<Issue> {

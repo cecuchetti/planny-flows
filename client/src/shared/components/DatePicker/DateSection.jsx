@@ -32,7 +32,7 @@ const DatePickerDateSection = ({
   onChange,
   setDropdownOpen,
 }) => {
-  const [selectedMonth, setSelectedMonth] = useState(dayjs(value).startOf('month'));
+  const [selectedMonth, setSelectedMonth] = useState(() => dayjs(value).startOf('month'));
 
   const handleYearChange = (year) => {
     setSelectedMonth(selectedMonth.set('year', Number(year)));
@@ -85,7 +85,7 @@ const DatePickerDateSection = ({
           <DayName key={name}>{name}</DayName>
         ))}
         {generateFillerDaysBeforeMonthStart(selectedMonth).map((i) => (
-          <Day key={`before-${i}`} isFiller />
+          <Day key={`before-${selectedMonth.format('YYYY-MM')}-${i}`} isFiller />
         ))}
         {generateMonthDays(selectedMonth).map((date) => (
           <Day
@@ -98,7 +98,7 @@ const DatePickerDateSection = ({
           </Day>
         ))}
         {generateFillerDaysAfterMonthEnd(selectedMonth).map((i) => (
-          <Day key={`after-${i}`} isFiller />
+          <Day key={`after-${selectedMonth.format('YYYY-MM')}-${i}`} isFiller />
         ))}
       </Grid>
     </DateSection>

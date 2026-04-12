@@ -1,12 +1,12 @@
-# AGENTS.md - AI Coding Agent Instructions
+# AGENTS.md
 
-## Project Overview
+## Project
 
-Jira Clone - Full-stack project management application:
+Jira Clone:
 - **API**: TypeScript/Node.js/Express with TypeORM
 - **Client**: React/JavaScript with Webpack
 
-## Build/Lint/Test Commands
+## Commands
 
 ### Root
 ```bash
@@ -35,7 +35,7 @@ npm run test:jest           # Unit tests with Jest
 npm run test:cypress        # E2E tests with Cypress
 ```
 
-### Pre-commit/Linting
+### Pre-commit
 ```bash
 cd api && npm run pre-commit      # API lint + format
 cd client && npm run pre-commit   # Client lint + format
@@ -45,7 +45,7 @@ npx prettier --write "**/*.{ts,tsx,js,jsx,json,md}"
 
 ## Code Style Guidelines
 
-### Formatting (Prettier)
+### Prettier
 ```json
 { "printWidth": 100, "singleQuote": true, "trailingComma": "all" }
 ```
@@ -55,16 +55,19 @@ npx prettier --write "**/*.{ts,tsx,js,jsx,json,md}"
 - **Client**: Absolute from `src/` (e.g., `import { Modal } from 'shared/components'`)
 
 ### Naming Conventions
-- **Files**: camelCase (utils/services), PascalCase (entities/components)
-- **Variables/functions**: camelCase
-- **Classes/Components**: PascalCase
-- **Constants**: UPPER_SNAKE_CASE
-- **Tests**: `[name].test.ts`
+- Files: camelCase (utils/services), PascalCase (entities/components)
+- Variables/functions: camelCase
+- Classes/Components: PascalCase
+- Constants: UPPER_SNAKE_CASE
+- Tests: `[name].test.ts`
 
 ### TypeScript Guidelines (API)
-- Strict mode, explicit return types on exports
-- Use `type` for shapes, `interface` for contracts
-- Nullable: `| null`, avoid `any`
+- Strict mode
+- Explicit return types on exports
+- Use `type` for shapes
+- Use `interface` for contracts
+- Nullable: `| null`
+- Avoid `any`
 
 ```typescript
 const getIssue = async (id: number): Promise<Issue | null> => {
@@ -80,8 +83,11 @@ class Issue extends BaseEntity {
 ```
 
 ### React Guidelines (Client)
-- Functional components with hooks, PropTypes validation
-- Destructure props, use fragments
+- Functional components
+- Hooks
+- PropTypes validation
+- Destructure props
+- Use fragments
 
 ```javascript
 const Component = ({ prop1, prop2 }) => (
@@ -92,7 +98,7 @@ Component.propTypes = { prop1: PropTypes.string.isRequired, prop2: PropTypes.fun
 ```
 
 ### Error Handling
-**API**: Use `errors/customErrors.ts`, wrap with `catchErrors`:
+**API**: Use `errors/customErrors.ts` and wrap with `catchErrors`.
 ```typescript
 import { EntityNotFoundError } from 'errors';
 
@@ -105,9 +111,9 @@ export const getIssue = catchErrors(async (req, res) => {
 
 **Client**: Use ErrorBoundary at app root.
 
-### Testing Patterns
+### Testing Pattern
 
-**API (Vitest)**:
+**Vitest**:
 ```typescript
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 

@@ -45,9 +45,9 @@ const IssueCard = forwardRef(({ issue, isBeingDragged = false, className = '', .
         
         {badges.length > 0 && (
           <BadgeRow>
-            {badges.map((badge, index) => (
+            {badges.map((badge) => (
               <StatusBadge
-                key={index}
+                key={`${badge.text}-${badge.bgColor}-${badge.textColor}`}
                 $bg={badge.bgColor}
                 $text={badge.textColor}
               >
@@ -60,9 +60,9 @@ const IssueCard = forwardRef(({ issue, isBeingDragged = false, className = '', .
         {assignees.length > 0 && (
           <Bottom>
             <Assignees>
-              {assignees.map((assignee, index) => (
+              {assignees.map((assignee) => (
                 <AssigneeAvatar
-                  key={index}
+                  key={assignee.id ?? `${assignee.name}-${assignee.avatarUrl || 'no-avatar'}`}
                   size={22}
                   avatarUrl={assignee.avatarUrl}
                   name={assignee.name}
@@ -106,6 +106,7 @@ IssueCard.propTypes = {
     /** Array of assignee objects */
     assignees: PropTypes.arrayOf(
       PropTypes.shape({
+        id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
         avatarUrl: PropTypes.string,
         name: PropTypes.string.isRequired,
       })

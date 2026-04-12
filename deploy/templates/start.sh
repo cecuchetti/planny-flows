@@ -64,7 +64,70 @@ function cleanup() {
     [ -f "$PID_DIR/api.pid" ] && kill "$(cat "$PID_DIR/api.pid")" 2>/dev/null || true
     [ -f "$PID_DIR/client.pid" ] && kill "$(cat "$PID_DIR/client.pid")" 2>/dev/null || true
     rm -f "$PID_DIR"/*.pid 2>/dev/null || true
-    exit 0
+}
+
+function read_pid_file() {
+    local pid_file="$1"
+
+    if [[ ! -f "$pid_file" ]]; then
+        return 1
+    fi
+
+    local pid
+    pid="$(cat "$pid_file" 2>/dev/null || true)"
+    if [[ -z "$pid" || ! "$pid" =~ ^[0-9]+$ ]]; then
+        return 1
+    fi
+
+    printf '%s\n' "$pid"
+}
+
+function get_process_command() {
+    local pid="$1"
+    ps -p "$pid" -o command= 2>/dev/null || true
+}
+
+function is_managed_process() {
+    local pid="$1"
+    local expected_pattern="$2"
+
+    if ! kill -0 "$pid" 2>/dev/null; then
+        return 1
+    fi
+
+    local process_command
+    process_command="$(get_process_command "$pid")"
+    [[ -n "$process_command" && "$process_command" == *"$expected_pattern"* ]]
+}
+
+function stop_managed_process_from_pid_file() {
+    local pid_file="$1"
+    local expected_pattern="$2"
+    local label="$3"
+
+    local pid
+    if ! pid="$(read_pid_file "$pid_file")"; then
+        rm -f "$pid_file" 2>/dev/null || true
+        return 0
+    fi
+
+    if is_managed_process "$pid" "$expected_pattern"; then
+        log "Stopping managed ${label} process (PID: $pid)..."
+        kill "$pid" 2>/dev/null || true
+    elif kill -0 "$pid" 2>/dev/null; then
+        log "Skipping PID $pid from $(basename "$pid_file") because it does not match ${label} process signature."
+    fi
+
+    rm -f "$pid_file" 2>/dev/null || true
+}
+
+function stop_stale_processes() {
+    log "Stopping managed stale processes before start..."
+
+    stop_managed_process_from_pid_file "$PID_DIR/api.pid" "$DEPLOY_DIR/api/build/index.js" "API"
+    stop_managed_process_from_pid_file "$PID_DIR/client.pid" "$DEPLOY_DIR/client/server.js" "client"
+
+    sleep 1
 }
 
 function load_environment() {
@@ -109,7 +172,7 @@ function start_client() {
         exit 1
     }
 
-    PORT=8193 node server.js >> "$LOG_DIR/client.log" 2>> "$LOG_DIR/client-error.log" &
+    PORT="${CLIENT_PORT:-8193}" node server.js >> "$LOG_DIR/client.log" 2>> "$LOG_DIR/client-error.log" &
     local client_pid=$!
     echo "$client_pid" > "$PID_DIR/client.pid"
 
@@ -169,9 +232,11 @@ function main() {
     # Check HTTPS configuration
     check_https_config
 
-    trap cleanup SIGTERM SIGINT
+    trap cleanup EXIT
+    trap 'cleanup; exit 0' SIGTERM SIGINT
 
     load_environment
+    stop_stale_processes
 
     log "Starting Planny-Flows..."
 
@@ -193,14 +258,14 @@ function main() {
             display_url="https://__HOSTNAME__.local"
         fi
     else
-        display_url="http://__HOSTNAME__.local:8193"
+        display_url="http://__HOSTNAME__.local:${CLIENT_PORT:-8193}"
     fi
 
     log "Planny-Flows running at $display_url"
     if [[ "$HTTPS_ENABLED" == true ]]; then
         log "API available at: $display_url/api"
     else
-        log "API available at: http://__HOSTNAME__.local:3824"
+        log "API available at: http://__HOSTNAME__.local:${PORT:-3824}"
     fi
 
     monitor_processes "$api_pid" "$client_pid"
