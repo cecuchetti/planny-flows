@@ -39,14 +39,14 @@ This script stops the service, copies built artifacts, updates startup scripts f
 ### Pre-Deployment
 - [ ] Dev version is working (`http://localhost:8193/project/my-jira-issues`)
 - [ ] All code changes are committed
-- [ ] Build artifacts are up to date
-- [ ] Node.js >= 18 is installed
+- [ ] Client build artifacts are up to date
+- [ ] uv is installed and Python dependencies are synced
 
 ### During Deployment
-- [ ] Dependencies are installed
-- [ ] Build completes successfully
+- [ ] Client build completes successfully
 - [ ] Files are copied to deployment directory
-- [ ] Production dependencies are installed
+- [ ] Client dependencies are installed
+- [ ] Python dependencies are synced (`uv sync`)
 - [ ] Launchd plist is configured
 - [ ] Service starts successfully
 
@@ -118,8 +118,7 @@ kill $(lsof -ti :8193) 2>/dev/null || true
 
 ### Build Fails
 ```bash
-# Clean build directories
-rm -rf $DEPLOY_DIR/api/build
+# Clean client build directory
 rm -rf $DEPLOY_DIR/client/build
 
 # Rebuild with verbose output
@@ -161,52 +160,50 @@ Health: http://hostname.local:3824/health
 ## 🔄 Deployment Flow
 
 ```
-1. Check Dependencies
-   ├─ Node.js version
-   ├─ Required tools (curl, npm, git, etc.)
-   └─ Installation checks
+ 1. Check Dependencies
+    ├─ uv installed, Python dependencies synced
+    ├─ Required tools (curl, npm, git, etc.)
+    └─ Installation checks
 
-2. Verify Dev Version
-   ├─ Check dev server health
-   └─ Confirm functionality
+ 2. Verify Dev Version
+    ├─ Check dev server health
+    └─ Confirm functionality
 
-3. Stop Service
-   ├─ Stop launchd service
-   ├─ Kill existing processes
-   └─ Clean up stale PIDs
+ 3. Stop Service
+    ├─ Stop launchd service
+    ├─ Kill existing processes
+    └─ Clean up stale PIDs
 
-4. Build Application
-   ├─ Install root dependencies
-   ├─ Build API (TypeScript → JavaScript)
-   └─ Build Client (Webpack)
+ 4. Build Client
+    ├─ Build Client (Webpack)
+    └─ (Python API runs from source, no build step)
 
-5. Deploy Files
-   ├─ Copy API files
-   ├─ Copy Client files
-   └─ Sync directories
+ 5. Deploy Files
+    ├─ Copy Client files
+    └─ Sync directories
 
-6. Install Dependencies
-   ├─ Install API dependencies (production only)
-   └─ Install Client dependencies (production only)
+ 6. Install Dependencies
+    ├─ Install Client dependencies (production only)
+    └─ Python API uses uv sync from source
 
-7. Configure Launchd
-   ├─ Create plist file
-   ├─ Configure environment
-   └─ Set permissions
+ 7. Configure Launchd
+    ├─ Create plist file
+    ├─ Configure environment
+    └─ Set permissions
 
-8. Start Service
-   ├─ Load launchd service
-   └─ Start background processes
+ 8. Start Service
+    ├─ Load launchd service
+    └─ Start background processes
 
-9. Verify Deployment
-   ├─ Check API health endpoint
-   ├─ Check Client HTTP response
-   └─ Confirm both return 200
+ 9. Verify Deployment
+    ├─ Check API health endpoint
+    ├─ Check Client HTTP response
+    └─ Confirm both return 200
 
-10. Display Summary
-    ├─ Show build type
-    ├─ Display access URLs
-    └─ List management commands
+ 10. Display Summary
+     ├─ Show build type
+     ├─ Display access URLs
+     └─ List management commands
 ```
 
 ## 📞 Getting Help

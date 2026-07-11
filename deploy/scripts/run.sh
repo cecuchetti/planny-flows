@@ -5,12 +5,16 @@
 #================================================================================
 # This script is started by launchd and runs the API and Client servers
 
+# Script directory detection
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
 # Environment variables
 export DEPLOY_DIR="${DEPLOY_DIR:-$HOME/.planny-flows}"
+export PROJECT_ROOT="${PROJECT_ROOT:-$PROJECT_ROOT}"
 export API_PORT="${API_PORT:-3824}"
 export CLIENT_PORT="${CLIENT_PORT:-8193}"
 export LOG_DIR="${LOG_DIR:-$DEPLOY_DIR/logs}"
-export NODE_ENV="${NODE_ENV:-production}"
 
 # Create directories
 mkdir -p "$DEPLOY_DIR/pids"
@@ -68,22 +72,22 @@ check_port() {
     fi
 }
 
-# Start API
+# Start API (Python)
 start_api() {
     log INFO "Starting API server on port $API_PORT..."
 
-    if [[ -d "$DEPLOY_DIR/api/build" ]]; then
-        cd "$DEPLOY_DIR/api" || exit 1
+    if [[ -f "$PROJECT_ROOT/pyproject.toml" ]]; then
+        cd "$PROJECT_ROOT" || exit 1
 
-        # Start API with nohup
-        nohup node -r ./tsconfig-paths.js build/index.js > "$API_LOG" 2>&1 &
+        # Start API with nohup (Python/FastAPI via uv)
+        nohup uv run uvicorn planny_api.main:app --host 0.0.0.0 --port "$API_PORT" > "$API_LOG" 2>&1 &
         local api_pid=$!
         echo $api_pid > "$API_PID"
 
         log INFO "API started with PID: $api_pid"
         log INFO "API log: $API_LOG"
     else
-        log ERROR "API build directory not found at $DEPLOY_DIR/api/build"
+        log ERROR "Python project not found at $PROJECT_ROOT (missing pyproject.toml)"
         return 1
     fi
 }
@@ -175,6 +179,7 @@ main() {
     log SUCCESS "All services are running and healthy!"
     log INFO "API: http://localhost:$API_PORT"
     log INFO "Client: http://localhost:$CLIENT_PORT"
+    log INFO "Project root: $PROJECT_ROOT"
 
     # Keep the script running
     wait

@@ -45,7 +45,7 @@ export CLIENT_PORT="${CLIENT_PORT:-8193}"
 export LOG_DIR="${LOG_DIR:-$DEPLOY_DIR/logs}"
 
 # Dependencies
-DEPENDENCIES=(curl node npm git tar rsync)
+DEPENDENCIES=(curl node npm uv git)
 
 # Colors for output
 RED='\033[0;31m'
@@ -139,7 +139,7 @@ function check_dependencies() {
     return 0
 }
 
-# Check if Node.js is available and version is >= 18
+# Check if Node.js is available and version is >= 25
 function check_node_version() {
     log INFO "Checking Node.js version..."
 
@@ -151,8 +151,8 @@ function check_node_version() {
     node_version=$(node -v | cut -d'v' -f2 | cut -d'.' -f1)
     log DEBUG "Node.js version: $node_version"
 
-    if [[ "$node_version" -lt 18 ]]; then
-        exit_on_error 1 "Node.js version must be >= 18 (current: ${node_version})"
+    if [[ "$node_version" -lt 25 ]]; then
+        exit_on_error 1 "Node.js version must be >= 25 (current: ${node_version})"
     fi
 
     log SUCCESS "Node.js version check passed"
@@ -165,7 +165,6 @@ function create_directories() {
 
     local dirs=(
         "$DEPLOY_DIR"
-        "$DEPLOY_DIR/api"
         "$DEPLOY_DIR/client"
         "$DEPLOY_DIR/builds"
         "$DEPLOY_DIR/logs"
@@ -222,15 +221,7 @@ function build_application() {
         npm install --silent || exit_on_error 1 "Failed to install root dependencies"
     fi
 
-    # Build API
-    log INFO "Building API..."
-    cd "$PROJECT_ROOT/api" || exit_on_error 1 "Failed to change to API directory"
-
-    if [[ ! -d "build" ]]; then
-        npm run build || exit_on_error 1 "API build failed"
-    else
-        log DEBUG "API build directory already exists, skipping build"
-    fi
+    log INFO "Python API runs from source — no build step needed"
 
     # Build Client
     log INFO "Building Client..."
@@ -251,20 +242,15 @@ function build_application() {
 function copy_files() {
     log INFO "Copying files to deployment directory..."
 
-    local api_source="$PROJECT_ROOT/api"
     local client_source="$PROJECT_ROOT/client"
-    local api_dest="$DEPLOY_DIR/api"
     local client_dest="$DEPLOY_DIR/client"
-
-    # Copy API files
-    log INFO "Copying API files..."
-    rsync -av --delete "$api_source/" "$api_dest/" || exit_on_error 1 "Failed to copy API files"
-    log DEBUG "API files copied successfully"
 
     # Copy Client files
     log INFO "Copying Client files..."
     rsync -av --delete "$client_source/" "$client_dest/" || exit_on_error 1 "Failed to copy Client files"
     log DEBUG "Client files copied successfully"
+
+    log INFO "Python API runs from source — no API files to copy"
 
     log SUCCESS "All files copied to deployment directory"
 }
@@ -273,19 +259,7 @@ function copy_files() {
 function install_dependencies() {
     log INFO "Installing production dependencies..."
 
-    local api_dir="$DEPLOY_DIR/api"
     local client_dir="$DEPLOY_DIR/client"
-
-    # Install API dependencies
-    log INFO "Installing API dependencies..."
-    cd "$api_dir" || exit_on_error 1 "Failed to change to API directory"
-
-    # Only install if node_modules is missing or outdated
-    if [[ ! -d "node_modules" ]]; then
-        npm install --production || exit_on_error 1 "Failed to install API dependencies"
-    else
-        log DEBUG "API dependencies already installed, skipping"
-    fi
 
     # Install Client dependencies
     log INFO "Installing Client dependencies..."
@@ -297,7 +271,10 @@ function install_dependencies() {
         log DEBUG "Client dependencies already installed, skipping"
     fi
 
-    cd "$PROJECT_ROOT" || exit_on_error 1 "Failed to return to project root"
+    # Sync Python dependencies at source
+    log INFO "Syncing Python dependencies at project source..."
+    cd "$PROJECT_ROOT" || exit_on_error 1 "Failed to change to project root"
+    uv sync 2>/dev/null || log WARN "Failed to sync Python dependencies (run 'uv sync' manually)"
 
     log SUCCESS "Production dependencies installed"
 }
@@ -546,8 +523,13 @@ function main() {
     # Check dependencies
     check_dependencies || exit 1
 
-    # Check Node.js version
+    # Check Node.js version (needed for client build/server)
     check_node_version || exit 1
+
+    # Check uv availability
+    if ! command_exists uv; then
+        exit_on_error 1 "uv is not installed. Install: curl -LsSf https://astral.sh/uv/install.sh | sh"
+    fi
 
     # Create directories
     create_directories || exit 1
@@ -632,12 +614,11 @@ ${BLUE}Examples:${NC}
     ${SCRIPT_NAME} --production --verbose # Deploy production with verbose logging
 
 ${BLUE}Requirements:${NC}
-    • Node.js >= 18
+    • uv (Python package manager)
+    • Node.js >= 25
     • npm
     • curl
     • git
-    • tar
-    • rsync
 
 ${BLUE}Dependencies:${NC}
     ${DEPENDENCIES[*]}

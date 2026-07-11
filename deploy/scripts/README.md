@@ -11,7 +11,7 @@ Automates the entire deployment process of Planny-Flows application to productio
 #### Features
 
 - **Automatic Dev Version Check**: Verifies if the dev version is working before deploying
-- **Build Automation**: Automatically builds API and Client if needed
+- **Build Automation**: Automatically builds Client (Python API runs from source, no build step)
 - **Idempotent Deployment**: Safe to run multiple times without issues
 - **Production/Development Builds**: Support for both deployment modes
 - **Comprehensive Error Handling**: Detailed error messages and logging
@@ -105,17 +105,16 @@ This script is started by launchd and runs the API and Client servers. It handle
 The deployment script follows these steps:
 
 1. **Dependency Check**: Verifies all required tools are installed
-2. **Node.js Version Check**: Ensures Node.js >= 18 is available
-3. **Directory Creation**: Creates necessary deployment directories
-4. **Dev Version Check**: (if development mode) Verifies dev server is working
-5. **Service Stop**: Stops any running Planny-Flows service
-6. **Build Application**: Builds API and Client if needed
-7. **File Copy**: Copies files to deployment directory
-8. **Dependency Install**: Installs production dependencies
-9. **Launchd Setup**: Creates and loads launchd plist
-10. **Service Start**: Starts the service via launchd
-11. **Verification**: Verifies deployment is successful
-12. **Summary**: Displays deployment summary and access URLs
+2. **Directory Creation**: Creates necessary deployment directories
+3. **Dev Version Check**: (if development mode) Verifies dev server is working
+4. **Service Stop**: Stops any running Planny-Flows service
+5. **Build Client**: Builds the React client (Python API runs from source, no build step)
+6. **File Copy**: Copies files to deployment directory
+7. **Dependency Install**: Installs production dependencies (client npm + Python uv sync)
+8. **Launchd Setup**: Creates and loads launchd plist
+9. **Service Start**: Starts the service via launchd
+10. **Verification**: Verifies deployment is successful
+11. **Summary**: Displays deployment summary and access URLs
 
 ## Error Handling
 
@@ -211,12 +210,23 @@ lsof -i :8193
 ### Build Fails
 
 ```bash
-# Clean build directories
-rm -rf $DEPLOY_DIR/api/build
+# Clean client build directory
 rm -rf $DEPLOY_DIR/client/build
 
 # Rebuild
 ./deploy/scripts/deploy.sh --production --verbose
+```
+
+### Python Dependencies
+
+```bash
+# Sync Python dependencies
+cd /path/to/planny-flows
+uv sync
+
+# Check Python code
+uv run ruff check packages/
+uv run mypy packages/
 ```
 
 ### Port Already in Use
@@ -279,12 +289,12 @@ sudo launchctl print system/com.plannyflows
 
 ## Requirements
 
-- **Node.js**: >= 18
+- **uv**: Python package manager (install via `curl -LsSf https://astral.sh/uv/install.sh | sh`)
+- **Python**: >= 3.12
+- **Node.js**: >= 25
 - **npm**: Latest version
 - **curl**: For health checks
 - **git**: For version control
-- **tar**: For file operations
-- **rsync**: For file synchronization
 
 All requirements are automatically checked by the deployment script.
 
@@ -300,8 +310,9 @@ All requirements are automatically checked by the deployment script.
 
 The deployment script is compatible with:
 - macOS (all recent versions)
-- Node.js >= 18
-- Planny-Flows v1.0.0+
+- Python >= 3.12 with uv
+- Node.js >= 25 (for client build)
+- Planny-Flows v2.0.0+ (Python backend)
 
 ## Support
 

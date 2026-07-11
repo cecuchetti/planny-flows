@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-DEPENDENCIES=(node npm openssl)
+DEPENDENCIES=(node npm uv openssl)
 SCRIPT_NAME=$(basename "$0")
 VERSION="1.0.0"
 
@@ -67,6 +67,12 @@ function exit_on_missing_tools() {
 function check_prerequisites() {
     echo -e "${YELLOW}[1/8] Checking prerequisites...${NC}"
 
+    if ! command -v uv &> /dev/null; then
+        echo -e "${RED}✗ uv is not installed. Install: curl -LsSf https://astral.sh/uv/install.sh | sh${NC}"
+        exit 1
+    fi
+    echo -e "${GREEN}✓ uv $(uv version | cut -d' ' -f2)${NC}"
+
     NODE_VERSION=$(node -v 2>/dev/null | sed 's/v//' | cut -d. -f1)
     if [[ -z "$NODE_VERSION" || "$NODE_VERSION" -lt 25 ]]; then
         echo -e "${RED}✗ Node.js 25+ is required. Current: $(node -v 2>/dev/null || echo 'not installed')${NC}"
@@ -80,8 +86,8 @@ function check_prerequisites() {
     fi
     echo -e "${GREEN}✓ npm $(npm -v)${NC}"
 
-    if [[ ! -d "$PROJECT_DIR/api" || ! -d "$PROJECT_DIR/client" ]]; then
-        echo -e "${RED}✗ Project structure not found at $PROJECT_DIR${NC}"
+    if [[ ! -d "$PROJECT_DIR/client" ]]; then
+        echo -e "${RED}✗ Project structure not found at $PROJECT_DIR (missing client/)${NC}"
         exit 1
     fi
     echo -e "${GREEN}✓ Project directory: $PROJECT_DIR${NC}"
@@ -90,17 +96,17 @@ function check_prerequisites() {
 function create_directory_structure() {
     echo -e "${YELLOW}[2/8] Creating directory structure...${NC}"
 
-    mkdir -p "$DEPLOY_DIR"/{api,client,data,logs,pids} || {
+    mkdir -p "$DEPLOY_DIR"/{client,data,logs,pids} || {
         echo -e "${RED}✗ Failed to create directory structure${NC}" >&2
         exit 1
     }
     chmod 700 "$DEPLOY_DIR"
     echo -e "${GREEN}✓ Created $DEPLOY_DIR${NC}"
-    echo -e "  - api/     (API server files)"
     echo -e "  - client/  (Client server files)"
     echo -e "  - data/    (SQLite database)"
     echo -e "  - logs/    (Application logs)"
     echo -e "  - pids/    (Process IDs)"
+    echo -e "  (Python API runs from source directory)"
 }
 
 function generate_configuration() {
@@ -135,15 +141,13 @@ function install_dependencies() {
         npm ci 2>/dev/null || npm install 2>/dev/null || true
     fi
 
-    cd "$PROJECT_DIR/api" || {
-        echo -e "${RED}✗ Failed to change to API directory${NC}" >&2
+    # Sync Python dependencies
+    echo -e "  Syncing Python dependencies..."
+    uv sync 2>/dev/null || {
+        echo -e "${RED}✗ Failed to sync Python dependencies${NC}" >&2
         exit 1
     }
-    npm ci || npm install || {
-        echo -e "${RED}✗ Failed to install API dependencies${NC}" >&2
-        exit 1
-    }
-    echo -e "${GREEN}✓ API dependencies installed${NC}"
+    echo -e "${GREEN}✓ Python dependencies synced${NC}"
 
     cd "$PROJECT_DIR/client" || {
         echo -e "${RED}✗ Failed to change to client directory${NC}" >&2
@@ -164,15 +168,7 @@ function build_application() {
 
     echo -e "${YELLOW}[5/8] Building application...${NC}"
 
-    cd "$PROJECT_DIR/api" || {
-        echo -e "${RED}✗ Failed to change to API directory${NC}" >&2
-        exit 1
-    }
-    npm run build || {
-        echo -e "${RED}✗ API build failed${NC}" >&2
-        exit 1
-    }
-    echo -e "${GREEN}✓ API built${NC}"
+    echo -e "  Python API runs from source — no build step needed"
 
     cd "$PROJECT_DIR/client" || {
         echo -e "${RED}✗ Failed to change to client directory${NC}" >&2
@@ -188,35 +184,8 @@ function build_application() {
 function copy_production_files() {
     echo -e "${YELLOW}[6/8] Copying production files...${NC}"
 
-    echo -e "  Copying API..."
-    rm -rf "$DEPLOY_DIR/api"/* || true
-    mkdir -p "$DEPLOY_DIR/api/build" || {
-        echo -e "${RED}✗ Failed to create API build directory${NC}" >&2
-        exit 1
-    }
-    cp -r "$PROJECT_DIR/api/build"/* "$DEPLOY_DIR/api/build/" || {
-        echo -e "${RED}✗ Failed to copy API build files${NC}" >&2
-        exit 1
-    }
-    cp "$PROJECT_DIR/api/tsconfig-paths.js" "$DEPLOY_DIR/api/" 2>/dev/null || true
-    cp "$PROJECT_DIR/api/tsconfig.json" "$DEPLOY_DIR/api/" 2>/dev/null || true
-    cp "$PROJECT_DIR/api/package.json" "$DEPLOY_DIR/api/" || {
-        echo -e "${RED}✗ Failed to copy API package.json${NC}" >&2
-        exit 1
-    }
-    cp "$PROJECT_DIR/api/package-lock.json" "$DEPLOY_DIR/api/" 2>/dev/null || true
-
-    cd "$DEPLOY_DIR/api" || {
-        echo -e "${RED}✗ Failed to change to deployed API directory${NC}" >&2
-        exit 1
-    }
-    npm ci --omit=dev 2>/dev/null || npm install --omit=dev || {
-        echo -e "${RED}✗ Failed to install API production dependencies${NC}" >&2
-        exit 1
-    }
-
-    npm rebuild better-sqlite3 2>/dev/null || true
-    echo -e "${GREEN}✓ API files copied to $DEPLOY_DIR/api/${NC}"
+    echo -e "  Python API runs from source directory: $PROJECT_DIR"
+    echo -e "  (no API files to copy — uv sync keeps dependencies up to date)"
 
     echo -e "  Copying Client..."
     rm -rf "$DEPLOY_DIR/client"/* || true
@@ -253,6 +222,7 @@ function generate_startup_scripts() {
     echo -e "${YELLOW}[7/8] Generating startup scripts...${NC}"
 
     sed -e "s|__PROJECT_DIR__|$DEPLOY_DIR|g" \
+        -e "s|__PROJECT_SOURCE__|$PROJECT_DIR|g" \
         -e "s|__DEPLOY_DIR__|$DEPLOY_DIR|g" \
         -e "s|__HOSTNAME__|$HOSTNAME|g" \
         "$TEMPLATES_DIR/start.sh" > "$DEPLOY_DIR/start.sh" || {
@@ -315,13 +285,13 @@ function display_instructions() {
 
     echo -e "${BLUE}Production files deployed to:${NC}"
     echo -e "  $DEPLOY_DIR/"
-    echo -e "  ├── api/          (API server)"
     echo -e "  ├── client/       (Client server)"
     echo -e "  ├── data/         (SQLite database)"
     echo -e "  ├── logs/         (Application logs)"
     echo -e "  ├── pids/         (Process IDs)"
     echo -e "  ├── .env.production"
     echo -e "  └── start.sh"
+    echo -e "  (Python API runs from source: $PROJECT_DIR)"
     
     # Show generated service file
     if [[ "$OS_TYPE" == "macos" ]]; then
