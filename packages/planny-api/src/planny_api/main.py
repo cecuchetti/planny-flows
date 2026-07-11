@@ -16,14 +16,16 @@ from planny_core.errors import AppError, RouteNotFoundError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.responses import Response
 
-from planny_api.dependencies import get_current_user
+from planny_api.dependencies import get_current_user, require_jira_config
 from planny_api.middleware.error_handler import (
     app_error_handler,
     unhandled_exception_handler,
 )
 from planny_api.middleware.request_id import RequestIDMiddleware
 from planny_api.middleware.request_logger import RequestLoggerMiddleware
-from planny_api.routers import auth, comments, health, issues, projects, users
+from planny_api.routers import auth, comments, health, issues, projects, quick_actions, users
+from planny_api.routers.jira_integrations import issues as jira_issues_router
+from planny_api.routers.jira_integrations import worklogs as jira_worklogs_router
 
 
 def configure_structlog() -> None:
@@ -94,6 +96,20 @@ def create_app() -> FastAPI:
     app.include_router(
         comments.router,
         dependencies=[Depends(get_current_user)],
+    )
+    app.include_router(
+        quick_actions.router,
+        dependencies=[Depends(get_current_user)],
+    )
+
+    # Jira integration routes (auth + require_jira_config)
+    app.include_router(
+        jira_worklogs_router.router,
+        dependencies=[Depends(get_current_user), Depends(require_jira_config)],
+    )
+    app.include_router(
+        jira_issues_router.router,
+        dependencies=[Depends(get_current_user), Depends(require_jira_config)],
     )
 
     # ── Exception handlers ────────────────────────────────────────────────
