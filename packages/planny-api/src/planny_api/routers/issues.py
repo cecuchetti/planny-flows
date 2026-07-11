@@ -83,10 +83,18 @@ async def get_issue(
     Includes eager-loaded ``users``, ``comments``, and comment ``user``
     objects. Cross-project access raises 404.
     """
+    from planny_core.models import user_projects
+    from sqlalchemy import select
+
+    project_ids_result = await db.execute(
+        select(user_projects.c.projectId).where(user_projects.c.userId == current_user.id)
+    )
+    user_project_ids = [row[0] for row in project_ids_result.all()]
+
     issue = await issue_service.find_by_id_and_project(
         db,
         issue_id=issue_id,
-        project_id=current_user.projectId,
+        project_id=user_project_ids,
     )
     return {"issue": _issue_full_dict(issue)}
 
@@ -125,10 +133,18 @@ async def update_issue(
     update semantics). Returns the updated issue partial.
     Cross-project access raises 404.
     """
+    from planny_core.models import user_projects
+    from sqlalchemy import select
+
+    project_ids_result = await db.execute(
+        select(user_projects.c.projectId).where(user_projects.c.userId == current_user.id)
+    )
+    user_project_ids = [row[0] for row in project_ids_result.all()]
+
     updated = await issue_service.update_issue(
         db,
         issue_id=issue_id,
-        project_id=current_user.projectId,
+        project_id=user_project_ids,
         data=body,
     )
     return {"issue": issue_partial(updated)}
@@ -144,9 +160,17 @@ async def delete_issue(
 
     Returns a success message. Cross-project access raises 404.
     """
+    from planny_core.models import user_projects
+    from sqlalchemy import select
+
+    project_ids_result = await db.execute(
+        select(user_projects.c.projectId).where(user_projects.c.userId == current_user.id)
+    )
+    user_project_ids = [row[0] for row in project_ids_result.all()]
+
     await issue_service.delete_issue(
         db,
         issue_id=issue_id,
-        project_id=current_user.projectId,
+        project_id=user_project_ids,
     )
     return {"message": "Issue deleted"}

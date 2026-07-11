@@ -10,9 +10,10 @@ import { Title, EmptyLabel, Actions } from './Styles';
 const propTypes = {
   issue: PropTypes.object.isRequired,
   updateIssue: PropTypes.func.isRequired,
+  isReadonly: PropTypes.bool,
 };
 
-const ProjectBoardIssueDetailsDescription = ({ issue, updateIssue }) => {
+const ProjectBoardIssueDetailsDescription = ({ issue, updateIssue, isReadonly = false }) => {
   const { t } = useTranslation();
   const [description, setDescription] = useState(issue.description);
   const [isEditing, setEditing] = useState(false);
@@ -27,7 +28,7 @@ const ProjectBoardIssueDetailsDescription = ({ issue, updateIssue }) => {
   return (
     <Fragment>
       <Title>{t('issue.description')}</Title>
-      {isEditing ? (
+      {isEditing && !isReadonly ? (
         <Fragment>
           <TextEditor
             placeholder={t('issue.describeIssue')}
@@ -46,9 +47,18 @@ const ProjectBoardIssueDetailsDescription = ({ issue, updateIssue }) => {
       ) : (
         <Fragment>
           {isDescriptionEmpty ? (
-            <EmptyLabel onClick={() => setEditing(true)}>{t('issue.addDescriptionPlaceholder')}</EmptyLabel>
+            <EmptyLabel
+              onClick={() => !isReadonly && setEditing(true)}
+              style={isReadonly ? { cursor: 'default' } : undefined}
+            >
+              {t('issue.addDescriptionPlaceholder')}
+            </EmptyLabel>
           ) : (
-            <TextEditedContent content={description} onClick={() => setEditing(true)} />
+            <TextEditedContent
+              content={description}
+              onClick={() => !isReadonly && setEditing(true)}
+              style={isReadonly ? { cursor: 'default' } : undefined}
+            />
           )}
         </Fragment>
       )}

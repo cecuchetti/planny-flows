@@ -55,8 +55,16 @@ async def create_comment(
     Returns the comment with a nested ``user`` object.
     """
     # Verify issue exists and belongs to user's project
+    from planny_core.models import user_projects
+    from sqlalchemy import select
+
+    project_ids_result = await db.execute(
+        select(user_projects.c.projectId).where(user_projects.c.userId == current_user.id)
+    )
+    user_project_ids = {row[0] for row in project_ids_result.all()}
+
     issue = await db.get(Issue, body.issue_id)
-    if not issue or issue.projectId != current_user.projectId:
+    if not issue or issue.projectId not in user_project_ids:
         raise EntityNotFoundError("Issue")
 
     comment = Comment(

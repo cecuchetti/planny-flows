@@ -22,7 +22,11 @@ const loadColumnOrder = () => {
     if (!raw) return getDefaultColumnOrder();
     const parsed = JSON.parse(raw);
     const valid = getDefaultColumnOrder();
-    if (Array.isArray(parsed) && parsed.length === valid.length && parsed.every(s => valid.includes(s))) {
+    if (
+      Array.isArray(parsed) &&
+      parsed.length === valid.length &&
+      parsed.every((s) => valid.includes(s))
+    ) {
       return parsed;
     }
   } catch (_) {}
@@ -49,14 +53,17 @@ const ProjectBoardLists = ({ project, filters, updateLocalProjectIssues }) => {
     setColumnOrder(loadColumnOrder());
   }, []);
 
-  const handleColumnDrop = useCallback((result) => {
-    if (!result.destination || result.source.droppableId !== 'board-columns') return;
-    const next = [...columnOrder];
-    const [removed] = next.splice(result.source.index, 1);
-    next.splice(result.destination.index, 0, removed);
-    setColumnOrder(next);
-    saveColumnOrder(next);
-  }, [columnOrder]);
+  const handleColumnDrop = useCallback(
+    (result) => {
+      if (!result.destination || result.source.droppableId !== 'board-columns') return;
+      const next = [...columnOrder];
+      const [removed] = next.splice(result.source.index, 1);
+      next.splice(result.destination.index, 0, removed);
+      setColumnOrder(next);
+      saveColumnOrder(next);
+    },
+    [columnOrder],
+  );
 
   const handleIssueDrop = ({ draggableId, destination, source }) => {
     if (source.droppableId === 'board-columns') return;
@@ -71,7 +78,7 @@ const ProjectBoardLists = ({ project, filters, updateLocalProjectIssues }) => {
         listPosition: calculateIssueListPosition(project.issues, destination, source, issueId),
       },
       currentFields: project.issues.find(({ id }) => id === issueId),
-      setLocalData: fields => updateLocalProjectIssues(issueId, fields),
+      setLocalData: (fields) => updateLocalProjectIssues(issueId, fields),
     });
   };
 
@@ -94,7 +101,12 @@ const ProjectBoardLists = ({ project, filters, updateLocalProjectIssues }) => {
                   <div
                     ref={colProvided.innerRef}
                     {...colProvided.draggableProps}
-                    style={{ ...colProvided.draggableProps.style, margin: 0, flex: '0 0 310px', minWidth: '310px' }}
+                    style={{
+                      ...colProvided.draggableProps.style,
+                      margin: 0,
+                      flex: '0 0 310px',
+                      minWidth: '310px',
+                    }}
                   >
                     <List
                       status={status}
@@ -140,7 +152,7 @@ const calculateIssueListPosition = (...args) => {
 
 const getAfterDropPrevNextIssue = (allIssues, destination, source, droppedIssueId) => {
   const beforeDropDestinationIssues = getSortedListIssues(allIssues, destination.droppableId);
-  const droppedIssue = allIssues.find(issue => issue.id === droppedIssueId);
+  const droppedIssue = allIssues.find((issue) => issue.id === droppedIssueId);
   const isSameList = destination.droppableId === source.droppableId;
 
   const afterDropDestinationIssues = isSameList
@@ -154,7 +166,25 @@ const getAfterDropPrevNextIssue = (allIssues, destination, source, droppedIssueI
 };
 
 const getSortedListIssues = (issues, status) =>
-  issues.filter(issue => issue.status === status).sort((a, b) => a.listPosition - b.listPosition);
+  issues
+    .filter((issue) => issue.status === status)
+    .sort((a, b) => {
+      const aType = a.sourceType || a.source_type;
+      const bType = b.sourceType || b.source_type;
+
+      if (aType === 'jira' && bType === 'jira') {
+        const aDate = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const bDate = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        if (aDate && bDate && aDate !== bDate) {
+          return bDate - aDate;
+        }
+        return b.id - a.id;
+      }
+      if (aType === 'jira') return -1;
+      if (bType === 'jira') return 1;
+
+      return a.listPosition - b.listPosition;
+    });
 
 ProjectBoardLists.propTypes = propTypes;
 

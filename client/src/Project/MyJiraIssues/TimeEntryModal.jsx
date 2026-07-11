@@ -21,9 +21,10 @@ const propTypes = {
   }).isRequired,
   onClose: PropTypes.func.isRequired,
   onSaved: PropTypes.func, // eslint-disable-line react/require-default-props
+  inline: PropTypes.bool,
 };
 
-export default function TimeEntryModal({ issue, onClose, onSaved = () => {} }) {
+export default function TimeEntryModal({ issue, onClose, onSaved = () => {}, inline = false }) {
   const { t } = useTranslation();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [canClose, setCanClose] = useState(false);
@@ -115,6 +116,7 @@ export default function TimeEntryModal({ issue, onClose, onSaved = () => {} }) {
       isClosingEntity={isClosing}
       testid="modal:time-entry"
       width={460}
+      inline={inline}
     />
   );
 }

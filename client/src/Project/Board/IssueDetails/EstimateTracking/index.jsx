@@ -19,46 +19,69 @@ import {
 const propTypes = {
   issue: PropTypes.object.isRequired,
   updateIssue: PropTypes.func.isRequired,
+  isReadonly: PropTypes.bool,
 };
 
-const ProjectBoardIssueDetailsEstimateTracking = ({ issue, updateIssue }) => (
-  <Fragment>
-    <SectionTitle>Original Estimate (hours)</SectionTitle>
-    {renderHourInput('estimate', issue, updateIssue)}
+const ProjectBoardIssueDetailsEstimateTracking = ({ issue, updateIssue, isReadonly = false }) => {
+  if (isReadonly) {
+    return (
+      <Fragment>
+        <SectionTitle>Original Estimate (hours)</SectionTitle>
+        <InputCont>
+          <InputDebounced
+            placeholder="Number"
+            value={isNil(issue.estimate) ? '' : issue.estimate}
+            disabled
+          />
+        </InputCont>
 
-    <SectionTitle>Time Tracking</SectionTitle>
-    <Modal
-      testid="modal:tracking"
-      width={400}
-      renderLink={(modal) => (
-        <TrackingLink onClick={modal.open}>
+        <SectionTitle>Time Tracking</SectionTitle>
+        <div style={{ padding: '4px 0' }}>
           <TrackingWidget issue={issue} />
-        </TrackingLink>
-      )}
-      renderContent={(modal) => (
-        <ModalContents>
-          <ModalTitle>Time tracking</ModalTitle>
-          <TrackingWidget issue={issue} />
-          <Inputs>
-            <InputCont>
-              <InputLabel>Time spent (hours)</InputLabel>
-              {renderHourInput('timeSpent', issue, updateIssue)}
-            </InputCont>
-            <InputCont>
-              <InputLabel>Time remaining (hours)</InputLabel>
-              {renderHourInput('timeRemaining', issue, updateIssue)}
-            </InputCont>
-          </Inputs>
-          <Actions>
-            <Button variant="primary" onClick={modal.close}>
-              Done
-            </Button>
-          </Actions>
-        </ModalContents>
-      )}
-    />
-  </Fragment>
-);
+        </div>
+      </Fragment>
+    );
+  }
+
+  return (
+    <Fragment>
+      <SectionTitle>Original Estimate (hours)</SectionTitle>
+      {renderHourInput('estimate', issue, updateIssue)}
+
+      <SectionTitle>Time Tracking</SectionTitle>
+      <Modal
+        testid="modal:tracking"
+        width={400}
+        renderLink={(modal) => (
+          <TrackingLink onClick={modal.open}>
+            <TrackingWidget issue={issue} />
+          </TrackingLink>
+        )}
+        renderContent={(modal) => (
+          <ModalContents>
+            <ModalTitle>Time tracking</ModalTitle>
+            <TrackingWidget issue={issue} />
+            <Inputs>
+              <InputCont>
+                <InputLabel>Time spent (hours)</InputLabel>
+                {renderHourInput('timeSpent', issue, updateIssue)}
+              </InputCont>
+              <InputCont>
+                <InputLabel>Time remaining (hours)</InputLabel>
+                {renderHourInput('timeRemaining', issue, updateIssue)}
+              </InputCont>
+            </Inputs>
+            <Actions>
+              <Button variant="primary" onClick={modal.close}>
+                Done
+              </Button>
+            </Actions>
+          </ModalContents>
+        )}
+      />
+    </Fragment>
+  );
+};
 
 const renderHourInput = (fieldName, issue, updateIssue) => (
   <InputDebounced

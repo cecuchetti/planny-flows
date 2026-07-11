@@ -12,12 +12,41 @@ const propTypes = {
   issue: PropTypes.object.isRequired,
   updateIssue: PropTypes.func.isRequired,
   projectUsers: PropTypes.array.isRequired,
+  isReadonly: PropTypes.bool,
 };
 
-const ProjectBoardIssueDetailsAssigneesReporter = ({ issue, updateIssue, projectUsers }) => {
-  const getUserById = userId => projectUsers.find(user => user.id === userId);
+const ProjectBoardIssueDetailsAssigneesReporter = ({
+  issue,
+  updateIssue,
+  projectUsers,
+  isReadonly = false,
+}) => {
+  const getUserById = (userId) => projectUsers.find((user) => user.id === userId);
 
-  const userOptions = projectUsers.map(user => ({ value: user.id, label: user.name }));
+  const userOptions = projectUsers.map((user) => ({ value: user.id, label: user.name }));
+
+  if (isReadonly) {
+    return (
+      <Fragment>
+        <SectionTitle>Assignees</SectionTitle>
+        {issue.userIds && issue.userIds.length > 0 ? (
+          issue.userIds.map((userId) => {
+            const user = getUserById(userId);
+            return user ? renderUser(user, true) : null;
+          })
+        ) : (
+          <div style={{ fontSize: '15px', color: '#5E6C84', padding: '4px 0' }}>Unassigned</div>
+        )}
+
+        <SectionTitle>Reporter</SectionTitle>
+        {issue.reporterId && getUserById(issue.reporterId) ? (
+          renderUser(getUserById(issue.reporterId), true)
+        ) : (
+          <div style={{ fontSize: '15px', color: '#5E6C84', padding: '4px 0' }}>No reporter</div>
+        )}
+      </Fragment>
+    );
+  }
 
   return (
     <Fragment>
@@ -30,7 +59,7 @@ const ProjectBoardIssueDetailsAssigneesReporter = ({ issue, updateIssue, project
         name="assignees"
         value={issue.userIds}
         options={userOptions}
-        onChange={userIds => {
+        onChange={(userIds) => {
           updateIssue({ userIds, users: userIds.map(getUserById) });
         }}
         renderValue={({ value: userId, removeOptionValue }) =>
@@ -47,7 +76,7 @@ const ProjectBoardIssueDetailsAssigneesReporter = ({ issue, updateIssue, project
         name="reporter"
         value={issue.reporterId}
         options={userOptions}
-        onChange={userId => updateIssue({ reporterId: userId })}
+        onChange={(userId) => updateIssue({ reporterId: userId })}
         renderValue={({ value: userId }) => renderUser(getUserById(userId), true)}
         renderOption={({ value: userId }) => renderUser(getUserById(userId))}
       />

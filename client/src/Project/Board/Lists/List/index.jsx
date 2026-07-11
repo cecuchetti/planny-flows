@@ -78,7 +78,25 @@ const filterIssues = (projectIssues, filters, currentUserId) => {
 };
 
 const getSortedListIssues = (issues, status) =>
-  issues.filter((issue) => issue.status === status).sort((a, b) => a.listPosition - b.listPosition);
+  issues
+    .filter((issue) => issue.status === status)
+    .sort((a, b) => {
+      const aType = a.sourceType || a.source_type;
+      const bType = b.sourceType || b.source_type;
+
+      if (aType === 'jira' && bType === 'jira') {
+        const aDate = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const bDate = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        if (aDate && bDate && aDate !== bDate) {
+          return bDate - aDate;
+        }
+        return b.id - a.id;
+      }
+      if (aType === 'jira') return -1;
+      if (bType === 'jira') return 1;
+
+      return a.listPosition - b.listPosition;
+    });
 
 const formatIssuesCount = (allListIssues, filteredListIssues) => {
   if (allListIssues.length !== filteredListIssues.length) {

@@ -13,14 +13,27 @@ import { Status } from './Styles';
 const propTypes = {
   issue: PropTypes.object.isRequired,
   updateIssue: PropTypes.func.isRequired,
+  isReadonly: PropTypes.bool,
 };
 
-const ProjectBoardIssueDetailsStatus = ({ issue, updateIssue }) => {
+const ProjectBoardIssueDetailsStatus = ({ issue, updateIssue, isReadonly = false }) => {
   const { t } = useTranslation();
-  const options = Object.values(IssueStatus).map(status => ({
+  const options = Object.values(IssueStatus).map((status) => ({
     value: status,
     label: t(`issueStatuses.${status}`),
   }));
+
+  if (isReadonly) {
+    return (
+      <Fragment>
+        <SectionTitle>{t('issue.statusLabel')}</SectionTitle>
+        <Status $isValue $color={issue.status} style={{ cursor: 'default' }}>
+          <div>{t(`issueStatuses.${issue.status}`) || issue.status}</div>
+        </Status>
+      </Fragment>
+    );
+  }
+
   return (
     <Fragment>
       <SectionTitle>{t('issue.statusLabel')}</SectionTitle>
@@ -31,15 +44,15 @@ const ProjectBoardIssueDetailsStatus = ({ issue, updateIssue }) => {
         name="status"
         value={issue.status}
         options={options}
-        onChange={status => updateIssue({ status })}
+        onChange={(status) => updateIssue({ status })}
         renderValue={({ value: status }) => (
-           <Status $isValue $color={status}>
+          <Status $isValue $color={status}>
             <div>{t(`issueStatuses.${status}`)}</div>
             <Icon type="chevron-down" size={18} />
           </Status>
         )}
         renderOption={({ value: status }) => (
-           <Status $color={status}>{t(`issueStatuses.${status}`)}</Status>
+          <Status $color={status}>{t(`issueStatuses.${status}`)}</Status>
         )}
       />
     </Fragment>

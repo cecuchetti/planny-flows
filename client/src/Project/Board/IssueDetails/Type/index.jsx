@@ -10,14 +10,24 @@ import { TypeButton, Type, TypeLabel } from './Styles';
 const propTypes = {
   issue: PropTypes.object.isRequired,
   updateIssue: PropTypes.func.isRequired,
+  isReadonly: PropTypes.bool,
 };
 
-const ProjectBoardIssueDetailsType = ({ issue, updateIssue }) => {
+const ProjectBoardIssueDetailsType = ({ issue, updateIssue, isReadonly = false }) => {
   const { t } = useTranslation();
-  const options = Object.values(IssueType).map(type => ({
+  const options = Object.values(IssueType).map((type) => ({
     value: type,
     label: t(`issueTypes.${type}`),
   }));
+
+  if (isReadonly) {
+    return (
+      <TypeButton variant="empty" icon={<IssueTypeIcon type={issue.type} />} disabled>
+        {issue.externalKey || `${issue.type}-${issue.id}`}
+      </TypeButton>
+    );
+  }
+
   return (
     <Select
       variant="empty"
@@ -26,10 +36,10 @@ const ProjectBoardIssueDetailsType = ({ issue, updateIssue }) => {
       name="type"
       value={issue.type}
       options={options}
-      onChange={type => updateIssue({ type })}
+      onChange={(type) => updateIssue({ type })}
       renderValue={({ value: type }) => (
         <TypeButton variant="empty" icon={<IssueTypeIcon type={type} />}>
-          {`${t(`issueTypes.${type}`)}-${issue.id}`}
+          {issue.externalKey || `${t(`issueTypes.${type}`)}-${issue.id}`}
         </TypeButton>
       )}
       renderOption={({ value: type }) => (

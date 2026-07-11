@@ -10,9 +10,10 @@ import { TitleTextarea, ErrorText } from './Styles';
 const propTypes = {
   issue: PropTypes.object.isRequired,
   updateIssue: PropTypes.func.isRequired,
+  isReadonly: PropTypes.bool,
 };
 
-const ProjectBoardIssueDetailsTitle = ({ issue, updateIssue }) => {
+const ProjectBoardIssueDetailsTitle = ({ issue, updateIssue, isReadonly = false }) => {
   const { t } = useTranslation();
   const $titleInputRef = useRef();
   const [error, setError] = useState(null);
@@ -40,11 +41,17 @@ const ProjectBoardIssueDetailsTitle = ({ issue, updateIssue }) => {
         defaultValue={issue.title}
         ref={$titleInputRef}
         onBlur={handleTitleChange}
-        onKeyDown={event => {
+        onKeyDown={(event) => {
           if (event.keyCode === KeyCodes.ENTER) {
             event.target.blur();
           }
         }}
+        readOnly={isReadonly}
+        style={
+          isReadonly
+            ? { cursor: 'default', background: 'transparent', boxShadow: 'none' }
+            : undefined
+        }
       />
       {error && <ErrorText>{error}</ErrorText>}
     </Fragment>

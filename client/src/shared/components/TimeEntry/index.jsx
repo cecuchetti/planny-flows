@@ -106,6 +106,8 @@ const propTypes = {
     border: PropTypes.string,
     text: PropTypes.string,
   }),
+  /** Render inline without Modal overlay wrapper */
+  inline: PropTypes.bool,
 };
 
 const defaultProps = {
@@ -132,6 +134,7 @@ const defaultProps = {
   width: 460,
   headerGradient: {},
   badgeColors: {},
+  inline: false,
 };
 
 export default function TimeEntry({
@@ -162,6 +165,7 @@ export default function TimeEntry({
   width,
   headerGradient,
   badgeColors,
+  inline,
 }) {
   const { t } = useTranslation();
 
@@ -338,6 +342,110 @@ export default function TimeEntry({
   }, [onClose]);
 
   if (!isOpen) return null;
+
+  if (inline) {
+    return (
+      <form onSubmit={handleSubmit} data-testid={testid}>
+        <FormBody style={{ padding: 0, border: 'none', background: 'transparent' }}>
+          {warning && (
+            <WarningBanner>
+              <span className="warning-icon">⚠️</span>
+              {warning}
+            </WarningBanner>
+          )}
+
+          <Field>
+            <Label>{labels.hours || t('timeEntry.hoursLogged')} *</Label>
+            <InputWrapper>
+              <Input
+                value={hoursInput}
+                onChange={setHoursInput}
+                onBlur={handleHoursBlur}
+                placeholder={placeholders.hours || 'ej. 2h, 1h 30m, 2.5'}
+                invalid={!!hoursError}
+                aria-invalid={!!hoursError}
+                aria-describedby={hoursError ? 'time-entry-hours-error' : undefined}
+              />
+              <Hint>{labels.hoursHint || t('timeEntry.hoursHint')}</Hint>
+              {hoursError && (
+                <Hint id="time-entry-hours-error" $error>
+                  {hoursError}
+                </Hint>
+              )}
+            </InputWrapper>
+          </Field>
+
+          <Field>
+            <Label>
+              {labels.date || (withTime ? t('timeEntry.dateAndTime') : t('timeEntry.date'))} *
+            </Label>
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+              <DatePickerWrapper style={{ flex: 1 }}>
+                <DatePicker withTime={false} value={datePart} onChange={handleDateChange} />
+              </DatePickerWrapper>
+              {withTime && (
+                <InputWrapper style={{ flex: '0 0 120px' }}>
+                  <Input
+                    value={timeInput}
+                    onChange={handleTimeChange}
+                    onBlur={() => {
+                      const error = validateTimeInput(timeInput);
+                      setTimeError(error || '');
+                    }}
+                    placeholder="4:30 PM"
+                    invalid={!!timeError}
+                    aria-invalid={!!timeError}
+                    aria-describedby={timeError ? 'time-entry-time-error' : undefined}
+                  />
+                  {timeError && (
+                    <Hint id="time-entry-time-error" $error>
+                      {timeError}
+                    </Hint>
+                  )}
+                </InputWrapper>
+              )}
+            </div>
+          </Field>
+
+          {showDescription && (
+            <Field>
+              <Label>{labels.description || t('timeEntry.description')}</Label>
+              <DescriptionWrapper>
+                <Input
+                  value={description}
+                  onChange={setDescription}
+                  placeholder={
+                    placeholders.description || t('timeEntry.descriptionPlaceholder')
+                  }
+                />
+              </DescriptionWrapper>
+            </Field>
+          )}
+
+          <Actions style={{ padding: '16px 0 0' }}>
+            {canCloseEntity && onCloseEntity && (
+              <Button
+                type="button"
+                variant="danger"
+                isWorking={isClosingEntity}
+                onClick={handleCloseEntity}
+              >
+                {closeEntityText || t('timeEntry.closeIssue')}
+              </Button>
+            )}
+            <ActionsRight>
+              <Button type="button" variant="empty" onClick={handleCancel}>
+                {cancelButtonText || t('common.cancel')}
+              </Button>
+              <Button type="submit" variant="primary" isWorking={isSubmitting}>
+                {submitButtonText || t('common.save')}
+              </Button>
+            </ActionsRight>
+          </Actions>
+        </FormBody>
+      </form>
+    );
+  }
 
   return (
     <Modal

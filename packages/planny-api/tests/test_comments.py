@@ -168,7 +168,7 @@ class TestCreateComment:
         await client.post("/authentication/guest")
 
         # Override current user with a mock user in a different project
-        mock_user = _make_mock_user(project_id=999)
+        mock_user = _make_mock_user(project_id=999, user_id=999)
 
         async def _override_user() -> User:
             return mock_user
