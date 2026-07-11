@@ -22,7 +22,7 @@ module.exports = {
         use: ['style-loader', { loader: 'css-loader' }],
       },
       {
-        test: /\.(jpe?g|png|gif|woff2?|eot|ttf|otf|svg)$/,
+        test: /\.(jpe?g|png|gif|webp|woff2?|eot|ttf|otf|svg)$/,
         type: 'asset',
         parser: { dataUrlCondition: { maxSize: 15000 } },
       },
