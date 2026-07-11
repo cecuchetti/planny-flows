@@ -3,28 +3,26 @@
 ## Project
 
 Jira Clone:
-- **API**: TypeScript/Node.js/Express with TypeORM
+- **API (Python)**: Python with FastAPI + SQLAlchemy 2.0 + Alembic
 - **Client**: React/JavaScript with Webpack
 
 ## Commands
 
 ### Root
 ```bash
-npm run install-dependencies  # Install all deps
-npm run build                 # Build both
-npm run start:production      # Production start
+npm run install-dependencies  # Install client deps
+npm run start:client          # Start client dev server
+npm run build:client          # Build client for production
+npm run start:python          # Start Python API dev server with reload
 ```
 
-### API (`/api`)
+### Python API (`packages/planny-api/`)
 ```bash
-npm start                   # Development
-npm run build               # Compile TypeScript
-npm run test                # Run tests (Vitest)
-npm run test:watch          # Watch mode
-npm run test:coverage       # With coverage
-npx vitest run src/path/to/file.test.ts          # Single test file
-npx vitest run --reporter=verbose -t "pattern"   # By pattern
-npx tsc --noEmit            # TypeScript check
+uv run uvicorn planny_api.main:app --host 0.0.0.0 --port 3824 --reload  # Development
+uv run pytest packages/ -v --tb=short                                   # Run all tests
+uv run pytest packages/planny-api/tests/test_issues.py -v               # Single test file
+uv run ruff check packages/                                              # Lint
+uv run mypy packages/                                                    # Type check
 ```
 
 ### Client (`/client`)
@@ -37,9 +35,7 @@ npm run test:cypress        # E2E tests with Cypress
 
 ### Pre-commit
 ```bash
-cd api && npm run pre-commit      # API lint + format
 cd client && npm run pre-commit   # Client lint + format
-npx eslint . --ext .ts,.tsx --fix
 npx prettier --write "**/*.{ts,tsx,js,jsx,json,md}"
 ```
 
@@ -50,37 +46,14 @@ npx prettier --write "**/*.{ts,tsx,js,jsx,json,md}"
 { "printWidth": 100, "singleQuote": true, "trailingComma": "all" }
 ```
 
-### Import Conventions
-- **API**: Absolute from `src/` (e.g., `import { logger } from 'utils/logger'`)
-- **Client**: Absolute from `src/` (e.g., `import { Modal } from 'shared/components'`)
-
-### Naming Conventions
-- Files: camelCase (utils/services), PascalCase (entities/components)
-- Variables/functions: camelCase
-- Classes/Components: PascalCase
-- Constants: UPPER_SNAKE_CASE
-- Tests: `[name].test.ts`
-
-### TypeScript Guidelines (API)
-- Strict mode
-- Explicit return types on exports
-- Use `type` for shapes
-- Use `interface` for contracts
-- Nullable: `| null`
-- Avoid `any`
-
-```typescript
-const getIssue = async (id: number): Promise<Issue | null> => {
-  return repository.findOne({ where: { id } });
-};
-
-@Entity()
-class Issue extends BaseEntity {
-  @PrimaryGeneratedColumn() id: number;
-  @Column('varchar') title: string;
-  @Column('text', { nullable: true }) description: string | null;
-}
-```
+### Python Backend Conventions
+- **Naming**: snake_case files/modules/functions, PascalCase classes
+- **Tests**: pytest with `test_*.py` pattern
+- **Imports**: absolute from package root (e.g., `from planny_core.config import settings`)
+- **Lint**: ruff
+- **Types**: type hints required, mypy strict mode
+- **Errors**: custom exception hierarchy (`planny_core/errors.py`)
+- **DB**: SQLAlchemy 2.0 with async sessions
 
 ### React Guidelines (Client)
 - Functional components
@@ -98,44 +71,25 @@ Component.propTypes = { prop1: PropTypes.string.isRequired, prop2: PropTypes.fun
 ```
 
 ### Error Handling
-**API**: Use `errors/customErrors.ts` and wrap with `catchErrors`.
-```typescript
-import { EntityNotFoundError } from 'errors';
-
-export const getIssue = catchErrors(async (req, res) => {
-  const issue = await issueService.findById(id);
-  if (!issue) throw new EntityNotFoundError('Issue');
-  res.respond({ issue });
-});
-```
+**API**: Use `AppError` subclasses from `planny_core.errors` — handled globally by middleware.
 
 **Client**: Use ErrorBoundary at app root.
 
 ### Testing Pattern
 
-**Vitest**:
-```typescript
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-
-describe('ServiceName', () => {
-  beforeEach(() => { /* Reset mocks */ });
-  it('should do something', async () => {
-    const result = await service.method();
-    expect(result).toBe(expected);
-  });
-});
+**pytest**:
+```python
+async def test_something(client, db_session):
+    result = await service.method()
+    assert result.status == "ok"
 ```
 
 ### Project Structure
 ```
-/api/src
-  /controllers    - Route handlers (wrap with catchErrors)
-  /entities       - TypeORM entities
-  /errors         - Custom error classes
-  /middleware     - Express middleware
-  /services       - Business logic
-  /utils          - Helper functions
-  /config         - Configuration
+/packages
+  /planny-core       - Shared config, models, database, errors, enums
+  /planny-api        - FastAPI app: routers, middleware, services, schemas
+  /planny-jira       - Jira HTTP client and worklog orchestration
 
 /client/src
   /App            - Root component
@@ -144,24 +98,18 @@ describe('ServiceName', () => {
   /Auth           - Authentication
 ```
 
-### ESLint Rules
-- `no-console`: 0, `import/prefer-default-export`: 0 (named exports)
-- API: `@typescript-eslint/no-explicit-any`: 0 (prefer types)
-- Client: `react/prop-types`: warn, `react-hooks/exhaustive-deps`: warn
-
 ### Environment Requirements
 - Node.js >= 25
-- PostgreSQL or SQLite (better-sqlite3)
-
-## Git Workflow
-- Pre-commit hooks via Husky
-- lint-staged runs ESLint + Prettier on staged files
+- Python >= 3.12
+- uv (Python package manager)
+- PostgreSQL or SQLite
 
 ## Notes
-- API: `module-alias` for path resolution
-- Client: webpack resolve.modules for absolute imports
-- TypeORM decorators for entities
-- Pino for logging (API), styled-components (client)
+- Python backend runs on port 3824 (was Node, now Python directly)
+- Client webpack proxies API requests to localhost:3824
+- DB lives at `data/jira.sqlite` (relative to project root)
+- SQLAlchemy models defined in `planny_core.models`
+- Alembic for schema migrations
 
 ## Shell tool preferences
 - Use `rg` instead of `grep`

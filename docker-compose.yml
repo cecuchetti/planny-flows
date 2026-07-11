@@ -17,24 +17,23 @@ services:
     networks:
       - planny-network
 
-  api:
+  python-api:
     build:
-      context: ./api
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: Dockerfile.python
     ports:
       - "3824:3824"
     environment:
-      NODE_ENV: production
-      PORT: 3824
+      DB_TYPE: postgres
       DB_HOST: db
       DB_PORT: 5432
       DB_USERNAME: postgres
       DB_PASSWORD: postgres
-      DB_DATABASE: jira
+      DB_DATABASE: jira_clone
+      JWT_SECRET: jira-clone-dev-secret
+      PORT: 3824
     depends_on:
-      db:
-        condition: service_healthy
-    restart: on-failure
+      - db
     networks:
       - planny-network
 
@@ -47,26 +46,7 @@ services:
     ports:
       - "8193:8193"
     depends_on:
-      - api
-    networks:
-      - planny-network
-
-  python-api:
-    build:
-      context: .
-      dockerfile: Dockerfile.python
-    ports:
-      - "13824:13824"
-    environment:
-      DB_TYPE: postgres
-      DB_HOST: db
-      DB_PORT: 5432
-      DB_USERNAME: postgres
-      DB_PASSWORD: postgres
-      DB_DATABASE: jira_clone
-      JWT_SECRET: jira-clone-dev-secret
-    depends_on:
-      - db
+      - python-api
     networks:
       - planny-network
 

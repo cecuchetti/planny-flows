@@ -4,14 +4,13 @@
   "author": "Ivor Reic",
   "license": "MIT",
   "scripts": {
-    "pre-commit": "cd api && npm run pre-commit && cd ../client && npm run pre-commit",
-    "install-dependencies": "npm install && cd api && npm install && cd ../client && npm install",
-    "build": "cd api && npm run build && cd ../client && npm run build",
-    "start:production": "cd api && npm run start:production && cd ../client && npm run start:production",
-    "prepare": "husky"
+    "install-dependencies": "npm install && cd client && npm install",
+    "start:client": "cd client && npm start",
+    "build:client": "cd client && npm run build",
+    "test:client": "cd client && npm run test:jest",
+    "test:client:cypress": "cd client && npm run test:cypress",
+    "start:python": "uv run uvicorn planny_api.main:app --host 0.0.0.0 --port 3824 --reload"
   },
-  "devDependencies": {
-    "husky": "^8.0.3"
-  },
+  "devDependencies": {},
   "dependencies": {}
 }
