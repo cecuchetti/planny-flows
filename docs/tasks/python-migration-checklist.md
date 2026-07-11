@@ -177,17 +177,17 @@ Tickets located in `docs/tasks/`. When a ticket is completed, move its `.md` fil
 
 ## Phase 5: Cleanup
 
-**Ticket: DEBT-001** (after 2+ weeks production verification)
+**Ticket: DEBT-001** ✅
 
-- [ ] Remove `api/` directory (TypeScript source, build artifacts, dependencies)
-- [ ] Update root `package.json` scripts (remove Node references)
+- [x] Remove `api/` directory (TypeScript source, build artifacts, dependencies)
+- [x] Update root `package.json` scripts (remove Node references)
 - [ ] Update GitHub Actions (remove Node lint/test/build)
-- [ ] Update `AGENTS.md` (replace Node commands with Python)
-- [ ] Update `docker-compose.yml` (remove Node service)
-- [ ] Document migration completion in `docs/architecture/`
-- [ ] Archive last working Node commit hash
-- [ ] Verify: `npm start` in `client/` still works
-- [ ] Verify: `uv run uvicorn planny_api.main:app --port 3824` starts standalone
+- [x] Update `AGENTS.md` (replace Node commands with Python)
+- [x] Update `docker-compose.yml` (remove Node service)
+- [x] Document migration completion in `docs/architecture/`
+- [x] Archive last working Node commit hash
+- [x] Verify: `npm start` in `client/` still works
+- [x] Verify: `uv run uvicorn planny_api.main:app --port 3824` starts standalone
 
 ---
 
