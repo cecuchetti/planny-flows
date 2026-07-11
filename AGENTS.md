@@ -162,3 +162,16 @@ describe('ServiceName', () => {
 - Client: webpack resolve.modules for absolute imports
 - TypeORM decorators for entities
 - Pino for logging (API), styled-components (client)
+
+## Shell tool preferences
+- Use `rg` instead of `grep`
+- Use `fd` instead of `find`
+
+Default to `rg` and `fd` for search and file discovery unless there is a clear technical reason not to.
+
+Use `grep` or `find` only if:
+- the expected behavior cannot be reproduced with `rg` or `fd`
+- strict POSIX compatibility is explicitly required
+- `rg` or `fd` are not installed
+
+Heuristic: text/content search → `rg`, file/path discovery → `fd`.

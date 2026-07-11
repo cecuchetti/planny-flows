@@ -6,9 +6,9 @@
 .cursor
 
 # environment config
-**/.env
-**/.env.production
-**/.env.local
+**/.env*
+!**/.env*.example
+!**/.env*.sample
 
 # production
 **/build
@@ -26,6 +26,11 @@ client-logs*.log
 
 # Backup files
 *.backup
+
+# Python cache and virtual environment
+**/__pycache__
+**/.ruff_cache
+**/.venv
 
 # IDE and editor files
 .idea/
