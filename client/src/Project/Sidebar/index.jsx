@@ -1,5 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
+import { useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
 import {
@@ -22,7 +23,7 @@ const propTypes = {
 
 const NAV_ITEMS = [
   { key: 'kanban', labelKey: 'sidebar.kanbanBoard', path: '/board', icon: '📋', bg: '#2563eb' },
-  { key: 'external', labelKey: 'sidebar.externalAssignments', path: '/my-jira-issues', icon: '🔗', bg: '#7c3aed' },
+  { key: 'external', labelKey: 'sidebar.externalAssignments', path: '/board?filter=jira', icon: '🔗', bg: '#7c3aed' },
   { key: 'settings', labelKey: 'sidebar.projectSettings', path: '/settings', icon: '⚙️', bg: '#475569' },
 ];
 
@@ -37,8 +38,27 @@ const DISABLED_ITEMS = [
 ];
 
 const ProjectSidebar = ({ project: _project, onNavClick, isMobile }) => {
+  const location = useLocation();
   const { t } = useTranslation();
   const basePath = '/project';
+
+  const isActiveLink = (itemPath) => {
+    const [pathPart, queryString] = itemPath.split('?');
+    const fullPath = `${basePath}${pathPart}`;
+    const pathMatches =
+      location.pathname === fullPath || location.pathname.startsWith(`${fullPath}/`);
+
+    if (queryString) {
+      // Item has a query-param requirement
+      return pathMatches && location.search === `?${queryString}`;
+    }
+    if (itemPath === '/board') {
+      // Board without filter: active only when no filter param is present
+      return pathMatches && !location.search.includes('filter=');
+    }
+    // Default: pathname-based match
+    return pathMatches;
+  };
 
   return (
     <Sidebar $isMobile={isMobile}>
@@ -52,17 +72,20 @@ const ProjectSidebar = ({ project: _project, onNavClick, isMobile }) => {
       <NavSection>
         <SectionLabel>Principal</SectionLabel>
 
-        {NAV_ITEMS.map(item => (
-          <LinkItem 
-            key={item.key} 
-            to={`${basePath}${item.path}`} 
-            end={item.path === '/board'}
-            onClick={onNavClick}
-          >
-            <NavIcon $bg={item.bg}>{item.icon}</NavIcon>
-            <LinkText>{t(item.labelKey)}</LinkText>
-          </LinkItem>
-        ))}
+        {NAV_ITEMS.map(item => {
+          const isActive = isActiveLink(item.path);
+          return (
+            <LinkItem
+              key={item.key}
+              to={`${basePath}${item.path}`}
+              className={isActive ? 'active' : ''}
+              onClick={onNavClick}
+            >
+              <NavIcon $bg={item.bg}>{item.icon}</NavIcon>
+              <LinkText>{t(item.labelKey)}</LinkText>
+            </LinkItem>
+          );
+        })}
 
         <Divider />
         <SectionLabel>Más</SectionLabel>

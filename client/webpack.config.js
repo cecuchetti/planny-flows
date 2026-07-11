@@ -38,6 +38,13 @@ module.exports = {
     historyApiFallback: true,
     hot: true,
     port: 8192,
+    proxy: [
+      {
+        context: ['/api'],
+        target: 'http://localhost:3824',
+        pathRewrite: { '^/api': '' },
+      },
+    ],
   },
   plugins: [
     new webpack.DefinePlugin({
@@ -47,6 +54,9 @@ module.exports = {
       ),
       'process.env.REACT_APP_DEFAULT_PROJECT_ROUTE': JSON.stringify(
         process.env.REACT_APP_DEFAULT_PROJECT_ROUTE || 'board',
+      ),
+      'process.env.REACT_APP_JIRA_BASE_URL': JSON.stringify(
+        process.env.REACT_APP_JIRA_BASE_URL || '',
       ),
     }),
     new HtmlWebpackPlugin({

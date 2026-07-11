@@ -104,8 +104,9 @@ export const normalizeBoardIssue = (issue, project, projectUsers, boardUrl) => {
   const stripColor = priorityStripColor[priority] || '#e5e7eb';
 
   // Generate issue key like "PRJ-123"
-  const prefix = project.key || (project.name || '').replace(/\W/g, '').slice(0, 4).toUpperCase() || 'PRJ';
-  const issueKey = `${prefix}-${issue.id}`;
+  // Multi-project: issue.projectKey overrides the project-level prefix
+  const prefix = issue.projectKey || project.key || (project.name || '').replace(/\W/g, '').slice(0, 4).toUpperCase() || 'PRJ';
+  const issueKey = issue.externalKey || `${prefix}-${issue.id}`;
 
   return {
     id: issue.id.toString(),

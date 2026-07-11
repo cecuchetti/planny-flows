@@ -134,7 +134,11 @@
     "searchPlaceholder": "Buscar por resumen, descripción...",
     "noResultsTitle": "No encontramos nada que coincida con tu búsqueda",
     "noResultsTip": "Prueba con otro término.",
-    "projectCategory": "Categoría del proyecto"
+    "projectCategory": "Categoría del proyecto",
+    "selectAtLeastOneProject": "Seleccioná al menos un proyecto",
+    "allProjects": "Todos los proyectos",
+    "filterByProject": "Filtrar por proyecto",
+    "selectProjects": "Seleccionar proyectos..."
   },
   "issue": {
     "createIssue": "Crear issue",

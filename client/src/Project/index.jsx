@@ -1,5 +1,5 @@
-import React, { Suspense, lazy, useState } from 'react';
-import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import React, { Suspense, lazy, useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { Routes, Route, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
 import useApi from 'shared/hooks/api';
@@ -7,11 +7,12 @@ import { updateArrayItemById } from 'shared/utils/javascript';
 import { createQueryParamModalHelpers } from 'shared/utils/queryParamModal';
 import { PageLoader, PageError, Modal, Icon } from 'shared/components';
 
+import { ProjectCategoryCopy } from 'shared/constants/projects';
+
 import NavbarLeft from './NavbarLeft';
 import Sidebar from './Sidebar';
 import IssueSearch from './IssueSearch';
 import IssueCreate from './IssueCreate';
-import { ProjectCategoryCopy } from 'shared/constants/projects';
 import {
   ProjectPage,
   ContentCard,
@@ -33,7 +34,6 @@ import {
 } from './Styles';
 
 const Board = lazy(() => import('./Board'));
-const MyJiraIssues = lazy(() => import('./MyJiraIssues'));
 const QuickActions = lazy(() => import('./QuickActions'));
 const ProjectSettings = lazy(() => import('./ProjectSettings'));
 
@@ -44,10 +44,38 @@ const getDefaultProjectRoute = () => {
   return availableDefaultRoutes.includes(configuredRoute) ? configuredRoute : 'board';
 };
 
-const Project = () => {
+/**
+ * Merge multiple projects into a single synthetic project for the board.
+ * Concatenates issues (with projectKey for multi-project prefix) and
+ * deduplicates users across projects.
+ */
+const mergeProjectsIntoOne = (projects) => {
+  const allIssues = projects.flatMap((p) =>
+    (p.issues || []).map((issue) => ({
+      ...issue,
+      projectKey: (p.name || '').replace(/\W/g, '').slice(0, 4).toUpperCase(),
+    })),
+  );
+
+  const allUsers = projects.flatMap((p) => p.users || []);
+  const uniqueUsers = [...new Map(allUsers.map((u) => [u.id, u])).values()];
+
+  return {
+    ...projects[0],
+    id: 0,
+    name: 'All Projects',
+    issues: allIssues,
+    users: uniqueUsers,
+  };
+};
+
+function Project() {
   const location = useLocation();
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
+  const [searchParams] = useSearchParams();
+  const filterParam = searchParams.get('filter');
+  const initialFilterApplied = useRef(false);
   const match = { path: '/project', url: location.pathname };
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -55,20 +83,151 @@ const Project = () => {
   const issueSearchModalHelpers = createQueryParamModalHelpers('issue-search', navigate, location);
   const issueCreateModalHelpers = createQueryParamModalHelpers('issue-create', navigate, location);
 
-  const [{ data, error, setLocalData }, fetchProject] = useApi.get('/project');
+  // ── Project list (for filter chips) ──────────────────────────────────────
+  const [{ data: projectsData }] = useApi.get('/projects');
 
-  if (!data) return <PageLoader />;
+  // ── Board data (lazy — fetched on demand with optional ?ids= param) ──────
+  const [{ data, error, setLocalData }, fetchBoardData] = useApi.get(
+    '/project',
+    {},
+    { lazy: true },
+  );
+
+  // ── Selected project IDs (persisted in localStorage) ─────────────────────
+  const [selectedProjectIds, setSelectedProjectIds] = useState(() => {
+    try {
+      const stored = localStorage.getItem('planny-selected-project-ids');
+      return stored ? JSON.parse(stored) : null; // null = initializing / all
+    } catch {
+      return null;
+    }
+  });
+
+  // ── Effect: initialize + fetch board data ────────────────────────────────
+  useEffect(() => {
+    const projectList = projectsData?.projects;
+
+    // Still loading the project list
+    if (!projectList) return;
+
+    // ── Initial filter override from URL query param (takes precedence over localStorage) ──
+    if (filterParam && !initialFilterApplied.current) {
+      initialFilterApplied.current = true;
+      if (filterParam === 'jira') {
+        setSelectedProjectIds(
+          projectList.filter((p) => (p.source_type || p.sourceType) === 'jira').map((p) => p.id),
+        );
+      } else if (filterParam === 'local') {
+        setSelectedProjectIds(
+          projectList.filter((p) => (p.source_type || p.sourceType) !== 'jira').map((p) => p.id),
+        );
+      } else {
+        // 'all' or unknown filter — select all projects
+        setSelectedProjectIds(projectList.map((p) => p.id));
+      }
+      return; // will re-trigger effect with the ids, without persisting to localStorage
+    }
+
+    // No projects — fall back to single-project (backward compat)
+    if (projectList.length === 0 && selectedProjectIds === null) {
+      fetchBoardData();
+      return;
+    }
+
+    // Has projects but ids not yet initialized — set to all
+    if (projectList.length > 0 && selectedProjectIds === null) {
+      setSelectedProjectIds(projectList.map((p) => p.id));
+      return; // will re-trigger effect with the new ids
+    }
+
+    // Fetch board data for selected projects
+    if (selectedProjectIds !== null) {
+      if (selectedProjectIds.length > 0) {
+        fetchBoardData({ ids: selectedProjectIds.join(',') });
+      } else {
+        // Zero projects selected — show empty board
+        setLocalData(() => ({ projects: [] }));
+      }
+    }
+  }, [projectsData, selectedProjectIds, fetchBoardData, setLocalData, filterParam]);
+
+  // ── Persist selection changes ────────────────────────────────────────────
+  const handleProjectFilterChange = useCallback((newIds) => {
+    setSelectedProjectIds(newIds);
+    try {
+      localStorage.setItem('planny-selected-project-ids', JSON.stringify(newIds));
+    } catch (_) {
+      // localStorage unavailable — silently ignore
+    }
+  }, []);
+
+  // ── Refetch wrapper (backward compat for IssueCreate / ProjectSettings) ──
+  const fetchProject = useCallback(() => {
+    if (selectedProjectIds && selectedProjectIds.length > 0) {
+      fetchBoardData({ ids: selectedProjectIds.join(',') });
+    } else {
+      fetchBoardData();
+    }
+  }, [selectedProjectIds, fetchBoardData]);
+
+  // ── Normalize projects list for filter chips ────────────────────────────
+  const projects = useMemo(
+    () =>
+      (projectsData?.projects || []).map((p) => ({
+        id: p.id,
+        name: p.name,
+        sourceType: p.sourceType || p.source_type,
+      })),
+    [projectsData],
+  );
+
+  // ── Merge multi-project data into a synthetic project for Board ──────────
+  const normalizedProject = useMemo(() => {
+    if (!data) return null;
+
+    // Backward compat: single-project response
+    if (data.project) return data.project;
+
+    // Multi-project response
+    if (data.projects && data.projects.length > 0) {
+      return mergeProjectsIntoOne(data.projects);
+    }
+
+    // Empty (zero projects selected)
+    return { id: 0, name: '', users: [], issues: [] };
+  }, [data]);
+
+  if (!normalizedProject) return <PageLoader />;
   if (error) return <PageError />;
 
-  const { project } = data;
+  const project = normalizedProject;
 
   const updateLocalProjectIssues = (issueId, updatedFields) => {
-    setLocalData((currentData) => ({
-      project: {
-        ...currentData.project,
-        issues: updateArrayItemById(currentData.project.issues, issueId, updatedFields),
-      },
-    }));
+    setLocalData((currentData) => {
+      if (!currentData) return currentData;
+
+      // Multi-project: find the issue in whichever project it belongs to
+      if (currentData.projects) {
+        return {
+          projects: currentData.projects.map((p) => ({
+            ...p,
+            issues: updateArrayItemById(p.issues || [], issueId, updatedFields),
+          })),
+        };
+      }
+
+      // Backward compat: single project
+      if (currentData.project) {
+        return {
+          project: {
+            ...currentData.project,
+            issues: updateArrayItemById(currentData.project.issues, issueId, updatedFields),
+          },
+        };
+      }
+
+      return currentData;
+    });
   };
 
   const handleMobileNavClick = () => {
@@ -181,10 +340,13 @@ const Project = () => {
                       project={project}
                       fetchProject={fetchProject}
                       updateLocalProjectIssues={updateLocalProjectIssues}
+                      projects={projects}
+                      selectedProjectIds={selectedProjectIds || []}
+                      onProjectFilterChange={handleProjectFilterChange}
                     />
                   }
                 />
-                <Route path="my-jira-issues" element={<MyJiraIssues />} />
+                <Route path="my-jira-issues" element={<Navigate to="/project/board?filter=jira" replace />} />
                 <Route path="quick-actions" element={<QuickActions />} />
                 <Route
                   path="settings"
@@ -198,6 +360,6 @@ const Project = () => {
       </ContentCard>
     </ProjectPage>
   );
-};
+}
 
 export default Project;

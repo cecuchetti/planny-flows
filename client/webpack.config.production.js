@@ -120,6 +120,9 @@ module.exports = {
         REACT_APP_DEFAULT_PROJECT_ROUTE: JSON.stringify(
           process.env.REACT_APP_DEFAULT_PROJECT_ROUTE || 'board',
         ),
+        REACT_APP_JIRA_BASE_URL: JSON.stringify(
+          process.env.REACT_APP_JIRA_BASE_URL || '',
+        ),
       },
     }),
     new webpack.IgnorePlugin({ resourceRegExp: /^\.\/locale$/, contextRegExp: /moment$/ }),

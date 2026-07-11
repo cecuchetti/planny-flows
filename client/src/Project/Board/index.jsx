@@ -8,13 +8,24 @@ import { Breadcrumbs, Modal } from 'shared/components';
 
 import Header from './Header';
 import Filters from './Filters';
+import ProjectFilter from './Filters/ProjectFilter';
 import Lists from './Lists';
 import IssueDetails from './IssueDetails';
+import { SelectAtLeastOne } from './Styles';
 
 const propTypes = {
   project: PropTypes.object.isRequired,
   fetchProject: PropTypes.func.isRequired,
   updateLocalProjectIssues: PropTypes.func.isRequired,
+  projects: PropTypes.array,
+  selectedProjectIds: PropTypes.array,
+  onProjectFilterChange: PropTypes.func,
+};
+
+const defaultProps = {
+  projects: [],
+  selectedProjectIds: [],
+  onProjectFilterChange: null,
 };
 
 const defaultFilters = {
@@ -24,7 +35,7 @@ const defaultFilters = {
   recent: false,
 };
 
-const IssueDetailsModal = ({ project, fetchProject, updateLocalProjectIssues }) => {
+function IssueDetailsModal({ project, fetchProject, updateLocalProjectIssues }) {
   const { issueId } = useParams();
   const navigate = useNavigate();
   const boardUrl = '/project/board';
@@ -47,28 +58,53 @@ const IssueDetailsModal = ({ project, fetchProject, updateLocalProjectIssues }) 
       )}
     />
   );
-};
+}
 
-const ProjectBoard = ({ project, fetchProject, updateLocalProjectIssues }) => {
-  const navigate = useNavigate();
+function ProjectBoard({
+  project,
+  fetchProject,
+  updateLocalProjectIssues,
+  projects,
+  selectedProjectIds,
+  onProjectFilterChange,
+}) {
   const { t } = useTranslation();
   const [filters, mergeFilters] = useMergeState(defaultFilters);
 
+  const hasFilter = !!(
+    projects &&
+    selectedProjectIds &&
+    onProjectFilterChange
+  );
+
+  const projectName = project.name || t('board.allProjects');
+
   return (
     <Fragment>
-      <Breadcrumbs items={[t('board.projects'), project.name, t('board.kanbanBoard')]} />
+      <Breadcrumbs items={[t('board.projects'), projectName, t('board.kanbanBoard')]} />
       <Header />
+      {hasFilter && (
+        <ProjectFilter
+          projects={projects}
+          selectedIds={selectedProjectIds}
+          onChange={onProjectFilterChange}
+        />
+      )}
       <Filters
         projectUsers={project.users}
         defaultFilters={defaultFilters}
         filters={filters}
         mergeFilters={mergeFilters}
       />
-      <Lists
-        project={project}
-        filters={filters}
-        updateLocalProjectIssues={updateLocalProjectIssues}
-      />
+      {selectedProjectIds && selectedProjectIds.length === 0 ? (
+        <SelectAtLeastOne>{t('board.selectAtLeastOneProject')}</SelectAtLeastOne>
+      ) : (
+        <Lists
+          project={project}
+          filters={filters}
+          updateLocalProjectIssues={updateLocalProjectIssues}
+        />
+      )}
       <Routes>
         <Route
           path="issues/:issueId"
@@ -86,5 +122,6 @@ const ProjectBoard = ({ project, fetchProject, updateLocalProjectIssues }) => {
 };
 
 ProjectBoard.propTypes = propTypes;
+ProjectBoard.defaultProps = defaultProps;
 
 export default ProjectBoard;

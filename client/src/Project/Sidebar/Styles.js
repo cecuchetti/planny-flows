@@ -1,5 +1,5 @@
 import styled from 'styled-components';
-import { NavLink } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 
 import { color, sizes, font, fontSizes, lineHeights, mixin, radius, media } from 'shared/utils/styles';
 
@@ -74,7 +74,7 @@ export const Divider = styled.div`
 `;
 
 /* ── Nav items ──────────────────────────────────────── */
-export const LinkItem = styled(NavLink)`
+export const LinkItem = styled(Link)`
   display: flex;
   align-items: center;
   gap: 12px;

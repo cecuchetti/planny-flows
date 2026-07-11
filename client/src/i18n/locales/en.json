@@ -134,7 +134,11 @@
     "searchPlaceholder": "Search issues by summary, description...",
     "noResultsTitle": "We couldn't find anything matching your search",
     "noResultsTip": "Try again with a different term.",
-    "projectCategory": "Project Category"
+    "projectCategory": "Project Category",
+    "selectAtLeastOneProject": "Select at least one project",
+    "allProjects": "All Projects",
+    "filterByProject": "Filter by Project",
+    "selectProjects": "Select projects..."
   },
   "issue": {
     "createIssue": "Create issue",
