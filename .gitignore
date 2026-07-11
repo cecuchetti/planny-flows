@@ -36,5 +36,10 @@ client-logs*.log
 .idea/
 .vscode/
 .cursor/
+
+# Tool config files
+opencode.json
+.token-savior-cache.json
+
 .DS_Store
 deploy/custom/
