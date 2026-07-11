@@ -27,7 +27,20 @@ class TransitionBody(BaseModel):
     transition_id: str = Field(..., alias="transitionId")
 
 
-# ── Issue routes ──────────────────────────────────────────────────────────────
+# Default fields for the v3 search/jql endpoint (v3 returns only ``id`` by
+# default, unlike v2 which included all navigable fields).
+_DEFAULT_SEARCH_FIELDS = ",".join([
+    "summary",
+    "status",
+    "issuetype",
+    "priority",
+    "project",
+    "assignee",
+    "timetracking",
+    "description",
+    "created",
+    "reporter",
+])
 
 
 @router.get("")
@@ -35,12 +48,13 @@ async def search_issues(
     client: Annotated[JiraHttpClient, Depends(get_jira_issue_client)],
     jql: str = Query(..., description="JQL query string"),
     max_results: int = Query(50, alias="maxResults", ge=1, le=100),
+    fields: str = Query(_DEFAULT_SEARCH_FIELDS, description="Comma-separated Jira fields"),
 ) -> dict[str, object]:
     """Search Jira issues using JQL."""
     try:
         data = await client.get(
-            "/rest/api/2/search",
-            params={"jql": jql, "maxResults": max_results},
+            "/rest/api/3/search/jql",
+            params={"jql": jql, "maxResults": max_results, "fields": fields},
         )
     except Exception as exc:
         raise ExternalServiceError(

@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import RedirectResponse
 from planny_core.auth import create_token
 from planny_core.config import settings
-from planny_core.models import Comment, Issue, Project, User, issue_users
+from planny_core.models import Comment, Issue, Project, User, issue_users, user_projects
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -413,6 +413,16 @@ async def _create_guest_account(db: AsyncSession) -> User:
     for user in users:
         db.add(user)
     await db.flush()
+
+    # Populate user_projects join table for the new many-to-many relationship
+    # Use direct insert (not relationship access) to avoid MissingGreenlet in
+    # async sessions — same pattern as issue_users below.
+    for user in users:
+        stmt = user_projects.insert().values(
+            userId=user.id,
+            projectId=project.id,
+        )
+        await db.execute(stmt)
 
     # ── 3. Create issues with optional user assignments ────────────────────
     issues = _seed_issues(project, users)

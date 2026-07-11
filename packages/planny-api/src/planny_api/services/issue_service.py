@@ -6,7 +6,7 @@ Cross-project access is denied at the query level.
 
 from __future__ import annotations
 
-from planny_core.errors import EntityNotFoundError
+from planny_core.errors import EntityNotFoundError, ForbiddenError
 from planny_core.models.comment import Comment
 from planny_core.models.issue import Issue
 from sqlalchemy import func, or_, select
@@ -52,9 +52,9 @@ async def search_by_project(
 async def find_by_id_and_project(
     db: AsyncSession,
     issue_id: int,
-    project_id: int,
+    project_id: int | list[int] | set[int],
 ) -> Issue:
-    """Find a single issue by ID, scoped to the given project.
+    """Find a single issue by ID, scoped to the given project(s).
 
     Eager-loads ``users``, ``comments``, and ``comments.user`` so the
     full issue detail response has all nested data without additional
@@ -65,12 +65,18 @@ async def find_by_id_and_project(
     """
     stmt = (
         select(Issue)
-        .where(Issue.id == issue_id, Issue.projectId == project_id)
+        .where(Issue.id == issue_id)
         .options(
             selectinload(Issue.users),
             selectinload(Issue.comments).selectinload(Comment.user),
         )
     )
+
+    if isinstance(project_id, (list, set, tuple)):
+        stmt = stmt.where(Issue.projectId.in_(project_id))
+    else:
+        stmt = stmt.where(Issue.projectId == project_id)
+
     result = await db.execute(stmt)
     issue = result.scalars().first()
 
@@ -147,6 +153,17 @@ async def update_issue(
     """
     issue = await find_by_id_and_project(db, issue_id, project_id)
 
+    # Readonly guard: reject mutations on Jira-sourced issues,
+    # except for timeSpent (needed for worklog tracking).
+    if issue.readonly:
+        update_data = data.model_dump(exclude_unset=True)
+        non_time_fields = {k for k in update_data if k != "timeSpent"}
+        if non_time_fields:
+            raise ForbiddenError(
+                message="Cannot modify a read-only Jira issue",
+                code="ISSUE_READONLY",
+            )
+
     update_data = data.model_dump(exclude_unset=True)
     # Pydantic field names match model attrs (both camelCase)
     for key, value in update_data.items():
@@ -175,6 +192,14 @@ async def delete_issue(
     relationship on the ``Issue`` model.
     """
     issue = await find_by_id_and_project(db, issue_id, project_id)
+
+    # Readonly guard: reject deletion of Jira-sourced issues
+    if issue.readonly:
+        raise ForbiddenError(
+            message="Cannot delete a read-only Jira issue",
+            code="ISSUE_READONLY",
+        )
+
     await db.delete(issue)
     await db.flush()
 

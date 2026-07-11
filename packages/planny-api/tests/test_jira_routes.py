@@ -571,7 +571,7 @@ class TestSearchIssues:
         # Verify correct Jira API was called
         mock_jira_client.get.assert_called_once()
         args, _ = mock_jira_client.get.call_args
-        assert "/rest/api/2/search" in str(args[0])
+        assert "/rest/api/3/search/jql" in str(args[0])
 
     @pytest.mark.asyncio
     async def test_missing_jql_returns_422(self, client: AsyncClient) -> None:

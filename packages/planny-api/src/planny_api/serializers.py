@@ -18,7 +18,7 @@ def issue_partial(issue: Issue) -> dict[str, object]:
     Includes only the fields the frontend needs for list/board views.
     ``listPosition`` is a float, ``userIds`` is a list of ints.
     """
-    return {
+    result: dict[str, object] = {
         "id": issue.id,
         "title": issue.title,
         "type": issue.type,
@@ -35,7 +35,12 @@ def issue_partial(issue: Issue) -> dict[str, object]:
         "createdAt": issue.createdAt.isoformat() if issue.createdAt else None,
         "updatedAt": issue.updatedAt.isoformat() if issue.updatedAt else None,
         "userIds": [u.id for u in issue.users] if issue.users else [],
+        "sourceType": issue.source_type,
+        "readonly": issue.readonly,
     }
+    if issue.external_key is not None:
+        result["externalKey"] = issue.external_key
+    return result
 
 
 def project_to_dict(project: Project, *, include_issues: bool = True) -> dict[str, object]:
@@ -45,7 +50,7 @@ def project_to_dict(project: Project, *, include_issues: bool = True) -> dict[st
     ``users`` as full user objects. ``PUT /project`` passes
     ``include_issues=False`` to skip loading the issues relationship.
     """
-    result = {
+    result: dict[str, object] = {
         "id": project.id,
         "name": project.name,
         "url": project.url,
@@ -54,7 +59,12 @@ def project_to_dict(project: Project, *, include_issues: bool = True) -> dict[st
         "createdAt": project.createdAt.isoformat() if project.createdAt else None,
         "updatedAt": project.updatedAt.isoformat() if project.updatedAt else None,
         "users": [user_to_dict(u) for u in project.users] if project.users else [],
+        "sourceType": project.source_type,
     }
+    if project.external_key is not None:
+        result["externalKey"] = project.external_key
+    if project.last_synced_at is not None:
+        result["lastSyncedAt"] = project.last_synced_at.isoformat()
     if include_issues:
         result["issues"] = (
             [issue_partial(i) for i in project.issues] if project.issues else []

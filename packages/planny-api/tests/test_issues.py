@@ -745,3 +745,239 @@ class TestDeleteIssue:
             assert response.status_code == 404
 
         app.dependency_overrides.clear()
+
+
+# ── Tests: Readonly guard on PUT/DELETE ────────────────────────────────────────
+
+
+class TestReadonlyIssueGuard:
+    """Tests for the readonly guard — Jira-sourced issues reject mutations."""
+
+    @pytest.mark.asyncio
+    async def test_put_readonly_issue_title_change_returns_403(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        """PUT readonly issue with title change should return 403."""
+        token = await _seed_guest_and_get_token(client)
+
+        # Create a local issue first
+        create_resp = await client.post(
+            "/issues",
+            headers={"Authorization": f"Bearer {token}"},
+            json={
+                "title": "Readonly Test Issue",
+                "type": "task",
+                "status": "backlog",
+                "priority": "3",
+            },
+        )
+        assert create_resp.status_code == 200
+        issue_id = create_resp.json()["issue"]["id"]
+
+        # Directly set readonly flag in DB
+        issue = await db_session.get(Issue, issue_id)
+        assert issue is not None
+        issue.readonly = True
+        await db_session.flush()
+
+        # Attempt PUT with title change — should be rejected
+        response = await client.put(
+            f"/issues/{issue_id}",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"title": "Hacked"},
+        )
+        assert response.status_code == 403
+        body = response.json()
+        assert body["error"]["code"] == "ISSUE_READONLY"
+        assert body["error"]["status"] == 403
+        assert "read-only" in body["error"]["message"].lower()
+
+    @pytest.mark.asyncio
+    async def test_put_readonly_issue_status_change_returns_403(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        """PUT readonly issue with status change should return 403."""
+        token = await _seed_guest_and_get_token(client)
+
+        create_resp = await client.post(
+            "/issues",
+            headers={"Authorization": f"Bearer {token}"},
+            json={
+                "title": "Status Change Test",
+                "type": "task",
+                "status": "backlog",
+                "priority": "3",
+            },
+        )
+        issue_id = create_resp.json()["issue"]["id"]
+
+        issue = await db_session.get(Issue, issue_id)
+        issue.readonly = True
+        await db_session.flush()
+
+        response = await client.put(
+            f"/issues/{issue_id}",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"status": "done"},
+        )
+        assert response.status_code == 403
+        body = response.json()
+        assert body["error"]["code"] == "ISSUE_READONLY"
+
+    @pytest.mark.asyncio
+    async def test_put_readonly_issue_only_time_spent_returns_200(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        """PUT readonly issue with only timeSpent should succeed."""
+        token = await _seed_guest_and_get_token(client)
+
+        create_resp = await client.post(
+            "/issues",
+            headers={"Authorization": f"Bearer {token}"},
+            json={
+                "title": "TimeSpent Only Test",
+                "type": "task",
+                "status": "backlog",
+                "priority": "3",
+            },
+        )
+        issue_id = create_resp.json()["issue"]["id"]
+
+        issue = await db_session.get(Issue, issue_id)
+        issue.readonly = True
+        await db_session.flush()
+
+        response = await client.put(
+            f"/issues/{issue_id}",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"timeSpent": 3600},
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert body["issue"]["timeSpent"] == 3600
+
+        # Verify DB was updated (expire cached copy first)
+        db_session.expire_all()
+        db_issue = await db_session.get(Issue, issue_id)
+        assert db_issue is not None
+        assert db_issue.timeSpent == 3600
+
+    @pytest.mark.asyncio
+    async def test_put_local_issue_returns_200(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        """PUT a non-readonly (local) issue should work normally."""
+        token = await _seed_guest_and_get_token(client)
+
+        create_resp = await client.post(
+            "/issues",
+            headers={"Authorization": f"Bearer {token}"},
+            json={
+                "title": "Local Issue",
+                "type": "task",
+                "status": "backlog",
+                "priority": "3",
+            },
+        )
+        issue_id = create_resp.json()["issue"]["id"]
+
+        response = await client.put(
+            f"/issues/{issue_id}",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"title": "Updated Local Issue"},
+        )
+        assert response.status_code == 200
+        assert response.json()["issue"]["title"] == "Updated Local Issue"
+
+    @pytest.mark.asyncio
+    async def test_delete_readonly_issue_returns_403(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        """DELETE readonly issue should return 403."""
+        token = await _seed_guest_and_get_token(client)
+
+        create_resp = await client.post(
+            "/issues",
+            headers={"Authorization": f"Bearer {token}"},
+            json={
+                "title": "Delete Readonly Test",
+                "type": "task",
+                "status": "backlog",
+                "priority": "3",
+            },
+        )
+        issue_id = create_resp.json()["issue"]["id"]
+
+        issue = await db_session.get(Issue, issue_id)
+        issue.readonly = True
+        await db_session.flush()
+
+        response = await client.delete(
+            f"/issues/{issue_id}",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert response.status_code == 403
+        body = response.json()
+        assert body["error"]["code"] == "ISSUE_READONLY"
+
+    @pytest.mark.asyncio
+    async def test_delete_local_issue_returns_200(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        """DELETE a non-readonly (local) issue should work normally."""
+        token = await _seed_guest_and_get_token(client)
+
+        create_resp = await client.post(
+            "/issues",
+            headers={"Authorization": f"Bearer {token}"},
+            json={
+                "title": "Delete Local Test",
+                "type": "task",
+                "status": "backlog",
+                "priority": "3",
+            },
+        )
+        issue_id = create_resp.json()["issue"]["id"]
+
+        response = await client.delete(
+            f"/issues/{issue_id}",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert response.status_code == 200
+        assert response.json() == {"message": "Issue deleted"}
+
+        # Verify deletion from DB
+        db_issue = await db_session.get(Issue, issue_id)
+        assert db_issue is None
+
+    @pytest.mark.asyncio
+    async def test_put_readonly_issue_time_spent_plus_other_returns_403(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        """PUT readonly issue with timeSpent AND another field should be rejected."""
+        token = await _seed_guest_and_get_token(client)
+
+        create_resp = await client.post(
+            "/issues",
+            headers={"Authorization": f"Bearer {token}"},
+            json={
+                "title": "Combined Test",
+                "type": "task",
+                "status": "backlog",
+                "priority": "3",
+            },
+        )
+        issue_id = create_resp.json()["issue"]["id"]
+
+        issue = await db_session.get(Issue, issue_id)
+        issue.readonly = True
+        await db_session.flush()
+
+        response = await client.put(
+            f"/issues/{issue_id}",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"timeSpent": 3600, "title": "Also Change Title"},
+        )
+        assert response.status_code == 403
+        body = response.json()
+        assert body["error"]["code"] == "ISSUE_READONLY"
