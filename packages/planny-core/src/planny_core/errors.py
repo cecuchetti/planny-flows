@@ -111,3 +111,14 @@ class ExternalServiceError(AppError):
             status_code=502,
             data={"service": service},
         )
+
+
+class ForbiddenError(AppError):
+    """Raised when the user attempts an action they do not have permission for."""
+
+    def __init__(self, message: str, code: str = "FORBIDDEN") -> None:
+        super().__init__(
+            message=message,
+            code=code,
+            status_code=403,
+        )

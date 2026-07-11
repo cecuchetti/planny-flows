@@ -52,6 +52,11 @@ class Issue(Base):
     reporterId: Mapped[int] = mapped_column(Integer)  # noqa: N815
     projectId: Mapped[int] = mapped_column(Integer, ForeignKey("project.id"))  # noqa: N815
 
+    # ── New source-aware columns (Python-only, snake_case) ──────────────────
+    source_type: Mapped[str] = mapped_column(String(20), default="local")
+    external_key: Mapped[str | None] = mapped_column(String(50), nullable=True, unique=True)
+    readonly: Mapped[bool] = mapped_column(default=False)
+
     createdAt: Mapped[datetime] = mapped_column(  # noqa: N815 — camelCase matches TypeORM
         DateTime,
         default=datetime.utcnow,

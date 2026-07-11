@@ -46,6 +46,11 @@ class User(Base):
     # ── Relationships ──────────────────────────────────────────────────────
     project: Mapped[Project] = relationship(
         "Project",
+        foreign_keys=[projectId],
+    )
+    projects: Mapped[list[Project]] = relationship(
+        "Project",
+        secondary="user_projects",
         back_populates="users",
     )
     comments: Mapped[list[Comment]] = relationship(

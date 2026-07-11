@@ -45,3 +45,10 @@ class ProjectCategory(StrEnum):
     SOFTWARE = "software"
     MARKETING = "marketing"
     BUSINESS = "business"
+
+
+class ProjectSourceType(StrEnum):
+    """Source of a project/issue — local or synced from Jira."""
+
+    LOCAL = "local"
+    JIRA = "jira"

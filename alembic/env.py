@@ -19,6 +19,7 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_PROJECT_ROOT / "packages" / "planny-core" / "src"))
 
 # ── Load models so metadata is populated ──────────────────────────────────────
+from planny_core.config import settings
 from planny_core.database import Base
 from planny_core.models import (  # noqa: F401 — registers all tables
     Comment,
@@ -31,10 +32,25 @@ from planny_core.models import (  # noqa: F401 — registers all tables
     WorklogSubmission,
     WorklogSubmissionResult,
     issue_users,
+    user_projects,
 )
 
 # ── Alembic config ────────────────────────────────────────────────────────────
 config = context.config
+
+# Dynamically set the database URL from settings
+if settings.db_type == "postgres":
+    db_url = (
+        f"postgresql://{settings.db_username}:{settings.db_password}"
+        f"@{settings.db_host}:{settings.db_port}/{settings.db_database}"
+    )
+else:
+    db_path = settings.db_path
+    if db_path.startswith("./"):
+        db_path = db_path[2:]
+    db_url = f"sqlite:///{db_path}"
+
+config.set_main_option("sqlalchemy.url", db_url)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)

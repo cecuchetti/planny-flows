@@ -63,6 +63,9 @@ def _create_user(session: Session, project: Project, **kwargs) -> User:
     defaults.update(kwargs)
     u = User(**defaults)
     session.add(u)
+    session.flush()  # ensure user has an id before populating join table
+    # Populate user_projects join table for the new many-to-many relationship
+    u.projects.append(project)
     session.commit()
     return u
 
