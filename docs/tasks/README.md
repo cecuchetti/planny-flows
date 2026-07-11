@@ -1,35 +1,81 @@
-# Tasks
+# Unified Project & Issue Model — Master Plan
 
-Project management: phase checklists, task tracking, and implementation plans.
+**Status:** Ready
+**Created:** 2026-07-11
+**Source:** `docs/architecture/projects_and_taks_unification_implementation_plan.md`
+**Spec:** `docs/specs/project-unification-spec.md`
 
-## Index
+## Summary
 
-| File | Type | Status |
-|------|------|--------|
-| [python-migration-checklist.md](./python-migration-checklist.md) | Master checklist (all phases + ticket refs) | Not started |
-| [feature_python_migration_monorepo_scaffold.md](./feature_python_migration_monorepo_scaffold.md) | FEATURE-001: Monorepo scaffold | Open |
-| [feature_python_migration_planny_core_errors_enums_config.md](./feature_python_migration_planny_core_errors_enums_config.md) | FEATURE-002: Core errors, enums, config | Open |
-| [feature_python_migration_models_alembic.md](./feature_python_migration_models_alembic.md) | FEATURE-003: Models + Alembic | Open |
-| [feature_python_migration_fastapi_middleware_health.md](./feature_python_migration_fastapi_middleware_health.md) | FEATURE-004: FastAPI + middleware + health | Open |
-| [feature_python_migration_health_guest_auth.md](./feature_python_migration_health_guest_auth.md) | FEATURE-005: Health + Guest Auth | Open |
-| [feature_python_migration_node_proxy_middleware.md](./feature_python_migration_node_proxy_middleware.md) | FEATURE-006: Node proxy middleware | Open |
-| [feature_python_migration_current_user_project_crud.md](./feature_python_migration_current_user_project_crud.md) | FEATURE-007: /currentUser + Project CRUD | Open |
-| [feature_python_migration_issues_crud.md](./feature_python_migration_issues_crud.md) | FEATURE-008: Issues CRUD | Open |
-| [feature_python_migration_comments_crud.md](./feature_python_migration_comments_crud.md) | FEATURE-009: Comments CRUD | Open |
-| [feature_python_migration_quick_actions.md](./feature_python_migration_quick_actions.md) | FEATURE-010: Quick Actions | Open |
-| [feature_python_migration_jira_http_client_config.md](./feature_python_migration_jira_http_client_config.md) | FEATURE-011: Jira HTTP client | Open |
-| [feature_python_migration_jira_worklog_service.md](./feature_python_migration_jira_worklog_service.md) | FEATURE-012: Worklog Service | Open |
-| [feature_python_migration_jira_issue_routes.md](./feature_python_migration_jira_issue_routes.md) | FEATURE-013: Jira Issue routes | Open |
-| [debt_python_migration_remove_node_backend.md](./debt_python_migration_remove_node_backend.md) | DEBT-001: Remove Node backend | Open |
-| [debt_python_migration_docker_ci.md](./debt_python_migration_docker_ci.md) | DEBT-002: Docker + CI/CD | Open |
-| [feature_python_migration_monitoring_deferred.md](./feature_python_migration_monitoring_deferred.md) | FEATURE-014: Monitoring (deferred) | Open |
+Merge local board projects and external Jira projects into a single data model in the local SQLite database. Both project types coexist in the `project` table, both issue types in the `issue` table — distinguished by `source_type` column ("local" | "jira"). Jira projects auto-discover from assigned issues, auto-sync when >24h stale, plus manual refresh. The Kanban board becomes the unified view for issues from all selected projects. Jira issues render as read-only cards; clicking opens read-only detail modal with "Log Time" action. Old "External Assignments" screen deprecated → redirect to unified board.
 
-## How to Use
+## Sequence & Dependencies
 
-1. Start with FEATURE-001, work sequentially through tickets 1→13
-2. Check items in [python-migration-checklist.md](./python-migration-checklist.md) as completed
-3. **When a ticket is done**: move its `.md` to [done/](./done/), append completion date to filename
-4. DEBT-002 (Docker/CI) can run in parallel with feature tickets
-5. DEBT-001 (Node removal) only after 2+ weeks production verification
-6. FEATURE-014 (monitoring) is deferred — placeholder only
-7. Reference [architecture docs](../architecture/) for implementation guidance
+```
+T01 (DB Migration + Models)
+├── T02 (Jira Sync Service) ──→ T03 (Projects API + Auto-Sync) ──→ T05 (Unified Board + Filter)
+│                                                                   ├── T06 (Read-Only Issue Details)
+└── T04 (Readonly Guard Issues) ────────────────────────────────→───┘
+                                                                   └── T07 (Sidebar Deprecation)
+```
+
+## Parallelization Plan
+
+| Wave | Tickets | Parallel | What happens |
+|---|---|---|---|
+| **Wave 1** | T01 | ❌ Solo | Foundation — DB schema changes, models, enum, Alembic migration. Must finish first. |
+| **Wave 2** | T02, T04 | ✅ 2 parallel | Sync service + readonly guard touch different modules, different test files, no shared code. |
+| **Wave 3** | T03 | ❌ Solo | Depends on T02 sync service for POST /projects/:id/sync and auto-sync hook. |
+| **Wave 4** | T05 | ❌ Solo | Depends on T03 API endpoints (GET /projects, GET /project?ids=). |
+| **Wave 5** | T06, T07 | ✅ 2 parallel | Read-only modal + sidebar deprecation are independent components. Both depend on T05 board. |
+
+**Max parallelism: 2 tickets per wave.**
+
+## Ticket Summary
+
+| # | Ticket | Layer | Blocked by | Size |
+|---|---|---|---|---|
+| T01 | DB Migration + Models + Enum | Backend | — | Medium |
+| T02 | Jira Sync Service | Backend | T01 | Large |
+| T03 | Projects API Rewrite + Auto-Sync | Backend | T01, T02 | Medium |
+| T04 | Readonly Guard on Issues API | Backend | T01 | Small |
+| T05 | Unified Board: Filter + Multi-Project Load | Frontend | T03 | Large |
+| T06 | Read-Only Jira Issue Detail Modal | Frontend | T04, T05 | Medium |
+| T07 | Sidebar Deprecation + Route Redirect | Frontend | T05 | Small |
+
+## Verification Gates
+
+### After Wave 3 (Backend complete)
+
+```bash
+uv run pytest packages/ -v --tb=short
+uv run alembic upgrade head && uv run alembic downgrade -1
+```
+
+### After Wave 5 (Frontend complete)
+
+```bash
+cd client && npm run test:jest
+cd client && npm run build
+```
+
+### Manual smoke tests (full stack)
+
+1. Load Kanban board → project filter shows all projects
+2. Select/deselect projects → issues filter correctly
+3. Click external issue → read-only modal with "Log Time" button
+4. Click local issue → full edit modal
+5. Refresh button → sync triggers, board updates
+6. Old `/my-jira-issues` route → redirects to board with Jira filter
+
+## Rollback Plan
+
+- Revert frontend to use `GET /project` (old endpoint — untouched, backward compatible)
+- New DB columns are additive — existing queries unaffected
+- `user_projects` table can be ignored if not used
+
+## Phasing (Strangler Fig)
+
+1. **Backend** (T01-T04): Add columns, create join table, build sync service, extend API. Old endpoints unchanged.
+2. **Frontend** (T05-T07): Swap board to new endpoints, add project filter, add read-only modal, deprecate sidebar.
+3. **Cleanup** (future, separate tickets): Drop `user.projectId`, remove `MyJiraIssues` component, remove old Node endpoints.
