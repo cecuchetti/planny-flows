@@ -756,7 +756,9 @@ name = "planny-flows"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "planny-api" },
     { name = "planny-core" },
+    { name = "planny-jira" },
 ]
 
 [package.dev-dependencies]
@@ -771,7 +773,11 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "planny-core", editable = "packages/planny-core" }]
+requires-dist = [
+    { name = "planny-api", editable = "packages/planny-api" },
+    { name = "planny-core", editable = "packages/planny-core" },
+    { name = "planny-jira", editable = "packages/planny-jira" },
+]
 
 [package.metadata.requires-dev]
 dev = [
@@ -792,6 +798,7 @@ dependencies = [
     { name = "httpx" },
     { name = "planny-core" },
     { name = "pyyaml" },
+    { name = "structlog" },
 ]
 
 [package.metadata]
@@ -799,6 +806,7 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.27" },
     { name = "planny-core" },
     { name = "pyyaml", specifier = ">=6.0" },
+    { name = "structlog", specifier = ">=24.0" },
 ]
 
 [[package]]
