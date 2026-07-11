@@ -41,6 +41,7 @@ export const appConfig = {
       readTimeoutMs: Number(getEnv('HTTP_READ_TIMEOUT_MS', '10000')),
     },
   },
+  pythonBackendUrl: getEnv('PYTHON_BACKEND_URL', 'http://localhost:13824')!,
   quickActions: {
     outlookCleaner: {
       url: getEnv('OUTLOOK_CLEANER_URL', 'https://outlook-cleaner.fly.dev/api/v1/trigger-clean')!,

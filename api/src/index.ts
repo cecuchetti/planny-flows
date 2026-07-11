@@ -13,6 +13,7 @@ import { addRequestId } from 'middleware/requestId';
 import { requestLogger } from 'middleware/requestLogger';
 import { RouteNotFoundError } from 'errors';
 import { logger } from 'utils/logger';
+import { proxyToPython } from 'middleware/proxy';
 
 import { attachPublicRoutes, attachPrivateRoutes } from './routes';
 
@@ -58,6 +59,10 @@ const initializeExpress = (): void => {
 
   app.use(addRequestId());
   app.use(requestLogger());
+
+  // Proxy migrated routes to Python backend (Strangler Fig pattern)
+  // Must come before addRespondToResponse and route handlers
+  app.use(proxyToPython);
 
   app.use(addRespondToResponse);
 
