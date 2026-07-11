@@ -9,7 +9,7 @@ import { appConfig } from 'config';
 const getDataSourceOptions = (): DataSourceOptions => {
   const common = {
     entities: Object.values(entities),
-    synchronize: true,
+    synchronize: false,
   };
 
   if (appConfig.db.type === 'sqlite') {
