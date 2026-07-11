@@ -14,6 +14,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - planny-network
 
   api:
     build:
@@ -33,6 +35,8 @@ services:
       db:
         condition: service_healthy
     restart: on-failure
+    networks:
+      - planny-network
 
   client:
     build:
@@ -44,6 +48,31 @@ services:
       - "8193:8193"
     depends_on:
       - api
+    networks:
+      - planny-network
+
+  python-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.python
+    ports:
+      - "13824:13824"
+    environment:
+      DB_TYPE: postgres
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      DB_DATABASE: jira_clone
+      JWT_SECRET: jira-clone-dev-secret
+    depends_on:
+      - db
+    networks:
+      - planny-network
 
 volumes:
   postgres_data: {}
+
+networks:
+  planny-network:
+    driver: bridge
