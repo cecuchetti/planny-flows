@@ -5,23 +5,28 @@ from __future__ import annotations
 from planny_core.config import Settings
 
 
+def _settings_without_env(**overrides: object) -> Settings:
+    """Create settings from defaults and explicit overrides only."""
+    return Settings(_env_file=None, **overrides)
+
+
 class TestSettingsDefaults:
     """Verify default values when no env vars override them."""
 
     def test_server_defaults(self) -> None:
-        s = Settings(port=3824, client_url="http://localhost:8192")
+        s = _settings_without_env(port=3824, client_url="http://localhost:8192")
         assert s.port == 3824
         assert s.client_url == "http://localhost:8192"
         assert s.env == "development"  # from NODE_ENV default
         assert s.python_backend_url == "http://localhost:13824"
 
     def test_jwt_defaults(self) -> None:
-        s = Settings()
+        s = _settings_without_env()
         assert s.jwt_secret == "jira-clone-dev-secret"
         assert s.jwt_expires_in == "180 days"
 
     def test_db_defaults(self) -> None:
-        s = Settings(db_type="postgres")
+        s = _settings_without_env(db_type="postgres")
         assert s.db_type == "postgres"
         assert s.db_host == "localhost"
         assert s.db_port == 5432
@@ -30,7 +35,7 @@ class TestSettingsDefaults:
         assert s.db_path == "data/jira.sqlite"
 
     def test_jira_defaults(self) -> None:
-        s = Settings()
+        s = _settings_without_env()
         assert s.internal_jira_auth_type == "basic"
         assert s.internal_jira_fixed_issue_key == "VIS-2"
         assert s.internal_jira_email is None
@@ -38,12 +43,12 @@ class TestSettingsDefaults:
         assert s.external_my_account_id is None
 
     def test_http_timeout_defaults(self) -> None:
-        s = Settings()
+        s = _settings_without_env()
         assert s.http_connect_timeout_ms == 5000
         assert s.http_read_timeout_ms == 10000
 
     def test_quick_actions_defaults(self) -> None:
-        s = Settings()
+        s = _settings_without_env()
         assert s.outlook_cleaner_url == (
             "https://outlook-cleaner.fly.dev/api/v1/trigger-clean"
         )
@@ -61,19 +66,19 @@ class TestSettingsEnvOverride:
     """Verify env var overrides via constructor kwargs (simulating .env)."""
 
     def test_port_override(self) -> None:
-        s = Settings(port=13824)
+        s = _settings_without_env(port=13824)
         assert s.port == 13824
 
     def test_db_type_override(self) -> None:
-        s = Settings(db_type="sqlite")
+        s = _settings_without_env(db_type="sqlite")
         assert s.db_type == "sqlite"
 
     def test_jwt_secret_override(self) -> None:
-        s = Settings(jwt_secret="custom-secret")
+        s = _settings_without_env(jwt_secret="custom-secret")
         assert s.jwt_secret == "custom-secret"
 
     def test_jira_url_override(self) -> None:
-        s = Settings(
+        s = _settings_without_env(
             internal_atlassian_base_url="https://my-jira.atlassian.net",
             external_atlassian_base_url="https://client-jira.atlassian.net",
         )

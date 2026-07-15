@@ -5,6 +5,8 @@ Sets up CORS, middleware, routers, and exception handlers.
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 import structlog
 from fastapi import Depends, FastAPI, Request
 from fastapi.exception_handlers import (
@@ -126,7 +128,7 @@ def create_app() -> FastAPI:
         # Delegate to FastAPI's default HTTP exception handler
         return await fastapi_http_exception_handler(request, exc)
 
-    app.add_exception_handler(AppError, app_error_handler)
+    app.add_exception_handler(AppError, cast(Any, app_error_handler))
     app.add_exception_handler(Exception, unhandled_exception_handler)
 
     return app

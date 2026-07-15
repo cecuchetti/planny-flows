@@ -58,8 +58,7 @@ class TestJiraHttpClient:
             return httpx.Response(200, json={"ok": True})
 
         transport = httpx.MockTransport(capturing_handler)
-        client = JiraHttpClient(config)
-        client._client._transport = transport
+        client = JiraHttpClient(config, transport=transport)
 
         try:
             await client.get("/rest/api/2/myself")
@@ -86,8 +85,7 @@ class TestJiraHttpClient:
             return httpx.Response(200, json={"ok": True})
 
         transport = httpx.MockTransport(capturing_handler)
-        client = JiraHttpClient(config)
-        client._client._transport = transport
+        client = JiraHttpClient(config, transport=transport)
 
         try:
             await client.get("/rest/api/2/myself")
@@ -106,8 +104,10 @@ class TestJiraHttpClient:
             email="user@example.com",
             api_token="token",
         )
-        client = JiraHttpClient(config)
-        client._client._transport = self._make_mock_transport(200, {"displayName": "John"})
+        client = JiraHttpClient(
+            config,
+            transport=self._make_mock_transport(200, {"displayName": "John"}),
+        )
 
         try:
             result = await client.get("/rest/api/2/myself")
@@ -124,8 +124,10 @@ class TestJiraHttpClient:
             email="user@example.com",
             api_token="token",
         )
-        client = JiraHttpClient(config)
-        client._client._transport = self._make_mock_transport(404, {"message": "Not found"})
+        client = JiraHttpClient(
+            config,
+            transport=self._make_mock_transport(404, {"message": "Not found"}),
+        )
 
         try:
             with pytest.raises(httpx.HTTPStatusError) as exc_info:
@@ -142,8 +144,10 @@ class TestJiraHttpClient:
             auth_type="bearer",
             api_token="token",
         )
-        client = JiraHttpClient(config)
-        client._client._transport = self._make_mock_transport(201, {"id": "12345"})
+        client = JiraHttpClient(
+            config,
+            transport=self._make_mock_transport(201, {"id": "12345"}),
+        )
 
         try:
             result = await client.post(
@@ -163,8 +167,10 @@ class TestJiraHttpClient:
             email="user@example.com",
             api_token="token",
         )
-        client = JiraHttpClient(config)
-        client._client._transport = self._make_mock_transport(500, {"message": "Server error"})
+        client = JiraHttpClient(
+            config,
+            transport=self._make_mock_transport(500, {"message": "Server error"}),
+        )
 
         try:
             with pytest.raises(httpx.HTTPStatusError) as exc_info:
@@ -182,8 +188,7 @@ class TestJiraHttpClient:
             email="user@example.com",
             api_token="token",
         )
-        client = JiraHttpClient(config)
-        client._client._transport = self._make_mock_transport(200, {})
+        client = JiraHttpClient(config, transport=self._make_mock_transport(200, {}))
         # close should succeed without error
         await client.close()
 
@@ -204,8 +209,7 @@ class TestJiraHttpClient:
             captured_requests.append(request)
             return httpx.Response(200, json={"ok": True})
 
-        client = JiraHttpClient(config)
-        client._client._transport = httpx.MockTransport(capturing_handler)
+        client = JiraHttpClient(config, transport=httpx.MockTransport(capturing_handler))
 
         # Patch logger to verify system name is passed
         with patch("planny_jira.client.logger.debug") as mock_debug:

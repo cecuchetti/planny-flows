@@ -136,13 +136,16 @@ async def create_issue(
         .options(selectinload(Issue.users))
     )
     result = await db.execute(stmt)
-    return result.scalars().first()
+    created_issue = result.scalars().first()
+    if created_issue is None:
+        raise EntityNotFoundError("Issue")
+    return created_issue
 
 
 async def update_issue(
     db: AsyncSession,
     issue_id: int,
-    project_id: int,
+    project_id: int | list[int] | set[int],
     data: UpdateIssueRequest,
 ) -> Issue:
     """Update an existing issue with the provided fields.
@@ -183,7 +186,7 @@ async def update_issue(
 async def delete_issue(
     db: AsyncSession,
     issue_id: int,
-    project_id: int,
+    project_id: int | list[int] | set[int],
 ) -> Issue:
     """Delete an issue (cascades to comments) and return the deleted entity.
 

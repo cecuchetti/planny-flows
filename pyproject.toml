@@ -32,6 +32,9 @@ python_version = "3.12"
 strict = true
 warn_unused_ignores = true
 ignore_missing_imports = true
+exclude = [
+    "packages/.*/tests/",
+]
 
 [[tool.mypy.overrides]]
 module = "tests.*"

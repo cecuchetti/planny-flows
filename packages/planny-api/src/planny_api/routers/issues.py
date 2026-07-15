@@ -89,7 +89,7 @@ async def get_issue(
     project_ids_result = await db.execute(
         select(user_projects.c.projectId).where(user_projects.c.userId == current_user.id)
     )
-    user_project_ids = [row[0] for row in project_ids_result.all()]
+    user_project_ids = [int(row[0]) for row in project_ids_result.all()]
 
     issue = await issue_service.find_by_id_and_project(
         db,
@@ -139,7 +139,7 @@ async def update_issue(
     project_ids_result = await db.execute(
         select(user_projects.c.projectId).where(user_projects.c.userId == current_user.id)
     )
-    user_project_ids = [row[0] for row in project_ids_result.all()]
+    user_project_ids = [int(row[0]) for row in project_ids_result.all()]
 
     updated = await issue_service.update_issue(
         db,

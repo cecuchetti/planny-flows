@@ -527,7 +527,7 @@ class TestGetProjectMulti:
     async def test_get_project_with_nonexistent_ids_returns_empty(
         self, client: AsyncClient, db_session: AsyncSession
     ) -> None:
-        """GET /project?ids=999 should return empty projects list."""
+        """GET /project?ids=999 should fail closed."""
         resp = await client.post("/authentication/guest")
         token = resp.json()["authToken"]
 
@@ -535,8 +535,33 @@ class TestGetProjectMulti:
             "/project?ids=999",
             headers={"Authorization": f"Bearer {token}"},
         )
-        assert response.status_code == 200
-        assert response.json()["projects"] == []
+        assert response.status_code == 404
+        assert response.json()["error"]["code"] == "ENTITY_NOT_FOUND"
+
+    @pytest.mark.asyncio
+    async def test_get_project_with_unauthorized_id_returns_404(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        """GET /project?ids=... should not leak projects owned by another user."""
+        resp = await client.post("/authentication/guest")
+        token = resp.json()["authToken"]
+
+        unauthorized_project = Project(
+            name="Private Project",
+            source_type=ProjectSourceType.LOCAL.value,
+            category="software",
+        )
+        db_session.add(unauthorized_project)
+        await db_session.flush()
+        unauthorized_project_id = unauthorized_project.id
+        await db_session.commit()
+
+        response = await client.get(
+            f"/project?ids={unauthorized_project_id}",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert response.status_code == 404
+        assert response.json()["error"]["code"] == "ENTITY_NOT_FOUND"
 
 
 # ── Tests: PUT /project with Jira guard ─────────────────────────────────────

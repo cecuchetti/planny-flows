@@ -25,7 +25,7 @@ def _make_mock_client(
     post_response: dict | None = None,
     post_error: Exception | None = None,
 ) -> JiraHttpClient:
-    """Create a JiraHttpClient with a mocked transport and post method."""
+    """Create a JiraHttpClient with a stubbed post method."""
     config = JiraInstanceConfig(
         base_url="https://jira.test.com",
         auth_type="basic",
@@ -34,13 +34,15 @@ def _make_mock_client(
         system_name=system_name,
     )
     client = JiraHttpClient(config)
-    mock_transport = httpx.MockTransport(
-        lambda req: httpx.Response(
-            status_code=500 if post_error else 200,
-            json=post_response or {"id": "12345", "key": "TEST-1"},
-        )
-    )
-    client._client._transport = mock_transport
+
+    async def successful_post(
+        path: str, json_data: dict | None = None, **kwargs: object
+    ) -> dict:
+        if post_error:
+            raise post_error
+        return post_response or {"id": "12345", "key": "TEST-1"}
+
+    client.post = successful_post  # type: ignore[assignment]
     return client
 
 
@@ -332,6 +334,78 @@ class TestHoursUpdate:
         repo = ExternalHoursDailyRepository()
         rows = await repo.get_by_date_range(db_session, "2026-07-11", "2026-07-11")
         assert len(rows) == 0
+
+    @pytest.mark.asyncio
+    async def test_hours_not_updated_when_jira_fails(
+        self, db_session: AsyncSession
+    ) -> None:
+        """Failed JIRA submission should not increment ExternalHoursDaily."""
+        internal = _make_mock_client(
+            system_name="internal",
+            post_response={"id": "tempo-ok", "key": "TEMPO-1"},
+        )
+        external = _make_mock_client_failing(system_name="external", status_code=500)
+        service = WorklogService(
+            internal_client=internal,
+            external_client=external,
+            tempo_issue_key="VIS-2",
+        )
+
+        request = CreateWorklogRequest(
+            target=WorklogTarget.JIRA,
+            external_issue_key="EXT-1",
+            work_date="2026-07-11",
+            time_spent_seconds=3600,
+            description="External failure",
+        )
+
+        result = await service.create_worklog(request, db_session)
+        assert result["overall_status"] == "FAILED"
+
+        from planny_jira.repositories import ExternalHoursDailyRepository
+
+        repo = ExternalHoursDailyRepository()
+        rows = await repo.get_by_date_range(db_session, "2026-07-11", "2026-07-11")
+        assert rows == []
+
+        await internal.close()
+        await external.close()
+
+    @pytest.mark.asyncio
+    async def test_hours_not_updated_when_both_target_jira_fails(
+        self, db_session: AsyncSession
+    ) -> None:
+        """BOTH partial success should not count hours unless JIRA succeeds."""
+        internal = _make_mock_client(
+            system_name="internal",
+            post_response={"id": "tempo-ok", "key": "TEMPO-1"},
+        )
+        external = _make_mock_client_failing(system_name="external", status_code=400)
+        service = WorklogService(
+            internal_client=internal,
+            external_client=external,
+            tempo_issue_key="VIS-2",
+        )
+
+        request = CreateWorklogRequest(
+            target=WorklogTarget.BOTH,
+            external_issue_key="EXT-1",
+            work_date="2026-07-11",
+            time_spent_seconds=3600,
+            description="Tempo succeeds, Jira fails",
+        )
+
+        result = await service.create_worklog(request, db_session)
+        assert result["overall_status"] == "PARTIAL_SUCCESS"
+
+        from planny_jira.repositories import ExternalHoursDailyRepository
+
+        repo = ExternalHoursDailyRepository()
+        rows = await repo.get_by_date_range(db_session, "2026-07-11", "2026-07-11")
+        assert rows == []
+
+        await internal.close()
+        await external.close()
 
 
 class TestSubmissionHistory:

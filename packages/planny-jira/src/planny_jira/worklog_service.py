@@ -185,8 +185,13 @@ class WorklogService:
             db, request_id, overall_status.value
         )
 
-        # Update ExternalHoursDaily for JIRA / BOTH successes
-        if request.target in (WorklogTarget.JIRA, WorklogTarget.BOTH):
+        # Update ExternalHoursDaily only when the external Jira worklog succeeded.
+        jira_success = any(
+            result.get("system") == TargetSystem.JIRA.value
+            and result.get("status") == TargetResultStatus.SUCCESS.value
+            for result in results
+        )
+        if jira_success:
             from planny_jira.repositories.external_hours_daily_repository import (
                 ExternalHoursDailyRepository,
             )

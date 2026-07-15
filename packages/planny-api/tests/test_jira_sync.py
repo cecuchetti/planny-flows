@@ -12,12 +12,13 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from planny_core.database import Base
-from planny_core.models import Issue, Project, User
+from planny_core.models import Issue, Project, User, user_projects
 from planny_jira.client import JiraHttpClient
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from planny_api.services.jira_sync_service import (
+    ensure_user_project_link,
     map_jira_issue_to_local,
     should_auto_sync,
     sync_external_projects,
@@ -269,6 +270,61 @@ class TestShouldAutoSync:
             last_synced_at=datetime.utcnow() - timedelta(hours=24, minutes=5),
         )
         assert should_auto_sync(just_over) is True
+
+
+class TestEnsureUserProjectLink:
+    """Tests for portable user/project association writes."""
+
+    @pytest.mark.asyncio
+    async def test_creates_link(self, db_session: AsyncSession) -> None:
+        project = Project(name="Linked", category="software")
+        db_session.add(project)
+        await db_session.flush()
+
+        user = User(
+            name="Linker",
+            email="linker@example.com",
+            avatarUrl="https://example.com/avatar.jpg",
+            projectId=project.id,
+        )
+        db_session.add(user)
+        await db_session.flush()
+
+        await ensure_user_project_link(db_session, user.id, project.id)
+
+        result = await db_session.execute(
+            select(user_projects).where(
+                user_projects.c.userId == user.id,
+                user_projects.c.projectId == project.id,
+            )
+        )
+        assert result.first() is not None
+
+    @pytest.mark.asyncio
+    async def test_idempotent(self, db_session: AsyncSession) -> None:
+        project = Project(name="Idempotent", category="software")
+        db_session.add(project)
+        await db_session.flush()
+
+        user = User(
+            name="Repeat",
+            email="repeat@example.com",
+            avatarUrl="https://example.com/avatar.jpg",
+            projectId=project.id,
+        )
+        db_session.add(user)
+        await db_session.flush()
+
+        await ensure_user_project_link(db_session, user.id, project.id)
+        await ensure_user_project_link(db_session, user.id, project.id)
+
+        result = await db_session.execute(
+            select(user_projects).where(
+                user_projects.c.userId == user.id,
+                user_projects.c.projectId == project.id,
+            )
+        )
+        assert len(result.all()) == 1
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

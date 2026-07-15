@@ -40,7 +40,11 @@ class BearerAuth(httpx.Auth):
 class JiraHttpClient:
     """Async HTTP client for Jira API with logging interceptors."""
 
-    def __init__(self, config: JiraInstanceConfig) -> None:
+    def __init__(
+        self,
+        config: JiraInstanceConfig,
+        transport: httpx.AsyncBaseTransport | None = None,
+    ) -> None:
         self.config = config
         self.system_name = config.system_name
 
@@ -54,6 +58,7 @@ class JiraHttpClient:
             base_url=config.base_url,
             auth=auth,
             timeout=httpx.Timeout(config.timeout_ms / 1000),
+            transport=transport,
             event_hooks={
                 "request": [self._log_request],
                 "response": [self._log_response],

@@ -8,8 +8,10 @@ from __future__ import annotations
 
 import structlog
 from fastapi import APIRouter, BackgroundTasks, Depends, Query
+from planny_core.database import async_session_factory
 from planny_core.errors import BadUserInputError, EntityNotFoundError, IntegrationUnavailableError
 from planny_core.models import Issue, Project, User, user_projects
+from planny_jira.client import JiraHttpClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -26,19 +28,22 @@ router = APIRouter(tags=["projects"])
 # ── Internal helpers ─────────────────────────────────────────────────────────
 
 
-async def _run_sync_background(user_id: int, db: AsyncSession, jira_client) -> None:
+async def _run_sync_background(user_id: int, jira_client: JiraHttpClient) -> None:
     """Run ``sync_external_projects`` as a background task.
 
-    Uses the request-scoped *db* session (still alive when background
-    tasks execute).  ALL exceptions are caught so a sync failure never
-    breaks the HTTP response.
+    Uses its own DB session so sync work is independent from the request
+    transaction. ALL exceptions are caught so a sync failure never breaks
+    the HTTP response.
     """
     from planny_api.services.jira_sync_service import sync_external_projects
 
-    try:
-        await sync_external_projects(user_id, db, jira_client)
-    except Exception:
-        logger.warning("auto_sync_failed", user_id=user_id, exc_info=True)
+    async with async_session_factory() as sync_db:
+        try:
+            await sync_external_projects(user_id, sync_db, jira_client)
+            await sync_db.commit()
+        except Exception:
+            await sync_db.rollback()
+            logger.warning("auto_sync_failed", user_id=user_id, exc_info=True)
 
 
 # ── GET /projects (list) ─────────────────────────────────────────────────────
@@ -49,7 +54,7 @@ async def list_projects(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
     background_tasks: BackgroundTasks = BackgroundTasks(),
-) -> dict:
+) -> dict[str, object]:
     """List all projects associated with the current user.
 
     Returns summary objects (``id``, ``name``, ``source_type``,
@@ -77,7 +82,7 @@ async def list_projects(
         stale = [p for p in projects if p.source_type == "jira" and should_auto_sync(p)]
         if stale:
             background_tasks.add_task(
-                _run_sync_background, current_user.id, db, jira_client
+                _run_sync_background, current_user.id, jira_client
             )
     except Exception:
         logger.debug("auto_sync_skipped", exc_info=True)
@@ -107,7 +112,7 @@ async def get_project(
     ids: str | None = Query(None),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> dict:
+) -> dict[str, object]:
     """Return one or more projects for the current user.
 
     * ``ids`` — comma-separated project IDs → ``{"projects": [...]}``
@@ -118,9 +123,12 @@ async def get_project(
     if ids:
         # Multi-project load
         id_list = [int(i.strip()) for i in ids.split(",")]
+        requested_ids = set(id_list)
         stmt = (
             select(Project)
-            .where(Project.id.in_(id_list))
+            .join(user_projects, user_projects.c.projectId == Project.id)
+            .where(Project.id.in_(requested_ids))
+            .where(user_projects.c.userId == current_user.id)
             .options(
                 selectinload(Project.issues).selectinload(Issue.users),
                 selectinload(Project.users),
@@ -128,6 +136,8 @@ async def get_project(
         )
         result = await db.execute(stmt)
         projects = result.scalars().unique().all()
+        if len(projects) != len(requested_ids):
+            raise EntityNotFoundError("Project")
         return {
             "projects": [project_to_dict(p, include_issues=True) for p in projects]
         }
@@ -158,7 +168,7 @@ async def update_project(
     body: UpdateProjectRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> dict:
+) -> dict[str, object]:
     """Update the user's project fields and return the updated project.
 
     Only the fields present in the request body are updated.
@@ -197,7 +207,7 @@ async def update_project(
 async def sync_all_projects(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> dict:
+) -> dict[str, object]:
     """Bootstrap: discover and sync all Jira projects for the current user.
 
     This is needed on first use when no Jira projects exist in the local DB yet.
@@ -236,7 +246,7 @@ async def sync_project(
     project_id: int,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> dict:
+) -> dict[str, object]:
     """Manually sync a specific Jira project.
 
     Verifies the project exists, is associated with the current user

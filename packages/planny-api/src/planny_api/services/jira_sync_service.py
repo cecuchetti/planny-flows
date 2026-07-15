@@ -10,14 +10,14 @@ mapping function for unit testing.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
 import os
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from planny_core.enums import ProjectSourceType
-from planny_core.models import Issue, Project, User
+from planny_core.models import Issue, Project, User, user_projects
 from planny_jira.client import JiraHttpClient
-from sqlalchemy import func, select, text
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -200,7 +200,7 @@ def map_jira_issue_to_local(
     if created_str:
         try:
             dt = datetime.fromisoformat(created_str.replace("Z", "+00:00"))
-            created_at = dt.astimezone(timezone.utc).replace(tzinfo=None)
+            created_at = dt.astimezone(UTC).replace(tzinfo=None)
         except Exception:
             pass
 
@@ -237,7 +237,7 @@ def should_auto_sync(project: Project) -> bool:
     if project.last_synced_at is None:
         return True
     now: datetime = datetime.utcnow()  # noqa: UP024  -- legacy compat with model defaults
-    return (now - project.last_synced_at) > timedelta(hours=24)  # type: ignore[no-any-return]
+    return (now - project.last_synced_at) > timedelta(hours=24)
 
 
 async def get_or_create_user(
@@ -259,6 +259,20 @@ async def get_or_create_user(
         db.add(user)
         await db.flush()
     return user
+
+
+async def ensure_user_project_link(db: AsyncSession, user_id: int, project_id: int) -> None:
+    """Create a user/project association if it does not already exist."""
+    existing = await db.execute(
+        select(user_projects.c.userId).where(
+            user_projects.c.userId == user_id,
+            user_projects.c.projectId == project_id,
+        )
+    )
+    if existing.first() is not None:
+        return
+
+    await db.execute(user_projects.insert().values(userId=user_id, projectId=project_id))
 
 
 # ── Main sync entry point ─────────────────────────────────────────────────────
@@ -360,13 +374,7 @@ async def sync_external_projects(
         projects_synced += 1
 
         # ── b. Ensure user_projects association ──────────────────────────────
-        await db.execute(
-            text(
-                'INSERT OR IGNORE INTO user_projects ("userId", "projectId") '
-                "VALUES (:user_id, :project_id)"
-            ),
-            {"user_id": user_id, "project_id": project.id},
-        )
+        await ensure_user_project_link(db, user_id, project.id)
 
         # ── c. Determine existing issue keys for upsert logic ────────────────
         existing_result = await db.execute(
@@ -387,15 +395,6 @@ async def sync_external_projects(
         )
         max_pos: float = max_pos_result.scalar() or 0.0
         position_offset: int = 0
-
-        async def link_user_to_project(u_id: int, p_id: int):
-            await db.execute(
-                text(
-                    'INSERT OR IGNORE INTO user_projects ("userId", "projectId") '
-                    "VALUES (:user_id, :project_id)"
-                ),
-                {"user_id": u_id, "project_id": p_id},
-            )
 
         # ── e. Upsert each issue ─────────────────────────────────────────────
         for jira_issue in project_issues:
@@ -418,7 +417,7 @@ async def sync_external_projects(
                         email=reporter_email,
                         avatar_url=reporter_data.get("avatarUrls", {}).get("24x24"),
                     )
-                    await link_user_to_project(reporter_user.id, project.id)
+                    await ensure_user_project_link(db, reporter_user.id, project.id)
                     reporter_id_val = reporter_user.id
                 else:
                     reporter_id_val = user_id
@@ -448,7 +447,7 @@ async def sync_external_projects(
                         email=assignee_email,
                         avatar_url=assignee_data.get("avatarUrls", {}).get("24x24"),
                     )
-                    await link_user_to_project(assignee_user.id, project.id)
+                    await ensure_user_project_link(db, assignee_user.id, project.id)
                     issue_assignees.append(assignee_user)
                 else:
                     if user_obj is not None:
@@ -459,12 +458,12 @@ async def sync_external_projects(
 
             if issue_key in existing_keys:
                 # Update existing issue (preserve listPosition)
-                result = await db.execute(
+                issue_result = await db.execute(
                     select(Issue)
                     .where(Issue.external_key == issue_key)
                     .options(selectinload(Issue.users))
                 )
-                existing_issue: Issue | None = result.scalars().first()
+                existing_issue: Issue | None = issue_result.scalars().first()
                 if existing_issue is not None:
                     for field in (
                         "title",

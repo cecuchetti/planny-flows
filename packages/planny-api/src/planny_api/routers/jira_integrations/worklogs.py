@@ -5,7 +5,7 @@ All routes require authentication and a configured Jira integration.
 
 from __future__ import annotations
 
-from typing import Annotated, cast
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
 from planny_jira.worklog_service import WorklogService
@@ -58,7 +58,7 @@ async def create_worklog(
         time_spent_seconds=body.time_spent_seconds,
         description=body.description,
     )
-    return cast(dict[str, object], await wls.create_worklog(request, db))
+    return await wls.create_worklog(request, db)
 
 
 @router.get("")
@@ -74,7 +74,7 @@ async def get_submission_history(
     size: int = 20,
 ) -> dict[str, object]:
     """Return paginated submission history with optional date/target filters."""
-    return cast(dict[str, object], await wls.get_submission_history(
+    return await wls.get_submission_history(
         db,
         target=target,
         status=status,
@@ -83,7 +83,7 @@ async def get_submission_history(
         to_date=end_date,
         page=page,
         size=size,
-    ))
+    )
 
 
 @router.get("/hours-by-date")
@@ -106,4 +106,4 @@ async def update_hours_for_date(
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict[str, object]:
     """Manually override daily hours for a specific date."""
-    return cast(dict[str, object], await wls.update_hours_for_date(db, date, body.total_seconds))
+    return await wls.update_hours_for_date(db, date, body.total_seconds)
