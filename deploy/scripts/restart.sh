@@ -4,7 +4,9 @@ DEPENDENCIES=(curl launchctl)
 SCRIPT_NAME=$(basename "$0")
 VERSION="1.0.0"
 
-PLIST_PATH="/Library/LaunchDaemons/com.plannyflows.plist"
+PLIST_PATH="$HOME/Library/LaunchAgents/com.plannyflows.plist"
+SERVICE_DOMAIN="gui/$(id -u)"
+SERVICE_LABEL="${SERVICE_DOMAIN}/com.plannyflows"
 DEPLOY_DIR="${DEPLOY_DIR:-$HOME/.planny-flows}"
 LOG_DIR="${LOG_DIR:-$DEPLOY_DIR/logs}"
 
@@ -40,7 +42,7 @@ function exit_on_missing_tools() {
 
 function stop_service() {
     echo "1. Stopping service..."
-    sudo launchctl bootout system/com.plannyflows 2>/dev/null || true
+    launchctl bootout "$SERVICE_LABEL" 2>/dev/null || true
     sleep 2
 }
 
@@ -50,7 +52,7 @@ function start_service() {
         echo "Error: Launchd plist not found at $PLIST_PATH" >&2
         exit 1
     fi
-    sudo launchctl bootstrap system "$PLIST_PATH" || {
+    launchctl bootstrap "$SERVICE_DOMAIN" "$PLIST_PATH" || {
         echo "Error: Failed to start service" >&2
         exit 1
     }

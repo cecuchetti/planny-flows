@@ -247,8 +247,7 @@ kill $(lsof -ti :8193)
 chmod +x deploy/scripts/*.sh
 
 # Fix plist permissions
-sudo chmod 644 /Library/LaunchDaemons/com.plannyflows.plist
-sudo chown root:wheel /Library/LaunchDaemons/com.plannyflows.plist
+chmod 644 ~/Library/LaunchAgents/com.plannyflows.plist
 ```
 
 ## Idempotency
@@ -262,11 +261,18 @@ The deployment script is designed to be idempotent:
 
 ## Launchd Service
 
-The launchd plist is created at `/Library/LaunchDaemons/com.plannyflows.plist`.
+The launchd plist is installed at `~/Library/LaunchAgents/com.plannyflows.plist`
+as a **per-user LaunchAgent**.
+
+> **Do not install this as a LaunchDaemon.** A LaunchDaemon runs as root, so
+> `start.sh` would run `uv` as root and create root-owned `__pycache__`/`*.pyc`
+> files inside `.venv` and `packages/`, plus a root-owned entry in the uv cache.
+> That leaves the project with an unusable venv (`no Python executable was
+> found`) and files only root can delete.
 
 **Features:**
-- Runs as system daemon
-- Auto-starts on boot
+- Runs as your user, never as root
+- Auto-starts at login
 - Auto-restarts if crashed
 - Separate log files for stdout/stderr
 - Environment variables for configuration
@@ -275,13 +281,13 @@ The launchd plist is created at `/Library/LaunchDaemons/com.plannyflows.plist`.
 
 ```bash
 # Load service
-sudo launchctl bootstrap system /Library/LaunchDaemons/com.plannyflows.plist
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.plannyflows.plist
 
 # Unload service
-sudo launchctl bootout system/com.plannyflows
+launchctl bootout gui/$(id -u)/com.plannyflows
 
 # Print service status
-sudo launchctl print system/com.plannyflows
+launchctl print gui/$(id -u)/com.plannyflows
 
 # Restart service
 ./deploy/scripts/restart.sh

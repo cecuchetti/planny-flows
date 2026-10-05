@@ -283,7 +283,7 @@ function install_dependencies() {
 function prepare_launchd() {
     log INFO "Preparing launchd service configuration..."
 
-    local plist_path="/Library/LaunchDaemons/com.plannyflows.plist"
+    local plist_path="$HOME/Library/LaunchAgents/com.plannyflows.plist"
 
     # Backup existing plist
     if [[ -f "$plist_path" ]]; then
@@ -342,7 +342,8 @@ PLIST
 function stop_service() {
     log INFO "Stopping any running Planny-Flows service..."
 
-    # Stop via launchd
+    # Stop via launchd (per-user agent; also clear any legacy root daemon)
+    launchctl bootout "gui/$(id -u)/com.plannyflows" 2>/dev/null || true
     sudo launchctl bootout system/com.plannyflows 2>/dev/null || true
 
     # Stop any running processes
@@ -376,8 +377,10 @@ function stop_service() {
 function start_service() {
     log INFO "Starting Planny-Flows service..."
 
-    # Load launchd service
-    sudo launchctl bootstrap system "$PROJECT_ROOT/deploy/scripts/run.sh" 2>/dev/null || exit_on_error 1 "Failed to load launchd service"
+    # Load the per-user LaunchAgent (no root required)
+    local agent_plist="$HOME/Library/LaunchAgents/com.plannyflows.plist"
+    [[ -f "$agent_plist" ]] || exit_on_error 1 "LaunchAgent plist not found at $agent_plist"
+    launchctl bootstrap "gui/$(id -u)" "$agent_plist" 2>/dev/null || exit_on_error 1 "Failed to load launchd service"
 
     log SUCCESS "Service started"
 }

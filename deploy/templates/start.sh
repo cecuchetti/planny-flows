@@ -4,8 +4,11 @@ DEPENDENCIES=(uv)
 SCRIPT_NAME=$(basename "$0")
 VERSION="2.0.0"
 
-DEPLOY_DIR="/Users/ecuchetti/.planny-flows"
-PROJECT_SOURCE="/Users/ecuchetti/Projects/github/planny-flows"
+# The deploy scripts render this template with sed, replacing the __PLACEHOLDER__
+# tokens with your real paths. If you run the file straight from the repo, set
+# DEPLOY_DIR / PROJECT_SOURCE in the environment instead.
+DEPLOY_DIR="${DEPLOY_DIR:-__DEPLOY_DIR__}"
+PROJECT_SOURCE="${PROJECT_SOURCE:-__PROJECT_SOURCE__}"
 LOG_DIR="$DEPLOY_DIR/logs"
 PID_DIR="$DEPLOY_DIR/pids"
 ENV_FILE="$DEPLOY_DIR/.env.production"
@@ -119,11 +122,76 @@ function stop_managed_process_from_pid_file() {
     rm -f "$pid_file" 2>/dev/null || true
 }
 
+function process_cwd_is() {
+    local pid="$1"
+    local expected_dir="$2"
+    local cwd=""
+
+    command -v lsof &>/dev/null || return 1
+
+    cwd="$(lsof -a -p "$pid" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p' | head -1)"
+    [[ "$cwd" == "$expected_dir" ]]
+}
+
+function is_api_process() {
+    local pid="$1"
+    local process_command
+    process_command="$(get_process_command "$pid")"
+
+    # 'uv run uvicorn ...' re-execs a child python process; the child is the one
+    # that actually binds the port, so accept either form.
+    [[ -n "$process_command" && "$process_command" == *uvicorn* && "$process_command" == *planny_api* ]]
+}
+
+function is_client_process() {
+    local pid="$1"
+    local process_command
+    process_command="$(get_process_command "$pid")"
+
+    [[ -n "$process_command" && "$process_command" == *"node server.js"* ]] || return 1
+
+    # Guard against killing an unrelated 'node server.js': require that the
+    # process actually runs from the deployed client directory when we can tell.
+    if command -v lsof &>/dev/null; then
+        process_cwd_is "$pid" "$DEPLOY_DIR/client"
+    else
+        return 0
+    fi
+}
+
+function stop_orphan_on_port() {
+    local port="$1"
+    local matcher="$2"
+    local label="$3"
+    local pid=""
+
+    if ! command -v lsof &>/dev/null; then
+        return 0
+    fi
+
+    for pid in $(lsof -tiTCP:"$port" -sTCP:LISTEN 2>/dev/null || true); do
+        if "$matcher" "$pid"; then
+            log "Stopping orphaned ${label} process on port ${port} (PID: $pid)"
+            kill "$pid" 2>/dev/null || true
+            sleep 1
+            kill -9 "$pid" 2>/dev/null || true
+        else
+            log "Port ${port} is held by PID $pid, which is not ${label}; leaving it alone."
+        fi
+    done
+}
+
 function stop_stale_processes() {
     log "Stopping managed stale processes before start..."
 
-    stop_managed_process_from_pid_file "$PID_DIR/api.pid" "uvicorn.*planny_api" "API"
-    stop_managed_process_from_pid_file "$PID_DIR/client.pid" "$DEPLOY_DIR/client/server.js" "client"
+    stop_managed_process_from_pid_file "$PID_DIR/api.pid" "uvicorn" "API"
+    stop_managed_process_from_pid_file "$PID_DIR/client.pid" "node server.js" "client"
+
+    # A previous run can die after its pid file was already removed, leaving a
+    # process that still holds the port. Without this sweep the next start fails
+    # to bind and the service enters a restart loop, so reclaim the ports.
+    stop_orphan_on_port "${PORT:-3824}" is_api_process "API"
+    stop_orphan_on_port "${CLIENT_PORT:-8193}" is_client_process "client"
 
     sleep 1
 }

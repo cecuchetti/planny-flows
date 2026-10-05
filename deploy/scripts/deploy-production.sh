@@ -27,7 +27,7 @@
 # Dependencies:
 #   - Node.js >= 18
 #   - npm
-#   - sudo access for launchctl
+#   - a logged-in user session (LaunchAgent runs as your user)
 #   - Existing production setup at ~/.planny-flows
 #
 #================================================================================
@@ -185,8 +185,8 @@ function check_environment() {
         log WARN "Some environment variables may be missing"
     fi
 
-    if [[ ! -f "/Library/LaunchDaemons/com.plannyflows.plist" ]]; then
-        log WARN "Launchd service plist not found at /Library/LaunchDaemons/com.plannyflows.plist"
+    if [[ ! -f "$HOME/Library/LaunchAgents/com.plannyflows.plist" ]]; then
+        log WARN "Launchd service plist not found at $HOME/Library/LaunchAgents/com.plannyflows.plist"
         log WARN "The service may not be installed. Run ./deploy/setup.sh to install."
     fi
 
@@ -276,8 +276,8 @@ function stop_service() {
     log INFO "Stopping production service..."
 
     # Stop via launchd
-    if [[ -f "/Library/LaunchDaemons/com.plannyflows.plist" ]]; then
-        sudo launchctl bootout system/com.plannyflows 2>/dev/null || {
+    if [[ -f "$HOME/Library/LaunchAgents/com.plannyflows.plist" ]]; then
+        launchctl bootout "gui/$(id -u)/com.plannyflows" 2>/dev/null || {
             log WARN "Failed to stop via launchd (maybe not running)"
         }
         log INFO "Service stopped via launchd"
@@ -419,6 +419,7 @@ function update_startup_scripts() {
     # Generate start.sh from template
     if [[ -f "$TEMPLATES_DIR/start.sh" ]]; then
         sed -e "s|__PROJECT_DIR__|$DEPLOY_DIR|g" \
+            -e "s|__PROJECT_SOURCE__|$PROJECT_ROOT|g" \
             -e "s|__DEPLOY_DIR__|$DEPLOY_DIR|g" \
             -e "s|__HOSTNAME__|$hostname|g" \
             "$TEMPLATES_DIR/start.sh" > "$DEPLOY_DIR/start.sh" || exit_on_error 1 "Failed to generate start.sh"
@@ -449,17 +450,17 @@ function update_startup_scripts() {
         log SUCCESS "Updated launchd plist"
         
         # Install to system location if different
-        if [[ ! -f "/Library/LaunchDaemons/com.plannyflows.plist" ]] || \
-           ! cmp -s "$DEPLOY_DIR/com.plannyflows.plist" "/Library/LaunchDaemons/com.plannyflows.plist"; then
-            log INFO "Installing launchd plist to system..."
-            sudo cp "$DEPLOY_DIR/com.plannyflows.plist" "/Library/LaunchDaemons/" || exit_on_error 1 "Failed to copy plist to system"
-            sudo chown root:wheel "/Library/LaunchDaemons/com.plannyflows.plist"
-            sudo chmod 644 "/Library/LaunchDaemons/com.plannyflows.plist"
-            log SUCCESS "Launchd plist installed to system"
+        if [[ ! -f "$HOME/Library/LaunchAgents/com.plannyflows.plist" ]] || \
+           ! cmp -s "$DEPLOY_DIR/com.plannyflows.plist" "$HOME/Library/LaunchAgents/com.plannyflows.plist"; then
+            log INFO "Installing launchd plist as a user LaunchAgent..."
+            mkdir -p "$HOME/Library/LaunchAgents"
+            cp "$DEPLOY_DIR/com.plannyflows.plist" "$HOME/Library/LaunchAgents/" || exit_on_error 1 "Failed to install LaunchAgent plist"
+            chmod 644 "$HOME/Library/LaunchAgents/com.plannyflows.plist"
+            log SUCCESS "LaunchAgent plist installed"
         fi
     else
         log INFO "No launchd.plist template found - skipping plist generation"
-        log INFO "If you have a custom launchd setup, ensure /Library/LaunchDaemons/com.plannyflows.plist exists"
+        log INFO "If you have a custom launchd setup, ensure $HOME/Library/LaunchAgents/com.plannyflows.plist exists"
     fi
 }
 
@@ -467,17 +468,17 @@ function update_startup_scripts() {
 function start_service() {
     log INFO "Starting production service..."
 
-    if [[ ! -f "/Library/LaunchDaemons/com.plannyflows.plist" ]]; then
-        log ERROR "Launchd plist not found at /Library/LaunchDaemons/com.plannyflows.plist"
+    if [[ ! -f "$HOME/Library/LaunchAgents/com.plannyflows.plist" ]]; then
+        log ERROR "Launchd plist not found at $HOME/Library/LaunchAgents/com.plannyflows.plist"
         log ERROR "If you're deploying on macOS, you need to install the launchd service first."
-        log ERROR "Run: sudo cp ~/.planny-flows/com.plannyflows.plist /Library/LaunchDaemons/"
+        log ERROR 'Run: cp ~/.planny-flows/com.plannyflows.plist ~/Library/LaunchAgents/'
         log ERROR "Or run './deploy/setup.sh' to generate the service file."
         exit 1
     fi
 
-    sudo launchctl bootstrap system "/Library/LaunchDaemons/com.plannyflows.plist" || {
+    launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/com.plannyflows.plist" || {
         log ERROR "Failed to start service via launchd"
-        log ERROR "Check system logs: sudo launchctl print system/com.plannyflows"
+        log ERROR 'Check service state: launchctl print "gui/$(id -u)/com.plannyflows"'
         exit 1
     }
 
@@ -712,7 +713,7 @@ ${BLUE}Examples:${NC}
 ${BLUE}Requirements:${NC}
     • Node.js >= 18
     • npm
-    • sudo access for launchctl
+    • a logged-in user session (no root needed)
     • Existing production setup at ~/.planny-flows
 
 ${BLUE}Related Scripts:${NC}

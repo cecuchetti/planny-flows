@@ -34,11 +34,26 @@ const api = (method, url, variables) =>
       },
       error => {
         if (error.response) {
-          if (error.response?.data?.error?.code === 'INVALID_TOKEN') {
+          const { status, data } = error.response;
+          const isUnauthorized = status === 401 || data?.error?.code === 'INVALID_TOKEN';
+
+          if (isUnauthorized) {
+            // The API answers with two different shapes for the same problem:
+            //   no token at all -> {"detail":"Not authenticated"}
+            //   bad/expired     -> {"error":{"code":"INVALID_TOKEN"}}
+            // Both mean we must drop any stored token and (re)authenticate,
+            // otherwise the app renders forever with no credentials.
             removeStoredAuthToken();
-            if (navigationRef.current) navigationRef.current('/authenticate');
+            if (
+              navigationRef.current &&
+              typeof window !== 'undefined' &&
+              window.location.pathname !== '/authenticate'
+            ) {
+              navigationRef.current('/authenticate');
+            }
+            reject(data?.error ?? defaults.error);
           } else {
-            reject(error.response?.data?.error ?? defaults.error);
+            reject(data?.error ?? defaults.error);
           }
         } else {
           reject(defaults.error);

@@ -197,8 +197,10 @@ function Project() {
     return { id: 0, name: '', users: [], issues: [] };
   }, [data]);
 
-  if (!normalizedProject) return <PageLoader />;
+  // Check the error first: a failed load leaves `data` null, and rendering the
+  // loader before this made every failure look like an endless spinner.
   if (error) return <PageError />;
+  if (!normalizedProject) return <PageLoader />;
 
   const project = normalizedProject;
 

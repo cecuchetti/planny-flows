@@ -51,9 +51,9 @@ function exit_on_missing_tools() {
 }
 
 function check_launchd_service() {
-    if [[ -f "/Library/LaunchDaemons/com.plannyflows.plist" ]]; then
+    if [[ -f "$HOME/Library/LaunchAgents/com.plannyflows.plist" ]]; then
         echo "Launchd Service: Installed"
-        sudo launchctl print system/com.plannyflows 2>/dev/null | grep -E "(state|pid)" || echo "  Status: Not running"
+        launchctl print "gui/$(id -u)/com.plannyflows" 2>/dev/null | grep -E "(state|pid)" || echo "  Status: Not running"
     else
         echo "Launchd Service: Not installed"
     fi

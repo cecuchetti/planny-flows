@@ -18,7 +18,8 @@ if [[ -n "${NO_COLOR:-}" ]] || [[ "${TERM:-}" == "dumb" ]]; then
     NC=""
 fi
 
-PLIST_PATH="/Library/LaunchDaemons/com.plannyflows.plist"
+PLIST_PATH="$HOME/Library/LaunchAgents/com.plannyflows.plist"
+LEGACY_DAEMON_PLIST="/Library/LaunchDaemons/com.plannyflows.plist"
 DEPLOY_DIR="$HOME/.planny-flows"
 
 function usage() {
@@ -56,12 +57,20 @@ function exit_on_missing_tools() {
 function stop_and_remove_service() {
     if [[ -f "$PLIST_PATH" ]]; then
         echo -e "${YELLOW}Stopping launchd service...${NC}"
-        sudo launchctl bootout system/com.plannyflows 2>/dev/null || true
-        sudo rm -f "$PLIST_PATH" || {
+        launchctl bootout "gui/$(id -u)/com.plannyflows" 2>/dev/null || true
+        rm -f "$PLIST_PATH" || {
             echo -e "${RED}✗ Failed to remove plist file${NC}" >&2
             exit 1
         }
         echo -e "${GREEN}✓ Service removed${NC}"
+    fi
+
+    # Clean up the legacy root LaunchDaemon if it is still installed.
+    if [[ -f "$LEGACY_DAEMON_PLIST" ]]; then
+        echo -e "${YELLOW}Removing legacy root LaunchDaemon (needs sudo)...${NC}"
+        sudo launchctl bootout system/com.plannyflows 2>/dev/null || true
+        sudo rm -f "$LEGACY_DAEMON_PLIST" 2>/dev/null || \
+            echo -e "${RED}✗ Could not remove $LEGACY_DAEMON_PLIST${NC}" >&2
     fi
 }
 

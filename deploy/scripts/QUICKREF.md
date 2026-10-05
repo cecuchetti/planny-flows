@@ -91,9 +91,9 @@ tail -f $LOG_DIR/client.log
 # Stop service
 ./deploy/scripts/stop.sh
 
-# Reload launchd configuration
-sudo launchctl unload /Library/LaunchDaemons/com.plannyflows.plist
-sudo launchctl bootstrap system /Library/LaunchDaemons/com.plannyflows.plist
+# Reload launchd configuration (per-user LaunchAgent)
+launchctl bootout gui/$(id -u)/com.plannyflows
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.plannyflows.plist
 ```
 
 ## 🐛 Troubleshooting

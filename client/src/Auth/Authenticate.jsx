@@ -20,9 +20,13 @@ const Authenticate = () => {
       }
     };
 
-    if (!getStoredAuthToken()) {
-      createGuestAccount();
+    if (getStoredAuthToken()) {
+      // Already authenticated (e.g. landed here directly) - don't spin forever.
+      navigate('/', { replace: true });
+      return;
     }
+
+    createGuestAccount();
   }, [navigate]);
 
   return <PageLoader />;

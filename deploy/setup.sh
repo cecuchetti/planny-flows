@@ -307,11 +307,15 @@ function display_instructions() {
     echo ""
 
     # Service installation instructions based on OS
-    echo -e "  ${YELLOW}1. Install the system service (requires password):${NC}"
+    echo -e "  ${YELLOW}1. Install the per-user service (no password needed):${NC}"
     if [[ "$OS_TYPE" == "macos" ]]; then
         if [[ -f "$DEPLOY_DIR/com.plannyflows.plist" ]]; then
-            echo -e "     sudo cp $DEPLOY_DIR/com.plannyflows.plist /Library/LaunchDaemons/"
-            echo -e "     sudo launchctl bootstrap system /Library/LaunchDaemons/com.plannyflows.plist"
+            echo -e "     mkdir -p ~/Library/LaunchAgents"
+            echo -e "     cp $DEPLOY_DIR/com.plannyflows.plist ~/Library/LaunchAgents/"
+            echo -e "     launchctl bootstrap gui/\$(id -u) ~/Library/LaunchAgents/com.plannyflows.plist"
+            echo -e "     ${YELLOW}Note: do NOT install this as a LaunchDaemon.${NC}"
+            echo -e "     ${YELLOW}A root daemon makes start.sh run uv as root, which creates${NC}"
+            echo -e "     ${YELLOW}root-owned files in the venv and packages, breaking 'uv run'.${NC}"
         else
             echo -e "     ⚠ macOS launchd service file not generated"
             echo -e "     Create a custom launchd plist for local macOS setup if needed"
@@ -346,8 +350,8 @@ function display_instructions() {
     if [[ "$OS_TYPE" == "macos" ]]; then
         echo -e "     Status:  ./deploy/scripts/status.sh"
         echo -e "     Logs:    ./deploy/scripts/logs.sh"
-        echo -e "     Stop:    sudo launchctl bootout system/com.plannyflows"
-        echo -e "     Start:   sudo launchctl bootstrap system /Library/LaunchDaemons/com.plannyflows.plist"
+        echo -e "     Stop:    launchctl bootout gui/\$(id -u)/com.plannyflows"
+        echo -e "     Start:   launchctl bootstrap gui/\$(id -u) ~/Library/LaunchAgents/com.plannyflows.plist"
     elif [[ "$OS_TYPE" == "linux" ]]; then
         echo -e "     Status:  sudo systemctl status planny-flows"
         echo -e "     Logs:    sudo journalctl -u planny-flows -f"

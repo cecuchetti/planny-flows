@@ -68,8 +68,8 @@ function stop_via_pid_files() {
 }
 
 function stop_via_launchd() {
-    if [[ -f "/Library/LaunchDaemons/com.plannyflows.plist" ]]; then
-        sudo launchctl bootout system/com.plannyflows 2>/dev/null || true
+    if [[ -f "$HOME/Library/LaunchAgents/com.plannyflows.plist" ]]; then
+        launchctl bootout "gui/$(id -u)/com.plannyflows" 2>/dev/null || true
         echo "Stopped via launchd"
         return 0
     fi
