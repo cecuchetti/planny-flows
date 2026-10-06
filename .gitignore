@@ -14,7 +14,10 @@
 **/build
 **/npm-debug.log*
 
-# SQLite (local dev)
+# Local runtime data: SQLite database, and the bootstrap cache file which may
+# hold database credentials. Never commit these.
+data/
+# Legacy Node-era path, kept so old checkouts stay clean.
 api/data
 
 # Generated deployment files (contain secrets and user-specific paths)

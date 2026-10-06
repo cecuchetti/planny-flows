@@ -2,9 +2,14 @@
 
 ## Project
 
-Jira Clone:
-- **API (Python)**: Python with FastAPI + SQLAlchemy 2.0 + Alembic
+Planny Flows — a proxy in front of one or two real Jira instances, plus a local board.
+- **API (Python)**: FastAPI + SQLAlchemy 2.0 + Alembic
 - **Client**: React/JavaScript with Webpack
+
+The backend is a **modular monolith**: each domain is a package under
+`planny_api/modules/` that declares itself, and the kernel discovers and mounts it. Read
+[docs/architecture/2026-10-05-backend-modular-blueprint.md](docs/architecture/2026-10-05-backend-modular-blueprint.md)
+before changing the structure.
 
 ## Commands
 
@@ -24,6 +29,18 @@ uv run pytest packages/planny-api/tests/test_issues.py -v               # Single
 uv run ruff check packages/                                              # Lint
 uv run mypy packages/                                                    # Type check
 ```
+
+### Architecture tests
+
+The blueprint's guiding principles are enforced by the suite, not by convention:
+
+```bash
+uv run pytest packages/planny-api/tests/test_architecture.py -v
+```
+
+They check: every domain package declares itself; `planny-core` never imports the web
+framework; only the configuration layer reads the environment; routers do not build
+queries; `main.py` stays an entrypoint and the factory names no domain.
 
 ### Client (`/client`)
 ```bash
@@ -52,7 +69,22 @@ npx prettier --write "**/*.{ts,tsx,js,jsx,json,md}"
 - **Imports**: absolute from package root (e.g., `from planny_core.config import settings`)
 - **Lint**: ruff
 - **Types**: type hints required, mypy strict mode
-- **Errors**: custom exception hierarchy (`planny_core/errors.py`)
+- **Errors**: `AppError` subclasses in `planny_core/errors/`; codes come from
+  `planny_core.errors.ErrorCode`, never from string literals
+- **Configuration**: the whole `planny_core/config/` package is the only layer allowed to
+  read the process environment — an architecture test enforces it. Import via
+  `from planny_core.config import Settings, settings`.
+
+  | Module | Responsibility |
+  |---|---|
+  | `config/settings.py` | The typed `Settings` object; resolves the environment and `.env` tiers |
+  | `config/keys.py` | Declarative registry: one entry per configurable key. Drives resolution, the API and the UI form |
+  | `config/resolver.py` | Applies store overrides on top of settings, then revalidates |
+  | `config/bootstrap.py` | Tier-0 values (database connection, admin, master key) needed before the store is reachable |
+  | `config/paths.py` | Repository paths, independent of the working directory |
+
+  Precedence for runtime keys: `database > process env > .env > default`. Add a setting by
+  adding one entry to `config/keys.py` — not in six places.
 - **DB**: SQLAlchemy 2.0 with async sessions
 
 ### React Guidelines (Client)
@@ -87,9 +119,17 @@ async def test_something(client, db_session):
 ### Project Structure
 ```
 /packages
-  /planny-core       - Shared config, models, database, errors, enums
-  /planny-api        - FastAPI app: routers, middleware, services, schemas
-  /planny-jira       - Jira HTTP client and worklog orchestration
+  /planny-core       - Kernel
+    /config          - configuration layer: the only place that reads the environment
+    /models          - SQLAlchemy models
+    /db, /errors, /enums
+  /planny-api        - FastAPI application
+    /app             - factory, context, lifespan, handlers
+    /kernel          - module contract, registry, mounting, capabilities
+    /core            - cross-cutting: security policies
+    /middleware      - request id, logging, error handling, rate limiting
+    /modules         - one package per domain, auto-discovered
+  /planny-jira       - Jira HTTP client, constants, worklog orchestration
 
 /client/src
   /App            - Root component
@@ -97,6 +137,23 @@ async def test_something(client, db_session):
   /shared         - Reusable components/hooks
   /Auth           - Authentication
 ```
+
+There is no `routers/`, `schemas/` or `services/` directory. Every domain owns its own, and
+an architecture test fails if one of those layer directories reappears.
+
+### Adding to a domain
+
+| Layer | Responsibility |
+|---|---|
+| `router.py` | Validate input, delegate, serialize. **No SQL, no business rules** |
+| `service.py` | Business rules and orchestration |
+| `repository.py` | Every query for the domain |
+| `schemas.py` | Pydantic request/response models |
+| `serializers.py` | The JSON shape returned to the client |
+| `__init__.py` | `MODULE = ApiModule(...)` — the discovery entrypoint |
+
+Guides: [add a module](docs/architecture/how-to-add-a-module.md) ·
+[merge a project](docs/architecture/how-to-merge-a-project.md)
 
 ### Environment Requirements
 - Node.js >= 25
@@ -109,7 +166,17 @@ async def test_something(client, db_session):
 - Client webpack proxies API requests to localhost:3824
 - DB lives at `data/jira.sqlite` (relative to project root)
 - SQLAlchemy models defined in `planny_core.models`
-- Alembic for schema migrations
+- Alembic for schema migrations. The CLI is **not currently declared as a dependency**, so
+  `uv run alembic` fails on a fresh clone — see finding H15 in the blueprint
+- API routes are served both versioned (`/api/v1/...`) and unversioned (legacy alias). New
+  work targets the versioned path; the alias exists so the client keeps working
+- Infrastructure probes (`/health`) are deliberately unversioned
+- Configuration has two tiers. **Bootstrap** (tier 0) is needed before the runtime
+  store is reachable and is never stored: the database connection, `ADMIN_EMAIL` and
+  `MASTER_KEY`. **Runtime** (tier 1) is stored in `app_setting` and editable. The last
+  known-good database connection is cached at `data/bootstrap.json` (0600) so a bad
+  value entered in the UI cannot lock the application out; the master key is **never**
+  cached, or it would sit beside the data it protects
 
 ## Shell tool preferences
 - Use `rg` instead of `grep`

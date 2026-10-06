@@ -161,8 +161,8 @@ cd client && npm run test:jest
 | Path | Description |
 |------|-------------|
 | `client/` | React app (Babel, Webpack, react-router, styled-components). |
-| `packages/planny-api/` | FastAPI application: routers, middleware, services, schemas. |
-| `packages/planny-core/` | Shared config, SQLAlchemy models, database session, errors, enums. |
+| `packages/planny-api/` | FastAPI application: `app/` (factory, context, lifespan), `kernel/` (module registry), `modules/` (one package per domain). |
+| `packages/planny-core/` | Kernel: configuration, SQLAlchemy models, database, errors, enums. |
 | `packages/planny-jira/` | Jira HTTP client and worklog orchestration. |
 | `alembic/` | Database schema migrations (Alembic). |
 | `data/` | SQLite database file (gitignored). |
