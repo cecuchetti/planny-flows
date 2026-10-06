@@ -15,6 +15,7 @@ import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from planny_jira.client import JiraHttpClient
+from planny_jira.constants import TEMPO_WORKLOG_PATH, issue_worklog_path
 from planny_jira.repositories import SubmissionRepository
 
 logger = structlog.get_logger()
@@ -107,6 +108,15 @@ class WorklogService:
         self._submission_repository = SubmissionRepository()
         self._tempo_issue_key = tempo_issue_key
         self._external_account_id = external_account_id
+
+    async def aclose(self) -> None:
+        """Close the HTTP clients this service owns.
+
+        Called from the application lifespan; without it the underlying
+        connection pools are never released.
+        """
+        await self._internal_client.close()
+        await self._external_client.close()
 
     async def create_worklog(
         self,
@@ -229,7 +239,7 @@ class WorklogService:
 
         try:
             response = await self._internal_client.post(
-                "/rest/tempo-timesheets/4/worklogs/",
+                TEMPO_WORKLOG_PATH,
                 json_data=payload,
             )
             external_id = str(response.get("id", ""))
@@ -297,7 +307,7 @@ class WorklogService:
 
         try:
             response = await self._external_client.post(
-                f"/rest/api/2/issue/{issue_key}/worklog",
+                issue_worklog_path(issue_key),
                 json_data=payload,
             )
             external_id = str(response.get("id", ""))

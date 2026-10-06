@@ -7,11 +7,12 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlalchemy import select, update
+from sqlalchemy import ColumnElement, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from planny_core.models import WorklogSubmission, WorklogSubmissionResult
+from planny_core.pagination import Page, count_rows
 
 
 class SubmissionRepository:
@@ -117,48 +118,31 @@ class SubmissionRepository:
     ) -> tuple[list[WorklogSubmission], int]:
         """Search submissions with optional filters.
 
-        Returns (items, total_count). Pagination is 0-indexed.
+        Returns ``(items, total_count)``. Pagination is zero-indexed.
         """
-        safe_page = max(0, page)
-        safe_size = min(100, max(1, size))
+        window = Page(number=page, size=size)
 
-        # Build query
-        query = select(WorklogSubmission).order_by(WorklogSubmission.created_at.desc())
-
+        # The filters are built once and applied to both queries. They used to be
+        # written out twice, so adding a filter to one and forgetting the other
+        # silently produced a total that disagreed with the page.
+        filters: list[ColumnElement[bool]] = []
         if target is not None:
-            query = query.where(WorklogSubmission.target == target)
+            filters.append(WorklogSubmission.target == target)
         if status is not None:
-            query = query.where(WorklogSubmission.overall_status == status)
+            filters.append(WorklogSubmission.overall_status == status)
         if external_issue_key is not None:
-            query = query.where(
-                WorklogSubmission.external_issue_key == external_issue_key
-            )
+            filters.append(WorklogSubmission.external_issue_key == external_issue_key)
         if from_date is not None:
-            query = query.where(WorklogSubmission.work_date >= from_date)
+            filters.append(WorklogSubmission.work_date >= from_date)
         if to_date is not None:
-            query = query.where(WorklogSubmission.work_date <= to_date)
+            filters.append(WorklogSubmission.work_date <= to_date)
 
-        # Count total
-        count_query = select(WorklogSubmission.id)
-        if target is not None:
-            count_query = count_query.where(WorklogSubmission.target == target)
-        if status is not None:
-            count_query = count_query.where(WorklogSubmission.overall_status == status)
-        if external_issue_key is not None:
-            count_query = count_query.where(
-                WorklogSubmission.external_issue_key == external_issue_key
-            )
-        if from_date is not None:
-            count_query = count_query.where(WorklogSubmission.work_date >= from_date)
-        if to_date is not None:
-            count_query = count_query.where(WorklogSubmission.work_date <= to_date)
+        base = select(WorklogSubmission).where(*filters)
 
-        total_result = await db.execute(count_query)
-        total = len(total_result.scalars().all())
-
-        # Apply pagination
-        query = query.offset(safe_page * safe_size).limit(safe_size)
-        result = await db.execute(query)
-        items = list(result.scalars().all())
-
-        return items, total
+        total = await count_rows(db, base)
+        result = await db.execute(
+            base.order_by(WorklogSubmission.created_at.desc())
+            .offset(window.offset)
+            .limit(window.limit)
+        )
+        return list(result.scalars().all()), total

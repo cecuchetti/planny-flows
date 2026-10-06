@@ -1,7 +1,13 @@
-"""Tests for Jira instance config loader."""
+"""Tests for the Jira instance configuration loader.
 
-import os
-import tempfile
+The loader takes the environment as an explicit mapping, so these tests are
+hermetic: they never mutate the process environment and never depend on the
+machine's configuration.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
 
 import pytest
 
@@ -9,59 +15,48 @@ from planny_jira.config import (
     _resolve_env_vars,
     get_jira_instance_config,
     get_worklog_instance_names,
-    reset_jira_instances_cache,
+    load_jira_instances,
 )
 
 
-@pytest.fixture(autouse=True)
-def clear_cache() -> None:
-    """Clear the config cache before and after each test."""
-    reset_jira_instances_cache()
-    yield
-    reset_jira_instances_cache()
-
-
 class TestResolveEnvVars:
-    """ENV var interpolation in YAML values."""
+    """``${VAR}`` interpolation in YAML values."""
 
     def test_resolves_simple_var(self) -> None:
-        os.environ["TEST_VAR"] = "hello"
-        result = _resolve_env_vars("${TEST_VAR}")
-        assert result == "hello"
+        assert _resolve_env_vars("${TEST_VAR}", {"TEST_VAR": "hello"}) == "hello"
 
     def test_resolves_empty_when_missing(self) -> None:
-        result = _resolve_env_vars("${NONEXISTENT_VAR_XYZ}")
-        assert result == ""
+        assert _resolve_env_vars("${MISSING}", {}) == ""
 
     def test_resolves_multiple_vars(self) -> None:
-        os.environ["A"] = "foo"
-        os.environ["B"] = "bar"
-        result = _resolve_env_vars("${A}/${B}")
-        assert result == "foo/bar"
+        env = {"A": "foo", "B": "bar"}
+        assert _resolve_env_vars("${A}/${B}", env) == "foo/bar"
 
     def test_ignores_non_env_braces(self) -> None:
-        result = _resolve_env_vars("plain text {not_env}")
-        assert result == "plain text {not_env}"
+        assert _resolve_env_vars("plain text {not_env}", {}) == "plain text {not_env}"
 
     def test_resolves_in_url(self) -> None:
-        os.environ["BASE_URL"] = "https://jira.example.com"
-        result = _resolve_env_vars("${BASE_URL}/rest/api/2")
-        assert result == "https://jira.example.com/rest/api/2"
+        env = {"BASE_URL": "https://jira.example.com"}
+        assert _resolve_env_vars("${BASE_URL}/rest/api/2", env) == (
+            "https://jira.example.com/rest/api/2"
+        )
 
 
-class TestGetJiraInstanceConfigFromEnv:
-    """Fallback to env vars when YAML file not present."""
+class TestFromEnvironment:
+    """Fallback to environment-style variables when no YAML file is present."""
 
-    def test_basic_config_from_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setenv("INTERNAL_ATLASSIAN_BASE_URL", "https://internal.atlassian.net")
-        monkeypatch.setenv("INTERNAL_JIRA_EMAIL", "bot@example.com")
-        monkeypatch.setenv("INTERNAL_JIRA_API_TOKEN", "tok-secret")
-        monkeypatch.setenv("INTERNAL_JIRA_AUTH_TYPE", "basic")
-        monkeypatch.setenv("INTERNAL_JIRA_FIXED_ISSUE_KEY", "VIS-2")
-        monkeypatch.setenv("INTERNAL_MY_ACCOUNT_ID", "acc-123")
-        monkeypatch.setenv("INTERNAL_JIRA_TIMEOUT_MS", "10000")
+    def test_basic_config(self) -> None:
+        env = {
+            "INTERNAL_ATLASSIAN_BASE_URL": "https://internal.atlassian.net",
+            "INTERNAL_JIRA_EMAIL": "bot@example.com",
+            "INTERNAL_JIRA_API_TOKEN": "tok-secret",
+            "INTERNAL_JIRA_AUTH_TYPE": "basic",
+            "INTERNAL_JIRA_FIXED_ISSUE_KEY": "VIS-2",
+            "INTERNAL_MY_ACCOUNT_ID": "acc-123",
+            "INTERNAL_JIRA_TIMEOUT_MS": "10000",
+        }
 
-        config = get_jira_instance_config("internal")
+        config = get_jira_instance_config("internal", env)
 
         assert config.base_url == "https://internal.atlassian.net"
         assert config.email == "bot@example.com"
@@ -72,13 +67,15 @@ class TestGetJiraInstanceConfigFromEnv:
         assert config.fixed_issue_key == "VIS-2"
         assert config.my_account_id == "acc-123"
 
-    def test_bearer_config_from_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setenv("EXTERNAL_ATLASSIAN_BASE_URL", "https://external.example.com")
-        monkeypatch.setenv("EXTERNAL_JIRA_AUTH_TYPE", "bearer")
-        monkeypatch.setenv("EXTERNAL_JIRA_API_TOKEN", "bearer-token")
-        monkeypatch.setenv("EXTERNAL_MY_ACCOUNT_ID", "ext-user-1")
+    def test_bearer_config(self) -> None:
+        env = {
+            "EXTERNAL_ATLASSIAN_BASE_URL": "https://external.example.com",
+            "EXTERNAL_JIRA_AUTH_TYPE": "bearer",
+            "EXTERNAL_JIRA_API_TOKEN": "bearer-token",
+            "EXTERNAL_MY_ACCOUNT_ID": "ext-user-1",
+        }
 
-        config = get_jira_instance_config("external")
+        config = get_jira_instance_config("external", env)
 
         assert config.base_url == "https://external.example.com"
         assert config.auth_type == "bearer"
@@ -86,48 +83,53 @@ class TestGetJiraInstanceConfigFromEnv:
         assert config.email is None
         assert config.my_account_id == "ext-user-1"
 
-    def test_unknown_instance_raises(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setenv("INTERNAL_ATLASSIAN_BASE_URL", "https://jira.example.com")
-        monkeypatch.delenv("EXTERNAL_ATLASSIAN_BASE_URL", raising=False)
-
+    def test_unknown_instance_raises(self) -> None:
+        env = {"INTERNAL_ATLASSIAN_BASE_URL": "https://jira.example.com"}
         with pytest.raises(ValueError, match="Unknown Jira instance: nonexistent"):
-            get_jira_instance_config("nonexistent")
+            get_jira_instance_config("nonexistent", env)
 
-    def test_worklog_names_default_from_env(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        monkeypatch.setenv("INTERNAL_ATLASSIAN_BASE_URL", "https://jira.internal.com")
-        monkeypatch.setenv("EXTERNAL_ATLASSIAN_BASE_URL", "https://jira.external.com")
+    def test_empty_environment_still_yields_empty_instances(self) -> None:
+        """Both instance names resolve, but with empty values.
 
-        names = get_worklog_instance_names()
-        assert names == {"internal": "internal", "external": "external"}
+        This is what made the old ``require_jira_config`` gate useless: the name
+        resolved, so the route gate passed while the base URL was empty.
+        """
+        instances, _ = load_jira_instances({})
+        assert set(instances) == {"internal", "external"}
+        assert all(cfg.base_url == "" for cfg in instances.values())
 
-    def test_worklog_names_from_env_override(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        monkeypatch.setenv("INTERNAL_ATLASSIAN_BASE_URL", "https://jira.internal.com")
-        monkeypatch.setenv("EXTERNAL_ATLASSIAN_BASE_URL", "https://jira.external.com")
-        monkeypatch.setenv("WORKLOG_INTERNAL_INSTANCE", "custom-internal")
-        monkeypatch.setenv("WORKLOG_EXTERNAL_INSTANCE", "custom-external")
+    def test_worklog_names_default(self) -> None:
+        env = {
+            "INTERNAL_ATLASSIAN_BASE_URL": "https://jira.internal.com",
+            "EXTERNAL_ATLASSIAN_BASE_URL": "https://jira.external.com",
+        }
+        assert get_worklog_instance_names(env) == {"internal": "internal", "external": "external"}
 
-        names = get_worklog_instance_names()
+    def test_worklog_names_override(self) -> None:
+        env = {
+            "INTERNAL_ATLASSIAN_BASE_URL": "https://jira.internal.com",
+            "EXTERNAL_ATLASSIAN_BASE_URL": "https://jira.external.com",
+            "WORKLOG_INTERNAL_INSTANCE": "custom-internal",
+            "WORKLOG_EXTERNAL_INSTANCE": "custom-external",
+        }
+        names = get_worklog_instance_names(env)
         assert names["internal"] == "custom-internal"
         assert names["external"] == "custom-external"
 
 
-class TestGetJiraInstanceConfigFromYaml:
-    """Loading config from YAML file."""
+class TestFromYaml:
+    """Loading configuration from a YAML file."""
 
-    def test_config_from_yaml(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setenv("INTERNAL_JIRA_EMAIL", "bot@internal.com")
-        monkeypatch.setenv("INTERNAL_JIRA_API_TOKEN", "tok-internal")
-        monkeypatch.setenv("EXTERNAL_JIRA_EMAIL", "user@external.com")
-        monkeypatch.setenv("EXTERNAL_JIRA_API_TOKEN", "tok-external")
-        monkeypatch.setenv("INTERNAL_ATLASSIAN_BASE_URL", "https://internal.atlassian.net")
-        monkeypatch.setenv("EXTERNAL_ATLASSIAN_BASE_URL", "https://external.example.com")
-        monkeypatch.setenv("EXTERNAL_MY_ACCOUNT_ID", "acc-ext")
+    @staticmethod
+    def _write(tmp_path: Path, content: str) -> str:
+        path = tmp_path / "jira-instances.yaml"
+        path.write_text(content, encoding="utf-8")
+        return str(path)
 
-        yaml_content = """
+    def test_config_from_yaml(self, tmp_path: Path) -> None:
+        yaml_path = self._write(
+            tmp_path,
+            """
 worklog:
   internalInstance: internal
   externalInstance: external
@@ -143,89 +145,74 @@ instances:
     authType: basic
     envPrefix: EXTERNAL_
     myAccountId: ${EXTERNAL_MY_ACCOUNT_ID}
-"""
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False, encoding="utf-8"
-        ) as f:
-            f.write(yaml_content)
-            yaml_path = f.name
+""",
+        )
+        env = {
+            "JIRA_INSTANCES_CONFIG_PATH": yaml_path,
+            "INTERNAL_JIRA_EMAIL": "bot@internal.com",
+            "INTERNAL_JIRA_API_TOKEN": "tok-internal",
+            "EXTERNAL_JIRA_EMAIL": "user@external.com",
+            "EXTERNAL_JIRA_API_TOKEN": "tok-external",
+            "INTERNAL_ATLASSIAN_BASE_URL": "https://internal.atlassian.net",
+            "EXTERNAL_ATLASSIAN_BASE_URL": "https://external.example.com",
+            "EXTERNAL_MY_ACCOUNT_ID": "acc-ext",
+        }
 
-        monkeypatch.setenv("JIRA_INSTANCES_CONFIG_PATH", yaml_path)
+        internal = get_jira_instance_config("internal", env)
+        assert internal.base_url == "https://internal.atlassian.net"
+        assert internal.email == "bot@internal.com"
+        assert internal.api_token == "tok-internal"
+        assert internal.auth_type == "basic"
+        assert internal.system_name == "internal-jira"
+        assert internal.fixed_issue_key == "VIS-2"
+        assert internal.my_account_id is None
 
-        try:
-            internal = get_jira_instance_config("internal")
-            assert internal.base_url == "https://internal.atlassian.net"
-            assert internal.email == "bot@internal.com"
-            assert internal.api_token == "tok-internal"
-            assert internal.auth_type == "basic"
-            assert internal.system_name == "internal-jira"
-            assert internal.fixed_issue_key == "VIS-2"
-            assert internal.my_account_id is None
+        external = get_jira_instance_config("external", env)
+        assert external.base_url == "https://external.example.com"
+        assert external.email == "user@external.com"
+        assert external.api_token == "tok-external"
+        assert external.system_name == "external-jira"
+        assert external.my_account_id == "acc-ext"
 
-            external = get_jira_instance_config("external")
-            assert external.base_url == "https://external.example.com"
-            assert external.email == "user@external.com"
-            assert external.api_token == "tok-external"
-            assert external.system_name == "external-jira"
-            assert external.my_account_id == "acc-ext"
-        finally:
-            os.unlink(yaml_path)
+    def test_missing_yaml_file_falls_back_to_env(self, tmp_path: Path) -> None:
+        env = {
+            "JIRA_INSTANCES_CONFIG_PATH": str(tmp_path / "does-not-exist.yaml"),
+            "INTERNAL_ATLASSIAN_BASE_URL": "https://fallback.internal.com",
+            "EXTERNAL_ATLASSIAN_BASE_URL": "https://fallback.external.com",
+            "INTERNAL_JIRA_EMAIL": "fallback@test.com",
+        }
 
-    def test_missing_yaml_file_falls_back_to_env(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """When YAML file doesn't exist and no env override path, fall back to env."""
-        monkeypatch.delenv("JIRA_INSTANCES_CONFIG_PATH", raising=False)
-        monkeypatch.setenv("INTERNAL_ATLASSIAN_BASE_URL", "https://fallback.internal.com")
-        monkeypatch.setenv("EXTERNAL_ATLASSIAN_BASE_URL", "https://fallback.external.com")
-        monkeypatch.setenv("INTERNAL_JIRA_EMAIL", "fallback@test.com")
-
-        config = get_jira_instance_config("internal")
+        config = get_jira_instance_config("internal", env)
         assert config.base_url == "https://fallback.internal.com"
         assert config.email == "fallback@test.com"
 
-    def test_yaml_env_var_interpolation(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """YAML values with ${VAR} placeholders are resolved."""
-        monkeypatch.setenv("MY_BASE_URL", "https://resolved.example.com")
-        monkeypatch.setenv("PREFIX_JIRA_EMAIL", "resolved@test.com")
-        monkeypatch.setenv("PREFIX_JIRA_API_TOKEN", "resolved-token")
-
-        yaml_content = """
+    def test_yaml_env_var_interpolation(self, tmp_path: Path) -> None:
+        yaml_path = self._write(
+            tmp_path,
+            """
 instances:
   - name: test-instance
     atlassianBaseUrl: ${MY_BASE_URL}
     authType: basic
     envPrefix: PREFIX_
-"""
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False, encoding="utf-8"
-        ) as f:
-            f.write(yaml_content)
-            yaml_path = f.name
+""",
+        )
+        env = {
+            "JIRA_INSTANCES_CONFIG_PATH": yaml_path,
+            "MY_BASE_URL": "https://resolved.example.com",
+            "PREFIX_JIRA_EMAIL": "resolved@test.com",
+            "PREFIX_JIRA_API_TOKEN": "resolved-token",
+        }
 
-        monkeypatch.setenv("JIRA_INSTANCES_CONFIG_PATH", yaml_path)
+        config = get_jira_instance_config("test-instance", env)
+        assert config.base_url == "https://resolved.example.com"
+        assert config.email == "resolved@test.com"
+        assert config.api_token == "resolved-token"
 
-        try:
-            config = get_jira_instance_config("test-instance")
-            assert config.base_url == "https://resolved.example.com"
-            assert config.email == "resolved@test.com"
-            assert config.api_token == "resolved-token"
-        finally:
-            os.unlink(yaml_path)
-
-    def test_worklog_names_from_yaml(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        monkeypatch.setenv("INTERNAL_JIRA_EMAIL", "bot@test.com")
-        monkeypatch.setenv("INTERNAL_JIRA_API_TOKEN", "tok")
-        monkeypatch.setenv("EXTERNAL_JIRA_EMAIL", "user@test.com")
-        monkeypatch.setenv("EXTERNAL_JIRA_API_TOKEN", "tok2")
-        monkeypatch.setenv("INTERNAL_ATLASSIAN_BASE_URL", "https://internal.com")
-        monkeypatch.setenv("EXTERNAL_ATLASSIAN_BASE_URL", "https://external.com")
-
-        yaml_content = """
+    def test_worklog_names_from_yaml(self, tmp_path: Path) -> None:
+        yaml_path = self._write(
+            tmp_path,
+            """
 worklog:
   internalInstance: custom-internal-name
   externalInstance: custom-external-name
@@ -239,33 +226,28 @@ instances:
     atlassianBaseUrl: ${EXTERNAL_ATLASSIAN_BASE_URL}
     authType: basic
     envPrefix: EXTERNAL_
-"""
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False, encoding="utf-8"
-        ) as f:
-            f.write(yaml_content)
-            yaml_path = f.name
+""",
+        )
+        env = {
+            "JIRA_INSTANCES_CONFIG_PATH": yaml_path,
+            "INTERNAL_ATLASSIAN_BASE_URL": "https://internal.com",
+            "EXTERNAL_ATLASSIAN_BASE_URL": "https://external.com",
+        }
 
-        monkeypatch.setenv("JIRA_INSTANCES_CONFIG_PATH", yaml_path)
-
-        try:
-            names = get_worklog_instance_names()
-            assert names["internal"] == "custom-internal-name"
-            assert names["external"] == "custom-external-name"
-        finally:
-            os.unlink(yaml_path)
+        names = get_worklog_instance_names(env)
+        assert names["internal"] == "custom-internal-name"
+        assert names["external"] == "custom-external-name"
 
 
-class TestGetWorklogInstanceNames:
-    """Worklog instance names."""
+class TestWorklogInstanceNames:
+    """Shape of the worklog routing mapping."""
 
-    def test_returns_dict_with_expected_keys(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        monkeypatch.setenv("INTERNAL_ATLASSIAN_BASE_URL", "https://jira.internal.com")
-        monkeypatch.setenv("EXTERNAL_ATLASSIAN_BASE_URL", "https://jira.external.com")
-
-        names = get_worklog_instance_names()
+    def test_returns_dict_with_expected_keys(self) -> None:
+        env = {
+            "INTERNAL_ATLASSIAN_BASE_URL": "https://jira.internal.com",
+            "EXTERNAL_ATLASSIAN_BASE_URL": "https://jira.external.com",
+        }
+        names = get_worklog_instance_names(env)
+        assert isinstance(names, dict)
         assert "internal" in names
         assert "external" in names
-        assert isinstance(names, dict)
