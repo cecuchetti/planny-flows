@@ -52,3 +52,23 @@ class ProjectSourceType(StrEnum):
 
     LOCAL = "local"
     JIRA = "jira"
+
+
+class UserRole(StrEnum):
+    """Authorization role.
+
+    Deliberately minimal: it exists because the settings module reads and writes
+    infrastructure credentials, and until it was introduced every authenticated
+    user had identical privileges — including the anonymous ones created by
+    ``POST /authentication/guest``.
+
+    Full authentication (passwords, SSO) is tracked as a future feature; this is
+    the smallest thing that makes an administrative surface safe to expose.
+    """
+
+    ADMIN = "admin"
+    MEMBER = "member"
+
+
+#: Role assigned to a user that was not promoted. Safe default: no privileges.
+DEFAULT_USER_ROLE = UserRole.MEMBER

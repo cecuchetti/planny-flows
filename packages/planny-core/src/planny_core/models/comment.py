@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import DateTime, ForeignKey, Integer, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from planny_core.database import Base
+from planny_core.db.base import Base
 
 if TYPE_CHECKING:
     from planny_core.models.issue import Issue

@@ -15,7 +15,7 @@ import bleach
 from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, Table, Text, event
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from planny_core.database import Base
+from planny_core.db.base import Base
 
 if TYPE_CHECKING:
     from planny_core.models.comment import Comment

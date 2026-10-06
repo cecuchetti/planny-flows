@@ -13,7 +13,7 @@ from datetime import datetime
 from sqlalchemy import DateTime, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column
 
-from planny_core.database import Base
+from planny_core.db.base import Base
 
 
 class DailyHours(Base):

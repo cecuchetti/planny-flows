@@ -1,121 +1,79 @@
-"""Database engine and session factory.
+"""Database access — the process-wide default database.
 
-Supports two modes based on ``settings.db_type``:
+The real implementation lives in :mod:`planny_core.db`:
 
-* **postgres** — async engine via ``asyncpg`` with connection pooling.
-* **sqlite** — async engine via ``aiosqlite`` with ``check_same_thread=False``.
+* ``planny_core.db.base``    — :class:`~planny_core.db.base.Base`
+* ``planny_core.db.engine``  — engine factories taking explicit settings
+* ``planny_core.db.session`` — :class:`~planny_core.db.session.Database`
 
-Exports ``Base`` (SQLAlchemy 2.0 declarative base), ``async_engine``,
-``sync_engine``, ``create_async_engine`` (factory), ``async_session_factory``,
-and ``get_db()`` (async generator suitable for FastAPI ``Depends``).
+This module provides the default :class:`Database` the application uses when no
+instance is injected. It is built **lazily**, on first use, and resolved through
+the bootstrap tier::
+
+    process environment  >  bootstrap cache file  >  .env  >  code default
+
+Two reasons it must be lazy rather than built at import:
+
+* the bootstrap cache file is what lets an operator change the database from the
+  UI without being locked out if the new value is wrong, and the file has to be
+  read before the connection is opened;
+* building an engine at import time would open a pool as a side effect of
+  importing a module, which makes the failure surface far from its cause.
+
+Blueprint section 4.6 replaces this default by moving the instance into the
+application context; until then this is the single place the default is built.
 """
 
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator
 
-from sqlalchemy import Engine, create_engine
-from sqlalchemy.ext.asyncio import (
-    AsyncEngine,
-    AsyncSession,
-    async_sessionmaker,
-)
-from sqlalchemy.ext.asyncio import (
-    create_async_engine as _create_async_engine,
-)
-from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy.pool import NullPool
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from planny_core.config import settings
+from planny_core.config import Settings
+from planny_core.config import settings as process_settings
+from planny_core.config.bootstrap import resolve_bootstrap_settings
+from planny_core.db import Base, Database
 
-__all__ = [
-    "Base",
-    "async_engine",
-    "async_session_factory",
-    "create_async_engine",
-    "get_db",
-    "sync_engine",
-]
+__all__ = ["Base", "Database", "get_database", "get_db", "reset_database"]
+
+_database: Database | None = None
 
 
-class Base(DeclarativeBase):
-    """SQLAlchemy 2.0 declarative base for all models."""
-    pass
+def get_database(settings: Settings | None = None) -> Database:
+    """Return the process-wide database, building it on first use.
 
-
-def create_async_engine() -> AsyncEngine:
-    """Create and return an async engine based on ``settings.db_type``.
-
-    * ``postgres`` — ``asyncpg`` with connection pooling (pool_size=20,
-      max_overflow=10, pool_pre_ping=True, pool_recycle=3600).
-    * ``sqlite`` — ``aiosqlite`` with ``check_same_thread=False``.
+    Args:
+        settings: Settings to build from, if one has to be built. An already-built
+            instance is returned unchanged, so exactly one engine exists per
+            process and ``dispose`` closes the one that is actually in use.
+            Leaving this unset resolves the bootstrap tier.
     """
-    if settings.db_type == "postgres":
-        return _create_async_engine(
-            f"postgresql+asyncpg://{settings.db_username}:{settings.db_password}"
-            f"@{settings.db_host}:{settings.db_port}/{settings.db_database}",
-            pool_size=20,
-            max_overflow=10,
-            pool_pre_ping=True,
-            pool_recycle=3600,
+    global _database
+
+    if _database is None:
+        _database = Database(
+            settings if settings is not None else resolve_bootstrap_settings(process_settings)
         )
 
-    # SQLite
-    db_path = settings.db_path
-    if db_path.startswith("./"):
-        db_path = db_path[2:]  # strip leading ./
-
-    return _create_async_engine(
-        f"sqlite+aiosqlite:///{db_path}",
-        connect_args={"check_same_thread": False},
-    )
+    return _database
 
 
-def _create_sync_engine() -> Engine | None:
-    """Create a sync engine for SQLite administration tasks.
+def reset_database() -> None:
+    """Drop the cached instance so the next call rebuilds it.
 
-    Returns ``None`` for PostgreSQL (use the async engine instead).
+    The caller owns disposal: **the engine is not closed here**, because this is
+    synchronous and disposal is not. Used by tests and by tooling that needs to
+    pick up a changed connection.
     """
-    if settings.db_type != "sqlite":
-        return None
+    global _database
+    _database = None
 
-    db_path = settings.db_path
-    if db_path.startswith("./"):
-        db_path = db_path[2:]
-
-    return create_engine(
-        f"sqlite:///{db_path}",
-        poolclass=NullPool,
-        connect_args={"check_same_thread": False},
-    )
-
-
-# ── Module-level engine instances ──────────────────────────────────────────
-
-async_engine: AsyncEngine = create_async_engine()
-sync_engine = _create_sync_engine()
-
-# ── Session factory ─────────────────────────────────────────────────────────
-
-async_session_factory = async_sessionmaker(
-    bind=async_engine,
-    expire_on_commit=False,
-)
-
-
-# ── Dependency helper ───────────────────────────────────────────────────────
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    """FastAPI-compatible async generator yielding a DB session.
+    """FastAPI-compatible dependency yielding a database session.
 
     Commits on success, rolls back on exception, and always closes.
     """
-    async with async_session_factory() as session:
-        try:
-            yield session
-            await session.commit()
-        except Exception:
-            await session.rollback()
-            raise
-        finally:
-            await session.close()
+    async with get_database().session() as session:
+        yield session

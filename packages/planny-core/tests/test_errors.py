@@ -8,7 +8,9 @@ from planny_core.errors import (
     AppError,
     BadUserInputError,
     EntityNotFoundError,
+    ErrorCode,
     ExternalServiceError,
+    ForbiddenError,
     IntegrationUnavailableError,
     InvalidTokenError,
     RouteNotFoundError,
@@ -120,3 +122,49 @@ class TestExternalServiceError:
     def test_service_name_in_data(self) -> None:
         err = ExternalServiceError("Timeout", service="outlook-cleaner")
         assert err.data == {"service": "outlook-cleaner"}
+
+
+class TestErrorCodeRegistry:
+    """The canonical code registry stays consistent with the error classes."""
+
+    def test_values_are_unique(self) -> None:
+        """Two members sharing a value would be an ambiguous contract."""
+        values = [member.value for member in ErrorCode]
+        assert len(values) == len(set(values))
+
+    def test_member_name_matches_value(self) -> None:
+        """``ErrorCode.X.value == "X"`` keeps logs and payloads aligned."""
+        for member in ErrorCode:
+            assert member.name == member.value
+
+    def test_members_behave_as_plain_strings(self) -> None:
+        """Serialization must yield the bare string, matching the client contract."""
+        assert ErrorCode.ENTITY_NOT_FOUND == "ENTITY_NOT_FOUND"
+        assert isinstance(ErrorCode.ENTITY_NOT_FOUND, str)
+
+    @pytest.mark.parametrize(
+        "error",
+        [
+            RouteNotFoundError("/nope"),
+            EntityNotFoundError("Issue"),
+            BadUserInputError({"field": "required"}),
+            InvalidTokenError(),
+            IntegrationUnavailableError(),
+            ExternalServiceError("boom", service="jira"),
+            ForbiddenError("nope"),
+            AppError("boom"),
+        ],
+    )
+    def test_error_codes_are_registered(self, error: AppError) -> None:
+        """Every raised error reports a code from the registry, not a stray literal."""
+        assert error.code in set(ErrorCode)
+
+    def test_codes_relied_on_by_the_client_exist(self) -> None:
+        """The React client branches on these codes; removing one breaks it.
+
+        See ``client/src/shared/utils/api.js``, which treats ``INVALID_TOKEN``
+        specially to drop the stored token and re-authenticate.
+        """
+        for required in ("INVALID_TOKEN", "ENTITY_NOT_FOUND", "BAD_USER_INPUT", "FORBIDDEN"):
+            assert required in set(ErrorCode)
+

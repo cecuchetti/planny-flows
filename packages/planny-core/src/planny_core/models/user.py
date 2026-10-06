@@ -12,7 +12,8 @@ from typing import TYPE_CHECKING
 from sqlalchemy import DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from planny_core.database import Base
+from planny_core.db.base import Base
+from planny_core.enums import DEFAULT_USER_ROLE, UserRole
 
 if TYPE_CHECKING:
     from planny_core.models.comment import Comment
@@ -32,6 +33,19 @@ class User(Base):
         Integer,
         ForeignKey("project.id"),
     )
+
+    role: Mapped[str] = mapped_column(
+        String(20),
+        default=DEFAULT_USER_ROLE.value,
+        # A server default matters: existing rows get it when the column is
+        # added, and any insert that forgets the field cannot grant privileges.
+        server_default=DEFAULT_USER_ROLE.value,
+    )
+
+    #: True when the user may reach administrative surfaces such as settings.
+    @property
+    def is_admin(self) -> bool:
+        return self.role == UserRole.ADMIN.value
 
     createdAt: Mapped[datetime] = mapped_column(  # noqa: N815 — camelCase matches TypeORM
         DateTime,

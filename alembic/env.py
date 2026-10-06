@@ -20,8 +20,9 @@ sys.path.insert(0, str(_PROJECT_ROOT / "packages" / "planny-core" / "src"))
 
 # ── Load models so metadata is populated ──────────────────────────────────────
 from planny_core.config import settings
-from planny_core.database import Base
+from planny_core.db import Base, database_url
 from planny_core.models import (  # noqa: F401 — registers all tables
+    AppSetting,
     Comment,
     DailyHours,
     ExternalHoursDaily,
@@ -38,19 +39,9 @@ from planny_core.models import (  # noqa: F401 — registers all tables
 # ── Alembic config ────────────────────────────────────────────────────────────
 config = context.config
 
-# Dynamically set the database URL from settings
-if settings.db_type == "postgres":
-    db_url = (
-        f"postgresql://{settings.db_username}:{settings.db_password}"
-        f"@{settings.db_host}:{settings.db_port}/{settings.db_database}"
-    )
-else:
-    db_path = settings.db_path
-    if db_path.startswith("./"):
-        db_path = db_path[2:]
-    db_url = f"sqlite:///{db_path}"
-
-config.set_main_option("sqlalchemy.url", db_url)
+# Dynamically set the database URL from settings. Uses the project-wide URL
+# builder so this cannot drift from the engine configuration (finding H4).
+config.set_main_option("sqlalchemy.url", database_url(settings, async_driver=False))
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
