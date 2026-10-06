@@ -191,5 +191,23 @@
     "search": "Buscar",
     "createOption": "Crear \"{{value}}\"",
     "creatingOption": "Creando \"{{value}}\"..."
+  },
+  "configuration": {
+    "title": "Configuración de runtime",
+    "subtitle": "Los valores guardados acá tienen prioridad sobre el entorno. Borrar uno lo devuelve al entorno y, después, a su valor por defecto.",
+    "overridden": "Definido acá",
+    "needsRestart": "Requiere reinicio",
+    "secret": "Secreto",
+    "secretStored": "Guardado — escribí para reemplazar",
+    "secretNotSet": "Sin definir",
+    "pendingValue": "Pendiente tras reiniciar: {{value}}",
+    "testConnection": "Probar conexión",
+    "testing": "Probando…",
+    "testOk": "Conexión exitosa en {{latency}} ms.",
+    "pendingCount_one": "{{count}} cambio sin guardar",
+    "pendingCount_other": "{{count}} cambios sin guardar",
+    "saved": "Configuración guardada.",
+    "restartPending": "Guardado. Esto toma efecto tras reiniciar: {{keys}}",
+    "masterKeyMissing": "No hay MASTER_KEY configurada, así que no se pueden guardar secretos. Definila en el entorno antes de guardar una credencial."
   }
 }

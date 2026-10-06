@@ -191,5 +191,23 @@
     "search": "Search",
     "createOption": "Create \"{{value}}\"",
     "creatingOption": "Creating \"{{value}}\"..."
+  },
+  "configuration": {
+    "title": "Runtime configuration",
+    "subtitle": "Values stored here take precedence over the environment. Clearing one returns it to the environment, and then to its default.",
+    "overridden": "Set here",
+    "needsRestart": "Needs restart",
+    "secret": "Secret",
+    "secretStored": "Stored — type to replace",
+    "secretNotSet": "Not set",
+    "pendingValue": "Pending after restart: {{value}}",
+    "testConnection": "Test connection",
+    "testing": "Testing…",
+    "testOk": "Connection succeeded in {{latency}} ms.",
+    "pendingCount_one": "{{count}} unsaved change",
+    "pendingCount_other": "{{count}} unsaved changes",
+    "saved": "Configuration saved.",
+    "restartPending": "Saved. These take effect after a restart: {{keys}}",
+    "masterKeyMissing": "No MASTER_KEY is configured, so secrets cannot be stored. Set it in the environment before saving any credential."
   }
 }

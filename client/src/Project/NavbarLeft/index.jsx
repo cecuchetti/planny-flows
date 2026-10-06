@@ -1,10 +1,21 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 
 import { Icon, AboutTooltip } from 'shared/components';
+import useCurrentUser from 'shared/hooks/currentUser';
 
-import { NavLeft, LogoLink, StyledLogo, Bottom, Item, ItemText, LangSwitcher, LangButton } from './Styles';
+import {
+  NavLeft,
+  LogoLink,
+  StyledLogo,
+  Bottom,
+  Item,
+  ItemText,
+  LangSwitcher,
+  LangButton,
+} from './Styles';
 
 const propTypes = {
   issueSearchModalOpen: PropTypes.func.isRequired,
@@ -13,6 +24,7 @@ const propTypes = {
 
 const ProjectNavbarLeft = ({ issueSearchModalOpen, issueCreateModalOpen }) => {
   const { t, i18n } = useTranslation();
+  const { isAdmin } = useCurrentUser();
 
   return (
     <NavLeft>
@@ -20,15 +32,32 @@ const ProjectNavbarLeft = ({ issueSearchModalOpen, issueCreateModalOpen }) => {
         <StyledLogo />
       </LogoLink>
 
-      <Item as="button" type="button" onClick={issueSearchModalOpen} aria-label={t('nav.searchIssues')}>
+      <Item
+        as="button"
+        type="button"
+        onClick={issueSearchModalOpen}
+        aria-label={t('nav.searchIssues')}
+      >
         <Icon type="search" size={22} top={1} left={3} />
         <ItemText>{t('nav.searchIssues')}</ItemText>
       </Item>
 
-      <Item as="button" type="button" onClick={issueCreateModalOpen} aria-label={t('nav.createIssue')}>
+      <Item
+        as="button"
+        type="button"
+        onClick={issueCreateModalOpen}
+        aria-label={t('nav.createIssue')}
+      >
         <Icon type="plus" size={27} />
         <ItemText>{t('nav.createIssue')}</ItemText>
       </Item>
+
+      {isAdmin && (
+        <Item as={Link} to="/configuration" aria-label={t('configuration.title')}>
+          <Icon type="settings" size={22} top={1} left={3} />
+          <ItemText>{t('configuration.title')}</ItemText>
+        </Item>
+      )}
 
       <Bottom>
         <LangSwitcher>
@@ -52,7 +81,7 @@ const ProjectNavbarLeft = ({ issueSearchModalOpen, issueCreateModalOpen }) => {
         <AboutTooltip
           placement="right"
           offset={{ top: -218 }}
-          renderLink={linkProps => (
+          renderLink={(linkProps) => (
             <Item {...linkProps}>
               <Icon type="help" size={25} />
               <ItemText>{t('nav.about')}</ItemText>

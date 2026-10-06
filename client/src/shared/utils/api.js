@@ -29,20 +29,19 @@ const api = (method, url, variables) =>
       data: method !== 'get' ? variables : undefined,
       paramsSerializer: objectToQueryString,
     }).then(
-      response => {
+      (response) => {
         resolve(response.data);
       },
-      error => {
+      (error) => {
         if (error.response) {
           const { status, data } = error.response;
           const isUnauthorized = status === 401 || data?.error?.code === 'INVALID_TOKEN';
 
           if (isUnauthorized) {
-            // The API answers with two different shapes for the same problem:
-            //   no token at all -> {"detail":"Not authenticated"}
-            //   bad/expired     -> {"error":{"code":"INVALID_TOKEN"}}
-            // Both mean we must drop any stored token and (re)authenticate,
-            // otherwise the app renders forever with no credentials.
+            // Every auth failure uses the same envelope, so a missing token and
+            // an expired one are indistinguishable here. Drop the token and
+            // (re)authenticate, otherwise the app renders forever with no
+            // credentials.
             removeStoredAuthToken();
             if (
               navigationRef.current &&
@@ -51,10 +50,8 @@ const api = (method, url, variables) =>
             ) {
               navigationRef.current('/authenticate');
             }
-            reject(data?.error ?? defaults.error);
-          } else {
-            reject(data?.error ?? defaults.error);
           }
+          reject(data?.error ?? defaults.error);
         } else {
           reject(defaults.error);
         }
