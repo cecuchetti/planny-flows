@@ -349,10 +349,10 @@ class TestAuthErrorResponses:
 
     @pytest.mark.asyncio
     async def test_missing_auth_header_returns_401(self, app: FastAPI, db_engine) -> None:
-        """Calling a protected endpoint without auth should return 401.
+        """Calling a protected endpoint without auth returns the standard envelope.
 
-        FastAPI 0.139.0+ ``HTTPBearer`` raises ``HTTPException(401)``
-        when the ``Authorization`` header is missing.
+        A missing ``Authorization`` header is treated exactly like an invalid
+        token, so the client only has to understand one error shape (finding H9).
         """
         from fastapi import Depends
 
@@ -387,5 +387,6 @@ class TestAuthErrorResponses:
             response = await ac.get("/test/protected")
             assert response.status_code == 401
             body = response.json()
-            # FastAPI returns {"detail": "Not authenticated"} for HTTPBearer
-            assert "detail" in body
+            assert "detail" not in body
+            assert body["error"]["code"] == "INVALID_TOKEN"
+            assert body["error"]["status"] == 401

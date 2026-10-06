@@ -12,17 +12,17 @@ import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 from planny_core.auth import create_token
+from planny_core.config import settings
 from planny_core.database import Base
 from planny_core.models import User
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from planny_api.dependencies import get_current_user, get_db
+from planny_api.app.context import AppContext
+from planny_api.dependencies import get_context, get_current_user, get_db
 from planny_api.main import create_app
 from planny_api.middleware.rate_limiter import create_rate_limiter_dependency
-from planny_api.routers.quick_actions import (
-    outlook_clean_service,
-    tempo_rate_limiter,
-)
+from planny_api.modules.quick_actions.outlook import OutlookCleanService
+from planny_api.modules.quick_actions.router import tempo_rate_limiter
 
 # ── Shared fixtures ──────────────────────────────────────────────────────────
 
@@ -31,6 +31,22 @@ from planny_api.routers.quick_actions import (
 def app() -> FastAPI:
     """Create a fresh app instance for each test."""
     return create_app()
+
+
+@pytest.fixture
+def app_context() -> AppContext:
+    """Application context whose resources the test can inspect directly.
+
+    The Outlook cleaner keeps its job state in memory, so a fresh context per
+    test is what stops state from leaking between tests.
+    """
+    return AppContext(settings=settings)
+
+
+@pytest.fixture
+def outlook_clean_service(app_context: AppContext) -> OutlookCleanService:
+    """The exact service instance the app under test will use."""
+    return app_context.outlook_clean_service
 
 
 @pytest.fixture
@@ -58,7 +74,7 @@ async def db_session(db_engine) -> AsyncSession:
 
 
 @pytest.fixture
-async def client(app: FastAPI, db_engine) -> AsyncClient:
+async def client(app: FastAPI, db_engine, app_context: AppContext) -> AsyncClient:
     """Test client with DB override, mock auth, and rate limiter bypass.
 
     The rate limiter dependency is swapped for a no-op so normal tests
@@ -82,6 +98,7 @@ async def client(app: FastAPI, db_engine) -> AsyncClient:
                 await session.close()
 
     app.dependency_overrides[get_db] = _get_db_override
+    app.dependency_overrides[get_context] = lambda: app_context
 
     # ── Override auth ────────────────────────────────────────────────────
     _mock_user = User(
@@ -273,8 +290,8 @@ class TestOutlookClean:
     """
 
     @pytest.fixture(autouse=True)
-    def _reset_outlook_state(self) -> None:
-        """Reset the singleton state machine before each test."""
+    def _reset_outlook_state(self, outlook_clean_service: OutlookCleanService) -> None:
+        """Reset the state machine before each test."""
         outlook_clean_service._status = "idle"
         outlook_clean_service._last_run = None
 
@@ -316,7 +333,7 @@ class TestOutlookClean:
 
     @pytest.mark.asyncio
     async def test_trigger_already_running_returns_409(
-        self, client: AsyncClient
+        self, client: AsyncClient, outlook_clean_service: OutlookCleanService
     ) -> None:
         """Triggering while already running returns 409 Conflict."""
         # Simulate already running

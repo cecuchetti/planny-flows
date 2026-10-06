@@ -17,12 +17,9 @@ from planny_jira.client import JiraHttpClient
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from planny_api.services.jira_sync_service import (
-    ensure_user_project_link,
-    map_jira_issue_to_local,
-    should_auto_sync,
-    sync_external_projects,
-)
+from planny_api.modules.jira.sync.mapping import map_jira_issue_to_local
+from planny_api.modules.jira.sync.repository import ensure_user_project_link
+from planny_api.modules.jira.sync.service import should_auto_sync, sync_external_projects
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 

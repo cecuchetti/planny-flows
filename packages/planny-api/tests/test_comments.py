@@ -119,7 +119,7 @@ class TestCreateComment:
             headers={"Authorization": f"Bearer {token}"},
             json={"body": "Test comment body", "issueId": 1},
         )
-        assert response.status_code == 200
+        assert response.status_code == 201
 
         body = response.json()
         assert "comment" in body
@@ -330,10 +330,8 @@ class TestDeleteComment:
             f"/comments/{comment_id}",
             headers={"Authorization": f"Bearer {token}"},
         )
-        assert response.status_code == 200
-
-        body = response.json()
-        assert body["message"] == "Comment deleted"
+        assert response.status_code == 204
+        assert response.content == b""
 
         # Verify deletion in DB
         result = await db_session.execute(
@@ -403,7 +401,7 @@ class TestCommentResponseFormat:
             headers={"Authorization": f"Bearer {token}"},
             json={"body": "Format test", "issueId": 1},
         )
-        assert create_resp.status_code == 200
+        assert create_resp.status_code == 201
 
         comment = create_resp.json()["comment"]
         expected_keys = {
@@ -429,6 +427,11 @@ class TestCommentResponseFormat:
             "projectId",
             "createdAt",
             "updatedAt",
+            # The client needs these to decide whether to offer administrative
+            # surfaces. They are a display hint only; every administrative route
+            # enforces the role server-side.
+            "role",
+            "isAdmin",
         }
         assert set(user.keys()) == expected_user_keys, (
             f"Expected user keys: {expected_user_keys}, got: {set(user.keys())}"

@@ -683,7 +683,7 @@ class TestSyncProject:
                 return_value=mock_jira,
             ),
             patch(
-                "planny_api.services.jira_sync_service.sync_external_projects",
+                "planny_api.modules.jira.sync.service.sync_external_projects",
                 mock_sync,
             ),
         ):
@@ -792,7 +792,7 @@ class TestAutoSync:
                 return_value=mock_jira,
             ),
             patch(
-                "planny_api.services.jira_sync_service.sync_external_projects",
+                "planny_api.modules.jira.sync.service.sync_external_projects",
                 mock_sync,
             ),
         ):
@@ -848,7 +848,7 @@ class TestAutoSync:
                 return_value=mock_jira,
             ),
             patch(
-                "planny_api.services.jira_sync_service.sync_external_projects",
+                "planny_api.modules.jira.sync.service.sync_external_projects",
                 mock_sync,
             ),
         ):

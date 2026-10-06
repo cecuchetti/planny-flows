@@ -372,7 +372,7 @@ class TestCreateIssue:
                 "priority": "3",
             },
         )
-        assert response.status_code == 200
+        assert response.status_code == 201
 
         body = response.json()
         assert "issue" in body
@@ -412,7 +412,7 @@ class TestCreateIssue:
                     "priority": "3",
                 },
             )
-            assert response.status_code == 200
+            assert response.status_code == 201
             issue = response.json()["issue"]
             positions.append(issue["listPosition"])
 
@@ -441,7 +441,7 @@ class TestCreateIssue:
                 "priority": "3",
             },
         )
-        assert response.status_code == 200
+        assert response.status_code == 201
         issue = response.json()["issue"]
         assert isinstance(issue["reporterId"], int)
         assert issue["reporterId"] > 0
@@ -464,7 +464,7 @@ class TestCreateIssue:
                 "reporterId": 42,
             },
         )
-        assert response.status_code == 200
+        assert response.status_code == 201
         assert response.json()["issue"]["reporterId"] == 42
 
     @pytest.mark.asyncio
@@ -655,8 +655,8 @@ class TestDeleteIssue:
             f"/issues/{issue_id}",
             headers={"Authorization": f"Bearer {token}"},
         )
-        assert response.status_code == 200
-        assert response.json() == {"message": "Issue deleted"}
+        assert response.status_code == 204
+        assert response.content == b""
 
         # Verify deletion from DB
         db_issue = await db_session.get(Issue, issue_id)
@@ -687,7 +687,7 @@ class TestDeleteIssue:
             f"/issues/{issue_id}",
             headers={"Authorization": f"Bearer {token}"},
         )
-        assert delete_resp.status_code == 200
+        assert delete_resp.status_code == 204
 
         # Verify issue is gone
         db_issue = await db_session.get(Issue, issue_id)
@@ -771,7 +771,7 @@ class TestReadonlyIssueGuard:
                 "priority": "3",
             },
         )
-        assert create_resp.status_code == 200
+        assert create_resp.status_code == 201
         issue_id = create_resp.json()["issue"]["id"]
 
         # Directly set readonly flag in DB
@@ -943,8 +943,8 @@ class TestReadonlyIssueGuard:
             f"/issues/{issue_id}",
             headers={"Authorization": f"Bearer {token}"},
         )
-        assert response.status_code == 200
-        assert response.json() == {"message": "Issue deleted"}
+        assert response.status_code == 204
+        assert response.content == b""
 
         # Verify deletion from DB
         db_issue = await db_session.get(Issue, issue_id)

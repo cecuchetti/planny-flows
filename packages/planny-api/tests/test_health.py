@@ -10,7 +10,7 @@ from httpx import ASGITransport, AsyncClient
 
 from planny_api.dependencies import get_db
 from planny_api.main import create_app
-from planny_api.routers.health import _check_database
+from planny_api.modules.health.checks import check_database as _check_database
 
 
 @pytest.fixture

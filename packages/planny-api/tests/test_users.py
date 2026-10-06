@@ -149,11 +149,14 @@ class TestGetCurrentUser:
     ) -> None:
         """GET /currentUser without Authorization header should return 401."""
         response = await client.get("/currentUser")
-        # FastAPI 0.139.0+ HTTPBearer raises 401 for missing auth header
         assert response.status_code == 401
         body = response.json()
-        # FastAPI returns {"detail": "Not authenticated"} by default
-        assert "detail" in body
+        # One envelope for every auth failure: a missing header is no different
+        # from a malformed token, so the client handles a single shape (H9).
+        assert "detail" not in body
+        assert body["error"]["code"] == "INVALID_TOKEN"
+        assert body["error"]["status"] == 401
+        assert "requestId" in body
 
     @pytest.mark.asyncio
     async def test_expired_token_returns_401(
