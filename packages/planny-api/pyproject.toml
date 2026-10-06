@@ -16,6 +16,10 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/planny_api"]
+# Seed data ships as JSON rather than Python literals. Hatchling skips files it
+# does not consider part of the package unless they are declared here, which
+# would make the guest seeder fail in an installed distribution.
+artifacts = ["src/planny_api/modules/auth/seeds/*.json"]
 
 [tool.ruff]
 target-version = "py312"

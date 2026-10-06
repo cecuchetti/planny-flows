@@ -20,7 +20,7 @@ from __future__ import annotations
 import structlog
 from fastapi import Request
 from fastapi.responses import JSONResponse
-from planny_core.errors import AppError
+from planny_core.errors import AppError, ErrorCode
 
 logger = structlog.get_logger()
 
@@ -48,12 +48,13 @@ async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
         content={
             "error": {
                 "message": exc.message,
-                "code": exc.code,
+                "code": str(exc.code),
                 "status": status_code,
                 "data": exc.data,
             },
             "requestId": request_id,
         },
+        headers=exc.headers or None,
     )
 
 
@@ -75,7 +76,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
         content={
             "error": {
                 "message": "Something went wrong, please contact our support.",
-                "code": "INTERNAL_ERROR",
+                "code": ErrorCode.INTERNAL_ERROR,
                 "status": 500,
                 "data": {},
             },

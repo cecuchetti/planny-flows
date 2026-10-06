@@ -83,6 +83,11 @@ def user_to_dict(user: User) -> dict[str, object]:
         "email": user.email,
         "avatarUrl": user.avatarUrl,
         "projectId": user.projectId,
+        # Exposed so the client can decide whether to offer administrative
+        # surfaces. It is a display hint, never a control: every administrative
+        # route enforces the role server-side.
+        "role": user.role,
+        "isAdmin": user.is_admin,
         "createdAt": user.createdAt.isoformat() if user.createdAt else None,
         "updatedAt": user.updatedAt.isoformat() if user.updatedAt else None,
     }
