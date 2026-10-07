@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next';
 import styled from 'styled-components';
 import { Select } from 'shared/components';
 
+import { CountRow, ShowAllLink } from './Styles';
+
 const ProjectSelectWrapper = styled.div`
   margin: 12px 0 16px 0;
   max-width: 400px;
@@ -22,6 +24,16 @@ function ProjectFilter({ projects, selectedIds, onChange }) {
   if (!projects || projects.length === 0) {
     return null;
   }
+
+  /*
+   * The board has two ways to choose projects — the saved preference and the
+   * sidebar's `?filter=` links — and without saying which is in effect, a board
+   * showing a saved subset looks exactly like one showing everything. That is
+   * how "the two views show the same thing" becomes a mystery instead of an
+   * observation.
+   */
+  const isPartial = selectedIds.length !== projects.length;
+  const showAll = () => onChange(projects.map((project) => project.id));
 
   const options = projects.map((project) => {
     const sourceType = project.sourceType || project.source_type;
@@ -42,6 +54,18 @@ function ProjectFilter({ projects, selectedIds, onChange }) {
         value={selectedIds}
         onChange={onChange}
       />
+
+      <CountRow>
+        {t('board.showingProjects', {
+          selected: selectedIds.length,
+          total: projects.length,
+        })}
+        {isPartial && (
+          <ShowAllLink type="button" onClick={showAll}>
+            {t('board.showAllProjects')}
+          </ShowAllLink>
+        )}
+      </CountRow>
     </ProjectSelectWrapper>
   );
 }

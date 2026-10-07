@@ -20,12 +20,16 @@ const propTypes = {
   projects: PropTypes.array,
   selectedProjectIds: PropTypes.array,
   onProjectFilterChange: PropTypes.func,
+  onSyncNow: PropTypes.func,
+  isSyncing: PropTypes.bool,
 };
 
 const defaultProps = {
   projects: [],
   selectedProjectIds: [],
   onProjectFilterChange: null,
+  onSyncNow: null,
+  isSyncing: false,
 };
 
 const defaultFilters = {
@@ -47,7 +51,7 @@ function IssueDetailsModal({ project, fetchProject, updateLocalProjectIssues }) 
       width={1040}
       withCloseIcon={false}
       onClose={() => navigate(boardUrl)}
-      renderContent={modal => (
+      renderContent={(modal) => (
         <IssueDetails
           issueId={issueId}
           projectUsers={project.users}
@@ -67,22 +71,20 @@ function ProjectBoard({
   projects,
   selectedProjectIds,
   onProjectFilterChange,
+  onSyncNow,
+  isSyncing,
 }) {
   const { t } = useTranslation();
   const [filters, mergeFilters] = useMergeState(defaultFilters);
 
-  const hasFilter = !!(
-    projects &&
-    selectedProjectIds &&
-    onProjectFilterChange
-  );
+  const hasFilter = !!(projects && selectedProjectIds && onProjectFilterChange);
 
   const projectName = project.name || t('board.allProjects');
 
   return (
     <Fragment>
       <Breadcrumbs items={[t('board.projects'), projectName, t('board.kanbanBoard')]} />
-      <Header />
+      <Header onSyncNow={onSyncNow} isSyncing={isSyncing} />
       {hasFilter && (
         <ProjectFilter
           projects={projects}
@@ -119,7 +121,7 @@ function ProjectBoard({
       </Routes>
     </Fragment>
   );
-};
+}
 
 ProjectBoard.propTypes = propTypes;
 ProjectBoard.defaultProps = defaultProps;

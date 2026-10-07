@@ -1,14 +1,23 @@
 import React, { Suspense, lazy, useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Routes, Route, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import {
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+  useNavigate,
+  useSearchParams,
+} from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
 import useApi from 'shared/hooks/api';
+import toast from 'shared/utils/toast';
 import { updateArrayItemById } from 'shared/utils/javascript';
 import { createQueryParamModalHelpers } from 'shared/utils/queryParamModal';
 import { PageLoader, PageError, Modal, Icon } from 'shared/components';
 
 import { ProjectCategoryCopy } from 'shared/constants/projects';
 
+import { filterSelection } from './projectFilter';
 import NavbarLeft from './NavbarLeft';
 import Sidebar from './Sidebar';
 import IssueSearch from './IssueSearch';
@@ -37,7 +46,15 @@ const Board = lazy(() => import('./Board'));
 const QuickActions = lazy(() => import('./QuickActions'));
 const ProjectSettings = lazy(() => import('./ProjectSettings'));
 
-const availableDefaultRoutes = ['board', 'my-jira-issues', 'quick-actions', 'settings'];
+const availableDefaultRoutes = ['board', 'quick-actions', 'settings'];
+
+/**
+ * How long to wait for a scheduled background sync before refetching.
+ *
+ * Not a completion signal — there is none — just enough for a sync of a few
+ * hundred issues to finish. A slower one is picked up by the next poll.
+ */
+const SYNC_SETTLE_MS = 5000;
 
 const getDefaultProjectRoute = () => {
   const configuredRoute = process.env.REACT_APP_DEFAULT_PROJECT_ROUTE;
@@ -75,7 +92,17 @@ function Project() {
   const { t, i18n } = useTranslation();
   const [searchParams] = useSearchParams();
   const filterParam = searchParams.get('filter');
-  const initialFilterApplied = useRef(false);
+  /**
+   * The filter value already applied to the selection.
+   *
+   * `null` means "no filter in the URL". Tracking the *value* rather than a
+   * one-shot boolean is what makes the board react to every navigation: React
+   * Router keeps this component mounted when only the query string changes, so a
+   * "have we applied it yet" guard silently ignored every navigation after the
+   * first, and /project/board and /project/board?filter=jira showed the same
+   * board.
+   */
+  const appliedFilter = useRef(null);
   const match = { path: '/project', url: location.pathname };
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -84,7 +111,7 @@ function Project() {
   const issueCreateModalHelpers = createQueryParamModalHelpers('issue-create', navigate, location);
 
   // ── Project list (for filter chips) ──────────────────────────────────────
-  const [{ data: projectsData }] = useApi.get('/projects');
+  const [{ data: projectsData }, fetchProjects] = useApi.get('/projects');
 
   // ── Board data (lazy — fetched on demand with optional ?ids= param) ──────
   const [{ data, error, setLocalData }, fetchBoardData] = useApi.get(
@@ -93,15 +120,12 @@ function Project() {
     { lazy: true },
   );
 
-  // ── Selected project IDs (persisted in localStorage) ─────────────────────
-  const [selectedProjectIds, setSelectedProjectIds] = useState(() => {
-    try {
-      const stored = localStorage.getItem('planny-selected-project-ids');
-      return stored ? JSON.parse(stored) : null; // null = initializing / all
-    } catch {
-      return null;
-    }
-  });
+  // ── Selected project IDs ─────────────────────────────────────────────────
+  // Session state, not a stored preference. Persisting it made the board reopen
+  // on a subset the user could not see they had chosen, which is what let
+  // "Kanban Board" and "External Assignments" show the same projects.
+  // `null` means "not initialised yet"; the effect then selects every project.
+  const [selectedProjectIds, setSelectedProjectIds] = useState(null);
 
   // ── Effect: initialize + fetch board data ────────────────────────────────
   useEffect(() => {
@@ -110,22 +134,19 @@ function Project() {
     // Still loading the project list
     if (!projectList) return;
 
-    // ── Initial filter override from URL query param (takes precedence over localStorage) ──
-    if (filterParam && !initialFilterApplied.current) {
-      initialFilterApplied.current = true;
-      if (filterParam === 'jira') {
-        setSelectedProjectIds(
-          projectList.filter((p) => (p.source_type || p.sourceType) === 'jira').map((p) => p.id),
-        );
-      } else if (filterParam === 'local') {
-        setSelectedProjectIds(
-          projectList.filter((p) => (p.source_type || p.sourceType) !== 'jira').map((p) => p.id),
-        );
-      } else {
-        // 'all' or unknown filter — select all projects
-        setSelectedProjectIds(projectList.map((p) => p.id));
-      }
-      return; // will re-trigger effect with the ids, without persisting to localStorage
+    // ── The URL filter, applied whenever it changes ────────────────────────
+    // It is deliberately not persisted: a filtered view is a view, not the
+    // user's preference, and writing it would make the next plain visit start
+    // filtered.
+    const filtered = filterSelection(filterParam, appliedFilter.current, projectList);
+    appliedFilter.current = filterParam;
+
+    // Compared against null, not tested for truthiness: an empty array is
+    // truthy, and "the filter matches nothing" is a real answer that must show
+    // an empty board rather than fall through to the unfiltered one.
+    if (filtered !== null) {
+      setSelectedProjectIds(filtered);
+      return; // re-runs with the new ids
     }
 
     // No projects — fall back to single-project (backward compat)
@@ -151,14 +172,12 @@ function Project() {
     }
   }, [projectsData, selectedProjectIds, fetchBoardData, setLocalData, filterParam]);
 
-  // ── Persist selection changes ────────────────────────────────────────────
+  // ── Project filter chips ─────────────────────────────────────────────────
+  // Choosing projects here narrows the current view only. It is deliberately not
+  // remembered: an invisible saved subset is what made the two sidebar entries
+  // indistinguishable.
   const handleProjectFilterChange = useCallback((newIds) => {
     setSelectedProjectIds(newIds);
-    try {
-      localStorage.setItem('planny-selected-project-ids', JSON.stringify(newIds));
-    } catch (_) {
-      // localStorage unavailable — silently ignore
-    }
   }, []);
 
   // ── Refetch wrapper (backward compat for IssueCreate / ProjectSettings) ──
@@ -169,6 +188,48 @@ function Project() {
       fetchBoardData();
     }
   }, [selectedProjectIds, fetchBoardData]);
+
+  // ── Force a sync now ─────────────────────────────────────────────────────
+  const [{ isUpdating: isSyncing }, syncNow] = useApi.post('/projects/sync');
+
+  const handleSyncNow = useCallback(async () => {
+    try {
+      await syncNow({});
+      // The sync is awaited, so the refetch below already sees the new issues.
+      await fetchProjects();
+      fetchProject();
+    } catch (apiError) {
+      toast.error(apiError.message);
+    }
+  }, [syncNow, fetchProjects, fetchProject]);
+
+  // ── Keep an open board up to date ────────────────────────────────────────
+  /*
+   * The server decides when a sync is due; the client only decides how often to
+   * ask. Polling `/projects` at the configured cadence is what lets the interval
+   * live in the settings tab — a client-side timer would need the value
+   * hardcoded or fetched separately, and the two would drift.
+   */
+  const syncIntervalMinutes = projectsData?.syncIntervalMinutes;
+
+  useEffect(() => {
+    if (!syncIntervalMinutes) return undefined;
+    const id = setInterval(fetchProjects, syncIntervalMinutes * 60 * 1000);
+    return () => clearInterval(id);
+  }, [syncIntervalMinutes, fetchProjects]);
+
+  /*
+   * A scheduled sync runs *after* the response that announced it, so the data on
+   * screen is already known to be stale. Refetching once it has had time to
+   * finish is what turns "a sync was queued" into issues the user can see.
+   */
+  const syncScheduled = projectsData?.syncScheduled;
+
+  useEffect(() => {
+    if (!syncScheduled) return undefined;
+    const id = setTimeout(fetchProject, SYNC_SETTLE_MS);
+    return () => clearTimeout(id);
+  }, [syncScheduled, fetchProject]);
 
   // ── Normalize projects list for filter chips ────────────────────────────
   const projects = useMemo(
@@ -345,10 +406,11 @@ function Project() {
                       projects={projects}
                       selectedProjectIds={selectedProjectIds || []}
                       onProjectFilterChange={handleProjectFilterChange}
+                      onSyncNow={handleSyncNow}
+                      isSyncing={isSyncing}
                     />
                   }
                 />
-                <Route path="my-jira-issues" element={<Navigate to="/project/board?filter=jira" replace />} />
                 <Route path="quick-actions" element={<QuickActions />} />
                 <Route
                   path="settings"

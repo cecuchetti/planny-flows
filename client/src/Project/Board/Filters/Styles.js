@@ -42,7 +42,7 @@ export const AvatarIsActiveBorder = styled.div`
   border-radius: 50%;
   transition: transform 0.1s;
   ${mixin.clickable};
-  ${props => props.$isActive && `box-shadow: 0 0 0 4px ${color.primary}`}
+  ${(props) => props.$isActive && `box-shadow: 0 0 0 4px ${color.primary}`}
   &:hover {
     transform: translateY(-5px);
   }
@@ -79,4 +79,25 @@ export const ClearAll = styled.div`
     padding-left: 6px;
     font-size: 13px;
   }
+`;
+
+/* ── Project filter: what the board is actually showing ───────────────────── */
+
+export const CountRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  ${font.size(12)}
+  color: ${color.textMedium};
+`;
+
+export const ShowAllLink = styled.button`
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  ${font.size(12)}
+  ${font.medium}
+  color: ${color.textLink};
 `;

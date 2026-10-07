@@ -24,3 +24,9 @@ export const BoardName = styled.h1`
     ${font.size(18)}
   }
 `;
+
+export const HeaderActions = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
