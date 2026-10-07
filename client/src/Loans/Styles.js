@@ -43,3 +43,23 @@ export const Input = styled.input`
   border: 1px solid #bbc7ca;
   border-radius: 5px;
 `;
+export const Select = styled.select`
+  padding: 10px;
+  border: 1px solid #bbc7ca;
+  border-radius: 5px;
+  background: #fff;
+`;
+export const Card = styled.article`
+  background: #fff;
+  border: 1px solid #e2e9eb;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 12px;
+`;
+export const ErrorText = styled.p`
+  color: #b3261e;
+  margin: 8px 0;
+`;
+export const Muted = styled.span`
+  color: #5b6b70;
+`;

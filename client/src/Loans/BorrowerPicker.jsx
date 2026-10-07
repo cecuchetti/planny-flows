@@ -1,18 +1,27 @@
 import React, { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
 import InputDebounced from 'shared/components/InputDebounced';
+import Button from 'shared/components/Button';
 import api from 'shared/utils/api';
 import toast from 'shared/utils/toast';
 import { Input, Row } from './Styles';
 
-function BorrowerPicker({ onChange }) {
+/* eslint-disable react/require-default-props */
+
+function BorrowerPicker({ value, onChange }) {
   const [query, setQuery] = useState('');
   const [borrowers, setBorrowers] = useState([]);
   const [isLoading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState(null);
   const [creating, setCreating] = useState(false);
   const [newPerson, setNewPerson] = useState({ firstName: '', lastName: '' });
+
+  // Once a person is selected the picker shows the selection instead of the
+  // search results, so edit mode can preselect and still be changed.
+  const selected = value || null;
+
   useEffect(() => {
+    if (selected) return undefined;
     let cancelled = false;
     setLoading(true);
     setLoadError(null);
@@ -30,7 +39,45 @@ function BorrowerPicker({ onChange }) {
     return () => {
       cancelled = true;
     };
-  }, [query]);
+  }, [query, selected]);
+
+  /*
+   * Saving is wired to the button, not to implicit form submission.
+   *
+   * HTML forbids nested forms, so the moment the picker is used inside another
+   * form (the loan form) the browser drops this markup and a submit button with
+   * no form owner does nothing. The form stays for the standalone case (the
+   * person directory reuses this picker), and Enter still submits it there.
+   */
+  const createBorrower = () => {
+    api
+      .post('/api/v1/borrowers', newPerson)
+      .then((data) => {
+        if (data.borrower) onChange(data.borrower);
+      })
+      .catch((error) => toast.error(error));
+  };
+
+  if (selected) {
+    return (
+      <Row>
+        <span>
+          Persona seleccionada: {selected.firstName} {selected.lastName}
+        </span>
+        <Button
+          type="button"
+          onClick={() => {
+            setQuery('');
+            setCreating(false);
+            onChange(null);
+          }}
+        >
+          Cambiar persona
+        </Button>
+      </Row>
+    );
+  }
+
   return (
     <div>
       <InputDebounced value={query} onChange={setQuery} placeholder="Buscá una persona" />
@@ -64,12 +111,7 @@ function BorrowerPicker({ onChange }) {
             <form
               onSubmit={(event) => {
                 event.preventDefault();
-                api
-                  .post('/api/v1/borrowers', newPerson)
-                  .then((data) => {
-                    if (data.borrower) onChange(data.borrower);
-                  })
-                  .catch((error) => toast.error(error));
+                createBorrower();
               }}
             >
               <Input
@@ -84,7 +126,9 @@ function BorrowerPicker({ onChange }) {
                 value={newPerson.lastName}
                 onChange={(event) => setNewPerson({ ...newPerson, lastName: event.target.value })}
               />
-              <button type="submit">Guardar persona</button>
+              <button type="button" onClick={createBorrower}>
+                Guardar persona
+              </button>
             </form>
           )}
         </div>
@@ -92,5 +136,13 @@ function BorrowerPicker({ onChange }) {
     </div>
   );
 }
-BorrowerPicker.propTypes = { onChange: PropTypes.func.isRequired };
+
+BorrowerPicker.propTypes = {
+  value: PropTypes.shape({
+    id: PropTypes.number,
+    firstName: PropTypes.string,
+    lastName: PropTypes.string,
+  }),
+  onChange: PropTypes.func.isRequired,
+};
 export default BorrowerPicker;

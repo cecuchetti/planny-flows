@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, Index, String, Text, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from planny_core.db.base import Base
+
+if TYPE_CHECKING:
+    from planny_core.models.loan import Loan
 
 
 class Borrower(Base):
@@ -25,6 +29,8 @@ class Borrower(Base):
     updatedAt: Mapped[datetime] = mapped_column(  # noqa: N815
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
+
+    loans: Mapped[list[Loan]] = relationship("Loan", back_populates="borrower")
 
 
 Index(

@@ -28,7 +28,12 @@ async def list_borrowers(
     search: str | None = Query(default=None), db: AsyncSession = Depends(get_db)
 ) -> dict[str, object]:
     borrowers = await repository.list_borrowers(db, search)
-    return {"borrowers": [borrower_to_dict(item) for item in borrowers]}
+    counts = await repository.linked_loan_counts(db)
+    return {
+        "borrowers": [
+            borrower_to_dict(item, counts.get(item.id or 0, 0)) for item in borrowers
+        ]
+    }
 
 
 @router.post("", status_code=201)
@@ -45,7 +50,8 @@ async def get_borrower(borrower_id: int, db: AsyncSession = Depends(get_db)) -> 
     if borrower is None:
         from planny_core.errors import EntityNotFoundError
         raise EntityNotFoundError("Borrower", message="No encontramos esa persona.")
-    return {"borrower": borrower_to_dict(borrower)}
+    count = await repository.linked_loan_count(db, borrower_id)
+    return {"borrower": borrower_to_dict(borrower, count)}
 
 
 @router.put("/{borrower_id}")
@@ -53,7 +59,8 @@ async def update_borrower(
     borrower_id: int, body: BorrowerRequest, db: AsyncSession = Depends(get_db)
 ) -> dict[str, object]:
     borrower = await service.update(db, borrower_id, _values(body))
-    return {"borrower": borrower_to_dict(borrower)}
+    count = await repository.linked_loan_count(db, borrower_id)
+    return {"borrower": borrower_to_dict(borrower, count)}
 
 
 @router.delete("/{borrower_id}", status_code=204)

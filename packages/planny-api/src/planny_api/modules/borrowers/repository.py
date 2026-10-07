@@ -43,3 +43,21 @@ async def linked_loan_count(db: AsyncSession, borrower_id: int) -> int:
             raise
         return 0
     return int(result.scalar_one())
+
+
+async def linked_loan_counts(db: AsyncSession) -> dict[int, int]:
+    """Linked-loan counts for every borrower, in one query.
+
+    A count per borrower rather than a query per row: the directory renders the
+    count for each entry, and an N+1 here grows with the directory.
+    """
+    try:
+        result = await db.execute(
+            text("SELECT borrower_id, COUNT(*) FROM loan GROUP BY borrower_id")
+        )
+    except OperationalError as exc:
+        detail = str(exc.orig).lower()
+        if "no such table: loan" not in detail and 'relation "loan" does not exist' not in detail:
+            raise
+        return {}
+    return {int(row[0]): int(row[1]) for row in result.all()}

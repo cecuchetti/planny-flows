@@ -22,6 +22,7 @@ from planny_core.models.issue import (
     Issue,  # noqa: F811 — re-export
     issue_users,  # noqa: F401 — register junction table
 )
+from planny_core.models.loan import Loan
 from planny_core.models.project import Project
 from planny_core.models.tempo_hours_daily import TempoHoursDaily
 from planny_core.models.user import User
@@ -45,6 +46,7 @@ __all__ = [
     "DailyHours",
     "ExternalHoursDaily",
     "Issue",
+    "Loan",
     "Project",
     "TempoHoursDaily",
     "User",

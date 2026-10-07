@@ -13,3 +13,9 @@
 - source_plan: none
   summary: Add the per-currency loan portfolio dashboard and drill-through activity views.
   evidence: Split from the loan-manager delivery because analytics can ship after loans and payments exist.
+- source_plan: none
+  summary: Register and delete loan payments with immutable snapshots and system-derived balances.
+  evidence: Split from Epic 2 (loan registry and payments) on human confirmation so the registry ships as a reviewed increment first; payments attach to loans that must exist and are independently shippable on their own.
+- source_plan: none
+  summary: Run the migration spike validating data extraction and the borrower name-split/dedup heuristic against real legacy production data.
+  evidence: Epic 2 Story 2.8 has a hard data dependency — no read-only copy of the legacy MongoDB source, its connection string, or the legacy application checkout is present in this workspace.

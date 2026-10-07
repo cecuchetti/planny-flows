@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import ConfirmModal from 'shared/components/ConfirmModal';
 import InputDebounced from 'shared/components/InputDebounced';
 import toast from 'shared/utils/toast';
@@ -23,17 +23,17 @@ function Borrowers() {
   const [loadError, setLoadError] = useState(null);
   const [form, setForm] = useState(empty);
   const [editing, setEditing] = useState(null);
-  const load = () => {
+  const load = useCallback(() => {
     setLoading(true);
     return api
       .get('/api/v1/borrowers', { search })
       .then((d) => setBorrowers(d.borrowers || []))
       .finally(() => setLoading(false));
-  };
+  }, [search]);
   useEffect(() => {
     setLoadError(null);
     load().catch(() => setLoadError('No pudimos cargar las personas. Intentá de nuevo.'));
-  }, [search]);
+  }, [load]);
   const change = (event) => setForm({ ...form, [event.target.name]: event.target.value });
   const save = (event) => {
     event.preventDefault();
@@ -82,6 +82,9 @@ function Borrowers() {
         <span>
           {borrower.firstName} {borrower.lastName}
         </span>
+        <span>
+          {borrowerCopy.loanCount}: {borrower.loanCount || 0}
+        </span>
         <Button
           onClick={() => {
             setEditing(borrower.id);
@@ -95,7 +98,7 @@ function Borrowers() {
           title="¿Eliminar persona?"
           message="Esta acción no se puede deshacer."
           confirmText="Eliminar"
-          renderLink={(props) => <Button {...props}>Eliminar</Button>}
+          renderLink={({ open }) => <Button onClick={open}>Eliminar</Button>}
           onConfirm={({ close }) => remove(borrower.id).finally(close)}
         />
       </Row>
