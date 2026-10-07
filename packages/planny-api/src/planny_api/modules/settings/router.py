@@ -18,6 +18,7 @@ from planny_api.dependencies import get_context, get_db
 from planny_api.modules.settings.schemas import (
     ConnectionTestRequest,
     ConnectionTestResult,
+    ImportResult,
     SettingsList,
     SettingsUpdateRequest,
     SettingsUpdateResponse,
@@ -102,6 +103,24 @@ async def clear_setting(
     """
     await service.clear(db, key)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/import-environment",
+    response_model=ImportResult,
+    summary="Copy environment values into the store",
+)
+async def import_environment(
+    service: ServiceDep,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    admin: AdminUser,
+) -> ImportResult:
+    """Fill the store from the environment.
+
+    Only keys with no stored row are written, so this can be run again without
+    discarding changes made here.
+    """
+    return await service.import_environment(db, user_id=admin.id)
 
 
 @router.post(

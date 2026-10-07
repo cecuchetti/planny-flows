@@ -15,6 +15,7 @@ __all__ = [
     "ChangeRequest",
     "ConnectionTestRequest",
     "ConnectionTestResult",
+    "ImportResult",
     "SettingsEntry",
     "SettingsGroup",
     "SettingsList",
@@ -38,6 +39,20 @@ class SettingsEntry(BaseModel):
     apply: str
     isSecret: bool  # noqa: N815 - camelCase is the wire format
     isOverridden: bool  # noqa: N815 - camelCase is the wire format
+    source: str
+    """``database``, ``environment``, ``default`` or ``unset``.
+
+    Without this the page cannot distinguish "you configured this" from "this is
+    just what the code defaults to", and a secret configured in the environment
+    looks identical to one that was never set.
+    """
+
+    isConfigured: bool  # noqa: N815 - camelCase is the wire format
+    """Whether a value exists at all, from either tier.
+
+    The only thing reported for a secret: an administrator can see that a token is
+    in place without the token ever being sent to the client.
+    """
     value: Any = None
     """The value in effect in the running process.
 
@@ -108,6 +123,14 @@ class SettingsUpdateResponse(BaseModel):
     results: list[ApplyResult]
     restartRequired: bool = False  # noqa: N815 - camelCase is the wire format
     restartKeys: list[str] = Field(default_factory=list)  # noqa: N815 - wire format
+
+
+class ImportResult(BaseModel):
+    """Outcome of copying environment values into the store."""
+
+    imported: list[str] = Field(default_factory=list)
+    skipped: list[str] = Field(default_factory=list)
+    failed: list[ApplyResult] = Field(default_factory=list)
 
 
 class ConnectionTestRequest(BaseModel):

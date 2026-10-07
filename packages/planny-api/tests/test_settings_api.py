@@ -36,7 +36,9 @@ def _settings(*, with_admin: bool = True, db_path: str | None = None) -> Setting
         admin_email=ADMIN_EMAIL if with_admin else None,
         master_key=MASTER_KEY,
         db_type="sqlite",
-        db_path=db_path or "data/does-not-matter.sqlite",
+        # Never a path inside the repository: a test that opens it would leave a
+        # stray database behind in the working tree.
+        db_path=db_path or "/tmp/planny-settings-tests-not-a-database.sqlite",
     )
 
 
@@ -88,6 +90,33 @@ def _app(
     app.dependency_overrides[get_db] = _db
     app.dependency_overrides[get_current_user] = _user
     return app
+
+
+async def _new_engine() -> object:
+    """A fresh in-memory database, for tests that build their own app."""
+    engine = create_async_engine(
+        "sqlite+aiosqlite://", connect_args={"check_same_thread": False}
+    )
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    factory = async_sessionmaker(bind=engine, expire_on_commit=False)
+    async with factory() as session:
+        session.add(Project(id=1, name="p", category="software"))
+        await session.flush()
+        session.add(
+            User(
+                id=1,
+                name="Admin",
+                email=ADMIN_EMAIL,
+                avatarUrl="",
+                projectId=1,
+                role=UserRole.ADMIN.value,
+            )
+        )
+        await session.commit()
+
+    return engine
 
 
 @pytest.fixture
@@ -244,6 +273,206 @@ class TestListing:
         assert entry["apply"] == "restart"
 
 
+class TestValueSource:
+    """The page has to say where each value comes from.
+
+    Without this, a secret configured in the environment looks exactly like one
+    that was never set: both render as an empty box.
+    """
+
+    async def test_default_for_a_key_nobody_configured(
+        self, admin_client: AsyncClient
+    ) -> None:
+        body = (await admin_client.get("/api/v1/settings")).json()
+        entry = next(
+            e for g in body["groups"] for e in g["entries"] if e["key"] == "sync.page_size"
+        )
+        assert entry["source"] == "default"
+        assert entry["isConfigured"] is True
+
+    async def test_unset_for_an_empty_key(self, admin_client: AsyncClient) -> None:
+        body = (await admin_client.get("/api/v1/settings")).json()
+        entry = next(
+            e
+            for g in body["groups"]
+            for e in g["entries"]
+            if e["key"] == "jira.external.my_account_id"
+        )
+        assert entry["source"] == "unset"
+        assert entry["isConfigured"] is False
+
+    async def test_environment_for_a_configured_value(self) -> None:
+        """The app is built with a value that differs from the registry default."""
+        app = _app(
+            await _new_engine(),
+            settings=_settings().model_copy(update={"external_my_account_id": "acc-123"}),
+        )
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            body = (await client.get("/api/v1/settings")).json()
+
+        entry = next(
+            e
+            for g in body["groups"]
+            for e in g["entries"]
+            if e["key"] == "jira.external.my_account_id"
+        )
+        assert entry["source"] == "environment"
+        assert entry["isConfigured"] is True
+
+    async def test_database_once_stored(self, admin_client: AsyncClient) -> None:
+        await admin_client.put(
+            "/api/v1/settings", json={"changes": [{"key": "sync.page_size", "value": 42}]}
+        )
+        body = (await admin_client.get("/api/v1/settings")).json()
+        entry = next(
+            e for g in body["groups"] for e in g["entries"] if e["key"] == "sync.page_size"
+        )
+        assert entry["source"] == "database"
+
+    async def test_a_configured_secret_is_reported_without_its_value(self) -> None:
+        """The whole point: 'a token is in place' without sending the token."""
+        app = _app(
+            await _new_engine(),
+            settings=_settings().model_copy(
+                update={"external_jira_api_token": "super-secret-token"}
+            ),
+        )
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.get("/api/v1/settings")
+
+        assert "super-secret-token" not in response.text
+        entry = next(
+            e
+            for g in response.json()["groups"]
+            for e in g["entries"]
+            if e["key"] == "jira.external.api_token"
+        )
+        assert entry["value"] is None
+        assert entry["isConfigured"] is True
+        assert entry["source"] == "environment"
+
+
+class TestImportFromEnvironment:
+    """Turning an existing .env into editable stored values."""
+
+    async def test_imports_values_the_environment_defines(self) -> None:
+        app = _app(
+            await _new_engine(),
+            settings=_settings().model_copy(
+                update={"external_my_account_id": "acc-123", "sync_page_size": 42}
+            ),
+        )
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            body = (await client.post("/api/v1/settings/import-environment")).json()
+
+            assert "jira.external.my_account_id" in body["imported"]
+            assert "sync.page_size" in body["imported"]
+
+            listed = (await client.get("/api/v1/settings")).json()
+            entry = next(
+                e
+                for g in listed["groups"]
+                for e in g["entries"]
+                if e["key"] == "jira.external.my_account_id"
+            )
+            assert entry["source"] == "database"
+            assert entry["value"] == "acc-123"
+
+    async def test_does_not_overwrite_an_existing_override(self) -> None:
+        """An import must never discard a change made in the UI."""
+        app = _app(
+            await _new_engine(),
+            settings=_settings().model_copy(update={"sync_page_size": 42}),
+        )
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            await client.put(
+                "/api/v1/settings",
+                json={"changes": [{"key": "sync.page_size", "value": 7}]},
+            )
+
+            body = (await client.post("/api/v1/settings/import-environment")).json()
+            assert "sync.page_size" in body["skipped"]
+
+            listed = (await client.get("/api/v1/settings")).json()
+            entry = next(
+                e
+                for g in listed["groups"]
+                for e in g["entries"]
+                if e["key"] == "sync.page_size"
+            )
+            assert entry["value"] == 7
+
+    async def test_skips_empty_values(self, admin_client: AsyncClient) -> None:
+        """There is nothing to store for a key nobody configured."""
+        body = (await admin_client.post("/api/v1/settings/import-environment")).json()
+        assert "jira.external.my_account_id" in body["skipped"]
+
+    async def test_is_idempotent(self) -> None:
+        app = _app(
+            await _new_engine(),
+            settings=_settings().model_copy(update={"sync_page_size": 42}),
+        )
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            first = (await client.post("/api/v1/settings/import-environment")).json()
+            second = (await client.post("/api/v1/settings/import-environment")).json()
+
+        assert "sync.page_size" in first["imported"]
+        assert "sync.page_size" not in second["imported"]
+        assert "sync.page_size" in second["skipped"]
+
+    async def test_clearing_after_an_import_really_clears(self) -> None:
+        """The reason the import is explicit rather than run on every start.
+
+        If it ran automatically, the next restart would silently put back the
+        value the operator had just deleted — while the UI had told them it fell
+        back. This test pins both halves: the clear works, and a later import
+        would fill it again, which is exactly why it must not run by itself.
+        """
+        app = _app(
+            await _new_engine(),
+            settings=_settings().model_copy(update={"sync_page_size": 42}),
+        )
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            await client.post("/api/v1/settings/import-environment")
+            await client.delete("/api/v1/settings/sync.page_size")
+
+            listed = (await client.get("/api/v1/settings")).json()
+            entry = next(
+                e
+                for g in listed["groups"]
+                for e in g["entries"]
+                if e["key"] == "sync.page_size"
+            )
+            assert entry["isOverridden"] is False
+            assert entry["value"] != 42, "the cleared value is still in effect"
+
+            # And this is what an automatic import would do on every start.
+            again = (await client.post("/api/v1/settings/import-environment")).json()
+            assert "sync.page_size" in again["imported"]
+
+    async def test_a_secret_without_a_master_key_is_reported(self) -> None:
+        """Skipping it silently would look like a successful import."""
+        app = _app(
+            await _new_engine(),
+            settings=_settings().model_copy(
+                update={"master_key": None, "external_jira_api_token": "tok"}
+            ),
+        )
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            body = (await client.post("/api/v1/settings/import-environment")).json()
+
+        failed = {f["key"]: f for f in body["failed"]}
+        assert "jira.external.api_token" in failed
+        assert failed["jira.external.api_token"]["status"] == "rejected"
+
+
 class TestUpdating:
     """Changes are persisted and reported with their apply mode."""
 
@@ -368,13 +597,16 @@ class TestConnectionChangesAreAtomicAndProven:
     async def test_a_working_connection_is_stored(
         self, admin_client: AsyncClient, tmp_path: Path
     ) -> None:
+        target = tmp_path / "proven.sqlite"
+        target.touch()
+
         body = (
             await admin_client.put(
                 "/api/v1/settings",
                 json={
                     "changes": [
                         {"key": "database.type", "value": "sqlite"},
-                        {"key": "database.path", "value": str(tmp_path / "proven.sqlite")},
+                        {"key": "database.path", "value": str(target)},
                     ]
                 },
             )
@@ -502,6 +734,9 @@ class TestConnectionTest:
     async def test_accepts_a_working_sqlite_path(
         self, admin_client: AsyncClient, tmp_path: Path
     ) -> None:
+        target = tmp_path / "probe.sqlite"
+        target.touch()
+
         body = (
             await admin_client.post(
                 "/api/v1/settings/test-connection",
@@ -509,7 +744,7 @@ class TestConnectionTest:
                     "target": "database",
                     "fields": {
                         "database.type": "sqlite",
-                        "database.path": str(tmp_path / "probe.sqlite"),
+                        "database.path": str(target),
                     },
                 },
             )
@@ -517,6 +752,50 @@ class TestConnectionTest:
 
         assert body["ok"] is True, body["detail"]
         assert body["latencyMs"] is not None
+
+    async def test_a_missing_file_is_reported_and_not_created(
+        self, admin_client: AsyncClient, tmp_path: Path
+    ) -> None:
+        """A probe must not create a database.
+
+        Connecting would make SQLite create an empty file and report success, so
+        a path typed with a typo would be saved as working and the application
+        would come up against an empty database — which looks like data loss.
+        """
+        target = tmp_path / "not-there.sqlite"
+
+        body = (
+            await admin_client.post(
+                "/api/v1/settings/test-connection",
+                json={
+                    "target": "database",
+                    "fields": {"database.type": "sqlite", "database.path": str(target)},
+                },
+            )
+        ).json()
+
+        assert "does not exist" in body["detail"]
+        assert "empty" in body["detail"]
+        assert not target.exists(), "the probe created a database file"
+
+    async def test_a_missing_directory_is_a_failure(
+        self, admin_client: AsyncClient, tmp_path: Path
+    ) -> None:
+        body = (
+            await admin_client.post(
+                "/api/v1/settings/test-connection",
+                json={
+                    "target": "database",
+                    "fields": {
+                        "database.type": "sqlite",
+                        "database.path": str(tmp_path / "no-such-dir" / "x.sqlite"),
+                    },
+                },
+            )
+        ).json()
+
+        assert body["ok"] is False
+        assert "directory" in body["detail"]
 
     async def test_reports_a_failure_with_the_driver_message(
         self, admin_client: AsyncClient

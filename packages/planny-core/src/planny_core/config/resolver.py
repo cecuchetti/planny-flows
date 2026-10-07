@@ -28,7 +28,24 @@ from planny_core.config.keys import SettingKey, key_by_name
 from planny_core.config.settings import Settings
 from planny_core.errors import InvalidConfigurationError
 
-__all__ = ["apply_overrides", "overrides_from_fields", "validate_override"]
+__all__ = [
+    "SOURCE_DATABASE",
+    "SOURCE_DEFAULT",
+    "SOURCE_ENVIRONMENT",
+    "SOURCE_UNSET",
+    "apply_overrides",
+    "overrides_from_fields",
+    "validate_override",
+    "value_source",
+]
+
+#: Where an effective value came from.
+SOURCE_DATABASE = "database"
+SOURCE_ENVIRONMENT = "environment"
+SOURCE_DEFAULT = "default"
+
+#: Nothing is configured: the effective value is empty.
+SOURCE_UNSET = "unset"
 
 
 def validate_override(entry: SettingKey, value: Any) -> Any:
@@ -112,3 +129,23 @@ def overrides_from_fields(fields: Mapping[str, Any]) -> dict[str, Any]:
         if entry is not None:
             translated[entry.key] = value
     return translated
+
+
+def value_source(entry: SettingKey, current: Any) -> str:
+    """Where the effective value came from, ignoring the runtime store.
+
+    Only the two tiers this module can see are distinguished: a value equal to the
+    registry default is reported as ``default``, anything else as ``environment``.
+
+    Comparing against the default rather than probing the process environment is
+    deliberate. It answers the question the operator is actually asking — "is this
+    value something I configured, or just what the code happens to default to?" —
+    and it stays correct when the value arrives through ``.env``, which a process
+    environment check would miss.
+
+    The caller overrides this with :data:`SOURCE_DATABASE` when a stored row
+    exists, because a stored value is authoritative regardless of the environment.
+    """
+    if current is None or current == "":
+        return SOURCE_UNSET
+    return SOURCE_DEFAULT if current == entry.default else SOURCE_ENVIRONMENT

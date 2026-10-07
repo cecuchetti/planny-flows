@@ -20,7 +20,12 @@ from typing import Any
 import structlog
 from planny_core.config.bootstrap import write_bootstrap
 from planny_core.config.keys import ApplyMode, SettingKey, key_by_name, runtime_keys
-from planny_core.config.resolver import apply_overrides, validate_override
+from planny_core.config.resolver import (
+    SOURCE_DATABASE,
+    apply_overrides,
+    validate_override,
+    value_source,
+)
 from planny_core.config.settings import Settings
 from planny_core.config.store import MissingMasterKeyError, SettingsStore
 from planny_core.errors import EntityNotFoundError, InvalidConfigurationError
@@ -32,6 +37,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from planny_api.modules.settings.schemas import (
     ApplyResult,
     ConnectionTestResult,
+    ImportResult,
     SettingsEntry,
     SettingsGroup,
     SettingsList,
@@ -67,6 +73,7 @@ class SettingsService:
 
         for entry in runtime_keys():
             row = stored.get(entry.key)
+            current = getattr(self._settings, entry.settings_field)
             grouped.setdefault(entry.group, []).append(
                 SettingsEntry(
                     key=entry.key,
@@ -76,16 +83,21 @@ class SettingsService:
                     apply=entry.apply.value,
                     isSecret=entry.is_secret,
                     isOverridden=row is not None,
-                    # A secret is reported as present, never as a value.
-                    value=(
-                        None
-                        if entry.is_secret
-                        else getattr(self._settings, entry.settings_field)
+                    # A stored value is authoritative; otherwise the value came
+                    # from the environment tier or is simply the code default.
+                    source=(
+                        SOURCE_DATABASE if row is not None else value_source(entry, current)
                     ),
+                    isConfigured=bool(row is not None or current not in (None, "")),
+                    # A secret is reported as present, never as a value.
+                    value=None if entry.is_secret else current,
                     # Reported only when it is a pending change: repeating the
                     # effective value here would just be noise.
                     storedValue=self._pending_value(
-                        entry, row.value if row is not None else None, row is not None
+                        entry,
+                        row.value if row is not None else None,
+                        current,
+                        row is not None,
                     ),
                     defaultValue=entry.default,
                     envAliases=list(entry.env_aliases),
@@ -106,19 +118,25 @@ class SettingsService:
         )
 
     @staticmethod
-    def _pending_value(entry: SettingKey, stored_value: Any, is_overridden: bool) -> Any:
-        """The saved value for a key whose change is not in effect yet.
+    def _pending_value(
+        entry: SettingKey, stored_value: Any, effective_value: Any, is_overridden: bool
+    ) -> Any:
+        """The saved value, but only when it differs from the one in effect.
 
-        Only meaningful for restart keys: a live key has already been applied to
-        the running settings, so its effective value *is* the stored one. Secrets
-        are never included — the UI can show that a change is pending without the
-        credential being rendered back to the client.
+        "Pending" has to mean *waiting to take effect*, not merely *stored*. A
+        restart key is stored from the moment it is imported, so returning it
+        unconditionally made every such key announce a pending change identical to
+        the value already running — noise that trains the operator to ignore the
+        one line that matters.
+
+        Secrets are still never included: the UI can say that a change is waiting
+        without the credential being rendered back to the client.
         """
         if not is_overridden or entry.is_secret:
             return None
         if entry.apply is not ApplyMode.RESTART:
             return None
-        return stored_value
+        return stored_value if stored_value != effective_value else None
 
     # ── Writing ───────────────────────────────────────────────────────────────
 
@@ -310,6 +328,53 @@ class SettingsService:
         setattr(self._settings, entry.settings_field, restored)
         logger.info("settings.restored_from_environment", key=entry.key)
 
+    async def import_environment(
+        self, db: AsyncSession, *, user_id: int | None = None
+    ) -> ImportResult:
+        """Copy the values the environment defines into the store.
+
+        This is how an existing ``.env`` becomes visible and editable from the UI
+        without retyping every credential.
+
+        Two properties make it safe to run more than once:
+
+        * only keys with **no stored row** are filled, so a change made in the UI
+          is never overwritten;
+        * it is **explicit**, not automatic on startup. Importing on every start
+          would silently undo a cleared key: an operator who deletes an override
+          to fall back to the environment would find it back after a restart, and
+          the UI would have told them the opposite.
+        """
+        already_stored = {row.key for row in await self._store.rows(db)}
+        imported: list[str] = []
+        skipped: list[str] = []
+        failed: list[ApplyResult] = []
+
+        for entry in runtime_keys():
+            if entry.key in already_stored:
+                skipped.append(entry.key)
+                continue
+
+            current = getattr(self._settings, entry.settings_field)
+            if current is None or current == "":
+                # Nothing to import; the key keeps falling through to its default.
+                skipped.append(entry.key)
+                continue
+
+            result = await self._apply_one(db, entry.key, current, user_id=user_id)
+            if result.status == "rejected":
+                failed.append(result)
+            else:
+                imported.append(entry.key)
+
+        logger.info(
+            "settings.imported_from_environment",
+            imported=len(imported),
+            skipped=len(skipped),
+            failed=len(failed),
+        )
+        return ImportResult(imported=imported, skipped=skipped, failed=failed)
+
     # ── Testing ───────────────────────────────────────────────────────────────
 
     async def test_connection(
@@ -344,8 +409,22 @@ class SettingsService:
 
     @staticmethod
     async def _test_database(candidate: Settings) -> ConnectionTestResult:
-        """Open a throwaway engine and run one query."""
+        """Open a throwaway engine and run one query.
+
+        For SQLite the file is **not** created if it is missing. Connecting would
+        create an empty database and report success, so a path typed with a typo
+        would be saved as working — and the application would then start against
+        an empty database, looking exactly like data loss. Better to refuse and
+        say why.
+        """
         from planny_core.db.engine import database_url
+
+        if candidate.db_type == "sqlite":
+            problem, note = _precheck_sqlite(candidate.db_path)
+            if problem is not None:
+                return ConnectionTestResult(target="database", ok=False, detail=problem)
+            if note is not None:
+                return ConnectionTestResult(target="database", ok=True, detail=note)
 
         started = time.perf_counter()
         try:
@@ -390,6 +469,45 @@ class SettingsService:
         if not entry.is_stored:
             raise KeyError(f"{key!r} is a bootstrap setting and cannot be changed here.")
         return entry
+
+
+def _precheck_sqlite(path: str | None) -> tuple[str | None, str | None]:
+    """Inspect a SQLite target before connecting.
+
+    Returns ``(problem, note)``: a *problem* means the connection cannot work, a
+    *note* means it can, but not in the way the operator probably assumes.
+
+    Nothing is created either way. Connecting to a missing file makes SQLite
+    create an empty database, so a mistyped path would be reported as working and
+    the application would come up against an empty database — indistinguishable
+    from data loss. A probe must not have that side effect.
+
+    Relative paths resolve against the working directory, which is where
+    SQLAlchemy would look, so the report describes the file the application would
+    actually open.
+    """
+    from pathlib import Path
+
+    if not path:
+        return None, None
+
+    resolved = Path(path).expanduser()
+    if not resolved.is_absolute():
+        resolved = Path.cwd() / resolved
+
+    if resolved.exists():
+        return None, None
+
+    parent = resolved.parent
+    if not parent.is_dir():
+        return f"The directory {parent} does not exist.", None
+
+    # The engine will create it, which is legitimate for a new deployment but is
+    # never what someone means when they typo an existing database's name.
+    return None, (
+        f"{resolved} does not exist. Connecting would create a new, empty "
+        "database there — check the path if you meant to point at an existing one."
+    )
 
 
 def _first_error(exc: Exception) -> str:
