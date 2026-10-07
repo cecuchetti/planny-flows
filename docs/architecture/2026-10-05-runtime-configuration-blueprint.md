@@ -475,6 +475,26 @@ it. Clearing now restores the field from a **freshly built** ``Settings`` — th
 service holds is the one that was mutated, so it no longer knows what the environment said.
 There is a regression test.
 
+### Importing an existing .env is explicit, not automatic
+
+The obvious implementation — copy environment values into the store on every start —
+is wrong for one reason: it silently undoes a clear. An operator who deletes an override
+to fall back to the environment would find it back after the next restart, while the UI
+had told them the opposite. That is the same class of lying state as the live-clear bug
+above.
+
+So the import is a deliberate action (`POST /settings/import-environment`, and a button on
+the page). It fills only keys with **no stored row**, which makes it safe to run again and
+guarantees it never discards a change made in the UI.
+
+### A secret that is configured must not look unset
+
+Reporting only the effective value made every credential configured in `.env` render as an
+empty box, indistinguishable from one that was never set. Each entry now reports a
+``source`` — ``database``, ``environment``, ``default`` or ``unset`` — plus ``isConfigured``.
+An administrator can see that a token is in place; the token itself is still never sent to
+the client.
+
 ### Deferred as future features
 
 Recorded here so they are not lost. Neither blocks the storage or resolution layers, only
