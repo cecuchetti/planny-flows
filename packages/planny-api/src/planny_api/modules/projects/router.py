@@ -7,12 +7,14 @@ Validation and serialization only; the rules live in
 from __future__ import annotations
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Query
+from planny_core.config import settings as default_settings
 from planny_core.errors import BadUserInputError
-from planny_core.models import Project
+from planny_jira.client import JiraHttpClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from planny_api.app.context import AppContext
 from planny_api.core.security.policies import ProjectScope, get_project_scope
-from planny_api.dependencies import get_db
+from planny_api.dependencies import get_context, get_db, get_jira_issue_client
 from planny_api.modules.projects import service
 from planny_api.modules.projects.schemas import UpdateProjectRequest
 from planny_api.modules.projects.serializers import project_summary
@@ -42,13 +44,23 @@ async def list_projects(
     scope: ProjectScope = Depends(get_project_scope),
     db: AsyncSession = Depends(get_db),
     background_tasks: BackgroundTasks = BackgroundTasks(),
+    context: AppContext = Depends(get_context),
 ) -> dict[str, object]:
     """List the projects the current user belongs to, ordered by name.
 
-    Stale Jira projects trigger a background sync.
+    Stale Jira projects trigger a background sync, which runs *after* this
+    response. ``syncScheduled`` says so, and ``syncIntervalMinutes`` is the
+    cadence the client should refresh at, so an open board picks the changes up
+    instead of showing stale issues until something else refetches.
     """
-    projects: list[Project] = await service.list_projects(db, scope, background_tasks)
-    return {"projects": [project_summary(p) for p in projects]}
+    projects, sync_scheduled = await service.list_projects(
+        db, scope, background_tasks, context.jira_issue_client
+    )
+    return {
+        "projects": [project_summary(p) for p in projects],
+        "syncScheduled": sync_scheduled,
+        "syncIntervalMinutes": default_settings.sync_interval_minutes,
+    }
 
 
 @router.get("/project")
@@ -91,9 +103,14 @@ async def update_project(
 async def sync_all_projects(
     scope: ProjectScope = Depends(get_project_scope),
     db: AsyncSession = Depends(get_db),
+    jira_client: JiraHttpClient = Depends(get_jira_issue_client),
 ) -> dict[str, object]:
-    """Discover and sync every Jira project for the caller."""
-    result = await service.sync_all_projects(db, scope)
+    """Discover and sync every Jira project for the caller.
+
+    Synchronous on purpose: the client refetches as soon as this returns, so the
+    user sees the new issues instead of a sync they have to wait to observe.
+    """
+    result = await service.sync_all_projects(db, scope, jira_client)
     return {"synced": True, **result}
 
 
@@ -102,7 +119,8 @@ async def sync_project(
     project_id: int,
     scope: ProjectScope = Depends(get_project_scope),
     db: AsyncSession = Depends(get_db),
+    jira_client: JiraHttpClient = Depends(get_jira_issue_client),
 ) -> dict[str, object]:
     """Sync a single Jira project the caller belongs to."""
-    project = await service.sync_single_project(db, scope, project_id)
+    project = await service.sync_single_project(db, scope, project_id, jira_client)
     return {"synced": True, "project": project_to_dict(project, include_issues=True)}

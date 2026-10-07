@@ -15,7 +15,6 @@ from planny_core.models import Project
 from planny_jira.client import JiraHttpClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from planny_api import dependencies as api_dependencies
 from planny_api.core.security.policies import ProjectScope
 from planny_api.modules.jira.sync import service as jira_sync_service
 from planny_api.modules.projects import repository
@@ -57,20 +56,30 @@ def _schedule_auto_sync_if_stale(
     projects: list[Project],
     scope: ProjectScope,
     background_tasks: BackgroundTasks,
-) -> None:
+    jira_client: JiraHttpClient | None,
+) -> bool:
     """Queue a background sync when any Jira project is stale.
 
-    Jira being unconfigured must not fail the list endpoint, so this degrades to
-    a debug log.
+    Returns whether one was queued, so the caller can tell the client that the
+    data it is about to render is already out of date.
+
+    The client arrives as an argument, and ``None`` is an ordinary state: Jira
+    being unconfigured must not fail the list endpoint. It used to be fetched by
+    calling the FastAPI dependency directly, which returned the ``Depends``
+    marker rather than a client, so the attribute access raised and the bare
+    ``except`` reported it as "not configured" — the auto-sync never ran, whatever
+    the configuration said.
     """
-    try:
-        jira_client = api_dependencies.get_jira_issue_client()
-    except Exception:
+    if jira_client is None:
         logger.debug("auto_sync_skipped", reason="jira_not_configured")
-        return
+        return False
 
     if any(p.source_type == "jira" and jira_sync_service.should_auto_sync(p) for p in projects):
         background_tasks.add_task(run_sync_in_background, scope.user_id, jira_client)
+        logger.info("auto_sync_scheduled", user_id=scope.user_id, projects=len(projects))
+        return True
+
+    return False
 
 
 # ── Reads ────────────────────────────────────────────────────────────────────
@@ -80,11 +89,18 @@ async def list_projects(
     db: AsyncSession,
     scope: ProjectScope,
     background_tasks: BackgroundTasks,
-) -> list[Project]:
-    """Return the user's projects, queueing a background sync if any are stale."""
+    jira_client: JiraHttpClient | None,
+) -> tuple[list[Project], bool]:
+    """Return the user's projects and whether a background sync was queued.
+
+    The flag is what lets the client know its data is about to change: the sync
+    runs outside the request, so the response it is answering with is the *old*
+    data. Without it an open board would show yesterday's issues until something
+    else happened to refetch.
+    """
     projects = await repository.list_for_user(db, scope.user_id)
-    _schedule_auto_sync_if_stale(projects, scope, background_tasks)
-    return projects
+    scheduled = _schedule_auto_sync_if_stale(projects, scope, background_tasks, jira_client)
+    return projects, scheduled
 
 
 async def get_default_project(db: AsyncSession, scope: ProjectScope) -> Project:
@@ -148,19 +164,21 @@ async def update_default_project(
 # ── Sync ─────────────────────────────────────────────────────────────────────
 
 
-async def sync_all_projects(db: AsyncSession, scope: ProjectScope) -> dict[str, int]:
+async def sync_all_projects(
+    db: AsyncSession,
+    scope: ProjectScope,
+    jira_client: JiraHttpClient,
+) -> dict[str, int]:
     """Discover and sync every Jira project for the user.
 
     Needed on first use, when no Jira projects exist locally yet.
 
-    Raises:
-        IntegrationUnavailableError: Jira is not configured.
-    """
-    try:
-        jira_client = api_dependencies.get_jira_issue_client()
-    except Exception as exc:
-        raise IntegrationUnavailableError("Jira integration is not configured") from exc
+    The client is injected, so "Jira is not configured" is decided by the
+    dependency rather than by catching whatever the lookup happened to raise.
 
+    Raises:
+        IntegrationUnavailableError: the configured base URL is unusable.
+    """
     try:
         result = await jira_sync_service.sync_external_projects(scope.user_id, db, jira_client)
     except httpx.UnsupportedProtocol as exc:
@@ -179,6 +197,7 @@ async def sync_single_project(
     db: AsyncSession,
     scope: ProjectScope,
     project_id: int,
+    jira_client: JiraHttpClient,
 ) -> Project:
     """Sync one Jira project and return it refreshed.
 
@@ -195,8 +214,6 @@ async def sync_single_project(
     if project.source_type != "jira":
         raise BadUserInputError({"source_type": "Only Jira projects can be synced"})
 
-    await jira_sync_service.sync_external_projects(
-        scope.user_id, db, api_dependencies.get_jira_issue_client()
-    )
+    await jira_sync_service.sync_external_projects(scope.user_id, db, jira_client)
     await db.refresh(project)
     return project
