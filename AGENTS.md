@@ -7,9 +7,18 @@ Planny Flows — a proxy in front of one or two real Jira instances, plus a loca
 - **Client**: React/JavaScript with Webpack
 
 The backend is a **modular monolith**: each domain is a package under
-`planny_api/modules/` that declares itself, and the kernel discovers and mounts it. Read
-[docs/architecture/2026-10-05-backend-modular-blueprint.md](docs/architecture/2026-10-05-backend-modular-blueprint.md)
-before changing the structure.
+`planny_api/modules/` that declares itself, and the kernel discovers and mounts it.
+
+> **Before adding a feature or changing the architecture, read
+> [docs/architecture/architecture-contract.md](docs/architecture/architecture-contract.md).**
+>
+> It is the normative reference: the shape of the system, the rules that must be
+> respected, what counts as a violation and why, and the recommendations. Adding a
+> domain, moving a boundary or relaxing a rule in `test_architecture.py` is an
+> architecture change — read the contract first, and bring the test with the change.
+
+For the reasoning behind each rule, the findings it came from and the phase plan, see
+[docs/architecture/2026-10-05-backend-modular-blueprint.md](docs/architecture/2026-10-05-backend-modular-blueprint.md).
 
 ## Commands
 

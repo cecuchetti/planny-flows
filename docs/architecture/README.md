@@ -18,6 +18,7 @@ cannot ship before an authorization model exists.
 
 | Document | Use it when |
 |---|---|
+| [**Architecture contract**](./architecture-contract.md) | **You are about to add a feature or change the structure. Read this first** |
 | [API routes](./api-routes.md) | You need the current surface, status codes or the error contract |
 | [How to add a module](./how-to-add-a-module.md) | You are adding a domain to the backend |
 | [How to merge a project](./how-to-merge-a-project.md) | You are absorbing another project into this one |
@@ -26,9 +27,9 @@ cannot ship before an authorization model exists.
 
 | Date | Document | Status |
 |---|---|---|
-| 2026-07-11 | [Python Migration Blueprint](./2026-07-11-python-migration-blueprint.md) | Superseded by the backend modular blueprint |
+| 2026-07-11 | [Python Migration Blueprint](../custom/2026-07-11-python-migration-blueprint.md) | Superseded by the backend modular blueprint |
 
 ## Related
 
-- [ADR: Tempo Hours Separation](../adr-tempo-hours-separation.md)
+- [ADR: Tempo Hours Separation](../tasks/done/adr-tempo-hours-separation.md)
 - [Deployment Guide](../DEPLOYMENT.md)
