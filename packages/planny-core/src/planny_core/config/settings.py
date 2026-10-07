@@ -108,9 +108,13 @@ class Settings(BaseSettings):
         default=100,
         description="Page size for the Jira search endpoint.",
     )
-    sync_stale_after_hours: int = Field(
-        default=24,
-        description="A Jira project is re-synced once its last sync is older than this.",
+    sync_interval_minutes: int = Field(
+        default=15,
+        description=(
+            "A Jira project is re-synced once its last sync is older than this. "
+            "Also the cadence at which the client refreshes, so an open board "
+            "picks the changes up."
+        ),
     )
     sync_default_project_category: str = Field(
         default="software",

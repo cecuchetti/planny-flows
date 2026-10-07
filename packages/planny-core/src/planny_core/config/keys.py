@@ -448,12 +448,16 @@ SETTINGS: tuple[SettingKey, ...] = (
         default=100,
     ),
     _runtime(
-        "sync.stale_after_hours",
-        "sync_stale_after_hours",
+        "sync.interval_minutes",
+        "sync_interval_minutes",
         SettingType.INTEGER,
         "Sync",
-        "Re-sync after (hours)",
-        default=24,
+        "Re-sync every (minutes)",
+        default=15,
+        help=(
+            "How often Jira is polled for the issues assigned to you. Also the "
+            "cadence at which an open board refreshes."
+        ),
     ),
     _runtime(
         "sync.default_project_category",

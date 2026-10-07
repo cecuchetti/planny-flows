@@ -46,13 +46,13 @@ def should_auto_sync(project: Project, *, now: datetime | None = None) -> bool:
     """Whether a Jira project is due for a refresh.
 
     A project qualifies when it has never been synced, or when the last sync is
-    older than ``settings.sync_stale_after_hours``.
+    older than ``settings.sync_interval_minutes``.
     """
     if project.last_synced_at is None:
         return True
 
     reference = now or datetime.now(UTC).replace(tzinfo=None)
-    stale_after = timedelta(hours=settings.sync_stale_after_hours)
+    stale_after = timedelta(minutes=settings.sync_interval_minutes)
     return (reference - project.last_synced_at) > stale_after
 
 

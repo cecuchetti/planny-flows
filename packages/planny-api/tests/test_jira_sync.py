@@ -235,38 +235,57 @@ class TestShouldAutoSync:
         assert should_auto_sync(project) is True
 
     def test_synced_recently(self) -> None:
-        """last_synced_at < 24h ago → False."""
+        """last_synced_at < the interval → False."""
         project = Project(
             name="Test",
             category="software",
-            last_synced_at=datetime.utcnow() - timedelta(hours=1),
+            last_synced_at=datetime.utcnow() - timedelta(minutes=1),
         )
         assert should_auto_sync(project) is False
 
-    def test_synced_just_over_24h(self) -> None:
-        """last_synced_at > 24h ago → True."""
+    def test_synced_just_over_the_interval(self) -> None:
+        """last_synced_at > the interval → True."""
         project = Project(
             name="Test",
             category="software",
-            last_synced_at=datetime.utcnow() - timedelta(hours=25),
+            last_synced_at=datetime.utcnow() - timedelta(minutes=20),
         )
         assert should_auto_sync(project) is True
 
     def test_stale_boundary(self) -> None:
-        """last_synced_at ~23.9h ago → False; ~24.1h ago → True."""
+        """Just under the interval → False; just over → True."""
         just_under = Project(
             name="Test",
             category="software",
-            last_synced_at=datetime.utcnow() - timedelta(hours=23, minutes=55),
+            last_synced_at=datetime.utcnow() - timedelta(minutes=14),
         )
         assert should_auto_sync(just_under) is False
 
         just_over = Project(
             name="Test",
             category="software",
-            last_synced_at=datetime.utcnow() - timedelta(hours=24, minutes=5),
+            last_synced_at=datetime.utcnow() - timedelta(minutes=16),
         )
         assert should_auto_sync(just_over) is True
+
+    def test_the_interval_comes_from_settings(self) -> None:
+        """Changing it in the settings tab has to change the behaviour."""
+        from planny_core.config import settings as process_settings
+
+        project = Project(
+            name="Test",
+            category="software",
+            last_synced_at=datetime.utcnow() - timedelta(minutes=30),
+        )
+        original = process_settings.sync_interval_minutes
+        try:
+            process_settings.sync_interval_minutes = 60
+            assert should_auto_sync(project) is False
+
+            process_settings.sync_interval_minutes = 10
+            assert should_auto_sync(project) is True
+        finally:
+            process_settings.sync_interval_minutes = original
 
 
 class TestEnsureUserProjectLink:
