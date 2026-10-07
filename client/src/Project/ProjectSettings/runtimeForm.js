@@ -47,13 +47,19 @@ export const coerceValue = (entry, value) => {
 /**
  * Build the request body for a batch save.
  *
- * @param {object} entries Registry entries, keyed by setting key.
- * @param {object} draft   Typed values, keyed by setting key.
+ * @param {object}  entries Registry entries, keyed by setting key.
+ * @param {object}  draft   Typed values, keyed by setting key.
+ * @param {string=} group   Restrict the batch to one accordion section.
  * @returns {{changes: Array<{key: string, value: *}>}}
  */
-export const buildChangePayload = (entries, draft) => ({
+export const buildChangePayload = (entries, draft, group) => ({
   changes: Object.entries(draft)
-    .filter(([key, value]) => entries[key] && shouldSubmit(entries[key], value))
+    .filter(
+      ([key, value]) =>
+        entries[key] &&
+        (group === undefined || entries[key].group === group) &&
+        shouldSubmit(entries[key], value),
+    )
     .map(([key, value]) => ({ key, value: coerceValue(entries[key], value) })),
 });
 
@@ -89,4 +95,25 @@ export const buildProbeFields = (entries, draft, overriddenKey, overrideValue) =
   }
 
   return fields;
+};
+
+/**
+ * What the input should show.
+ *
+ * The field starts from the value **in effect**, not from the draft: rendering
+ * only the draft left every configured setting looking empty, so the page
+ * appeared not to reflect the environment at all and the operator had to retype
+ * a value just to test it.
+ *
+ * A draft always wins, including an empty one. Clearing a field is a real edit —
+ * it is how a value is returned to the fallback — so it must not be refilled from
+ * the effective value.
+ *
+ * @param {object} entry   Registry metadata for the setting.
+ * @param {*}      drafted What the admin typed, or undefined if untouched.
+ * @returns {string|number}
+ */
+export const displayValue = (entry, drafted) => {
+  if (drafted !== undefined && drafted !== null) return drafted;
+  return entry.value === undefined || entry.value === null ? '' : entry.value;
 };

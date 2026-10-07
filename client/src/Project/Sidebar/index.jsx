@@ -21,14 +21,33 @@ const propTypes = {
   isMobile: PropTypes.bool,
 };
 
+/*
+ * One board entry, not two.
+ *
+ * "External Assignments" pointed at this same board with `?filter=jira`, so it
+ * was a filter wearing a tab's clothes — and a misleading name, because that
+ * filter selects by project *source*, not by who the issue is assigned to. The
+ * project chips already narrow the board, and they say what they are doing.
+ */
 const NAV_ITEMS = [
   { key: 'kanban', labelKey: 'sidebar.kanbanBoard', path: '/board', icon: '📋', bg: '#2563eb' },
-  { key: 'external', labelKey: 'sidebar.externalAssignments', path: '/board?filter=jira', icon: '🔗', bg: '#7c3aed' },
-  { key: 'settings', labelKey: 'sidebar.projectSettings', path: '/settings', icon: '⚙️', bg: '#475569' },
+  {
+    key: 'settings',
+    labelKey: 'sidebar.projectSettings',
+    path: '/settings',
+    icon: '⚙️',
+    bg: '#475569',
+  },
 ];
 
 const QUICK_ACTIONS_ITEMS = [
-  { key: 'quick-actions', labelKey: 'sidebar.quickActions', path: '/quick-actions', icon: '🔧', bg: '#059669' },
+  {
+    key: 'quick-actions',
+    labelKey: 'sidebar.quickActions',
+    path: '/quick-actions',
+    icon: '🔧',
+    bg: '#059669',
+  },
 ];
 
 const DISABLED_ITEMS = [
@@ -53,8 +72,10 @@ const ProjectSidebar = ({ project: _project, onNavClick, isMobile }) => {
       return pathMatches && location.search === `?${queryString}`;
     }
     if (itemPath === '/board') {
-      // Board without filter: active only when no filter param is present
-      return pathMatches && !location.search.includes('filter=');
+      // The board with no filter and the board with an explicit "all" are the
+      // same view, so both keep this item highlighted.
+      const filter = new URLSearchParams(location.search).get('filter');
+      return pathMatches && (!filter || filter === 'all');
     }
     // Default: pathname-based match
     return pathMatches;
@@ -64,7 +85,9 @@ const ProjectSidebar = ({ project: _project, onNavClick, isMobile }) => {
     <Sidebar $isMobile={isMobile}>
       {isMobile && (
         <MobileHeader>
-          <span role="img" aria-label="menu">☰</span>
+          <span role="img" aria-label="menu">
+            ☰
+          </span>
           Menu
         </MobileHeader>
       )}
@@ -72,7 +95,7 @@ const ProjectSidebar = ({ project: _project, onNavClick, isMobile }) => {
       <NavSection>
         <SectionLabel>Principal</SectionLabel>
 
-        {NAV_ITEMS.map(item => {
+        {NAV_ITEMS.map((item) => {
           const isActive = isActiveLink(item.path);
           return (
             <LinkItem
@@ -90,18 +113,14 @@ const ProjectSidebar = ({ project: _project, onNavClick, isMobile }) => {
         <Divider />
         <SectionLabel>Más</SectionLabel>
 
-        {QUICK_ACTIONS_ITEMS.map(item => (
-          <LinkItem 
-            key={item.key} 
-            to={`${basePath}${item.path}`}
-            onClick={onNavClick}
-          >
+        {QUICK_ACTIONS_ITEMS.map((item) => (
+          <LinkItem key={item.key} to={`${basePath}${item.path}`} onClick={onNavClick}>
             <NavIcon $bg={item.bg}>{item.icon}</NavIcon>
             <LinkText>{t(item.labelKey)}</LinkText>
           </LinkItem>
         ))}
 
-        {DISABLED_ITEMS.map(item => (
+        {DISABLED_ITEMS.map((item) => (
           <DisabledItem key={item.key}>
             <NavIcon $bg={item.bg}>{item.icon}</NavIcon>
             <LinkText>{item.label}</LinkText>

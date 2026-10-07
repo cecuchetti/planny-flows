@@ -1,4 +1,10 @@
-import { buildChangePayload, buildProbeFields, coerceValue, shouldSubmit } from './formState';
+import {
+  buildChangePayload,
+  buildProbeFields,
+  coerceValue,
+  displayValue,
+  shouldSubmit,
+} from './runtimeForm';
 
 const entry = (overrides = {}) => ({
   key: 'database.host',
@@ -113,5 +119,35 @@ describe('buildProbeFields', () => {
   it('includes the value being tested even if nothing was drafted', () => {
     const fields = buildProbeFields(entries, {}, 'database.host', 'typed-just-now');
     expect(fields['database.host']).toBe('typed-just-now');
+  });
+});
+
+describe('displayValue', () => {
+  it('shows the value in effect when nothing was typed', () => {
+    // Rendering only the draft made every configured setting look empty, so the
+    // page appeared not to reflect the environment at all.
+    expect(displayValue(entry({ value: 'db.internal' }), undefined)).toBe('db.internal');
+  });
+
+  it('shows a typed value over the effective one', () => {
+    expect(displayValue(entry({ value: 'old' }), 'new')).toBe('new');
+  });
+
+  it('keeps a cleared field empty', () => {
+    // Clearing is how a value returns to the fallback; refilling it here would
+    // make the edit impossible to perform.
+    expect(displayValue(entry({ value: 'db.internal' }), '')).toBe('');
+  });
+
+  it('shows nothing for a secret, which has no value to show', () => {
+    expect(displayValue(entry({ isSecret: true, value: null }), undefined)).toBe('');
+  });
+
+  it('shows nothing when the effective value is empty', () => {
+    expect(displayValue(entry({ value: null }), undefined)).toBe('');
+  });
+
+  it('passes numbers through untouched', () => {
+    expect(displayValue(entry({ type: 'integer', value: 100 }), undefined)).toBe(100);
   });
 });

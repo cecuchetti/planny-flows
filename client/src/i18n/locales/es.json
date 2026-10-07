@@ -20,8 +20,7 @@
   },
   "sidebar": {
     "kanbanBoard": "Tablero Kanban",
-    "externalAssignments": "Asignaciones Externas",
-    "projectSettings": "Configuración del proyecto",
+    "projectSettings": "Configuración",
     "quickActions": "Atajos"
   },
   "quickActions": {
@@ -138,7 +137,11 @@
     "selectAtLeastOneProject": "Seleccioná al menos un proyecto",
     "allProjects": "Todos los proyectos",
     "filterByProject": "Filtrar por proyecto",
-    "selectProjects": "Seleccionar proyectos..."
+    "selectProjects": "Seleccionar proyectos...",
+    "showingProjects": "Mostrando {{selected}} de {{total}} proyectos",
+    "showAllProjects": "Mostrar todos",
+    "syncNow": "Sincronizar ahora",
+    "syncing": "Sincronizando…"
   },
   "issue": {
     "createIssue": "Crear issue",
@@ -208,6 +211,27 @@
     "pendingCount_other": "{{count}} cambios sin guardar",
     "saved": "Configuración guardada.",
     "restartPending": "Guardado. Esto toma efecto tras reiniciar: {{keys}}",
-    "masterKeyMissing": "No hay MASTER_KEY configurada, así que no se pueden guardar secretos. Definila en el entorno antes de guardar una credencial."
+    "masterKeyMissing": "No hay MASTER_KEY configurada, así que no se pueden guardar secretos. Definila en el entorno antes de guardar una credencial.",
+    "sourceDatabase": "Definido acá",
+    "sourceEnvironment": "Del entorno",
+    "sourceDefault": "Por defecto",
+    "sourceUnset": "Sin definir",
+    "importFromEnvironment": "Importar del entorno",
+    "importRunning": "Importando…",
+    "importResult": "Se importaron {{imported}} valores; {{skipped}} ya tenían valor, {{failed}} fallaron.",
+    "group": {
+      "Database": "Base de datos",
+      "Jira": "Jira",
+      "Integrations": "Integraciones",
+      "Quick actions": "Acciones rápidas",
+      "Sync": "Sincronización",
+      "Authentication": "Autenticación",
+      "Bootstrap": "Arranque"
+    },
+    "noChanges": "Sin cambios para guardar",
+    "settingsTitle": "Configuración",
+    "settingsSubtitle": "Los detalles del proyecto y la configuración de runtime que usa la aplicación.",
+    "projectSection": "Detalles del proyecto",
+    "projectSectionHint": "Nombre, URL y categoría que se muestran en el tablero."
   }
 }

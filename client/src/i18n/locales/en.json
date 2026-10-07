@@ -20,8 +20,7 @@
   },
   "sidebar": {
     "kanbanBoard": "Kanban Board",
-    "externalAssignments": "External Assignments",
-    "projectSettings": "Project settings",
+    "projectSettings": "Settings",
     "quickActions": "Quick actions"
   },
   "quickActions": {
@@ -138,7 +137,11 @@
     "selectAtLeastOneProject": "Select at least one project",
     "allProjects": "All Projects",
     "filterByProject": "Filter by Project",
-    "selectProjects": "Select projects..."
+    "selectProjects": "Select projects...",
+    "showingProjects": "Showing {{selected}} of {{total}} projects",
+    "showAllProjects": "Show all",
+    "syncNow": "Sync now",
+    "syncing": "Syncing…"
   },
   "issue": {
     "createIssue": "Create issue",
@@ -208,6 +211,27 @@
     "pendingCount_other": "{{count}} unsaved changes",
     "saved": "Configuration saved.",
     "restartPending": "Saved. These take effect after a restart: {{keys}}",
-    "masterKeyMissing": "No MASTER_KEY is configured, so secrets cannot be stored. Set it in the environment before saving any credential."
+    "masterKeyMissing": "No MASTER_KEY is configured, so secrets cannot be stored. Set it in the environment before saving any credential.",
+    "sourceDatabase": "Set here",
+    "sourceEnvironment": "From environment",
+    "sourceDefault": "Default",
+    "sourceUnset": "Not set",
+    "importFromEnvironment": "Import from environment",
+    "importRunning": "Importing…",
+    "importResult": "Imported {{imported}} values; {{skipped}} already had a value, {{failed}} failed.",
+    "group": {
+      "Database": "Database",
+      "Jira": "Jira",
+      "Integrations": "Integrations",
+      "Quick actions": "Quick actions",
+      "Sync": "Sync",
+      "Authentication": "Authentication",
+      "Bootstrap": "Bootstrap"
+    },
+    "noChanges": "No changes to save",
+    "settingsTitle": "Settings",
+    "settingsSubtitle": "Project details and the runtime configuration the application uses.",
+    "projectSection": "Project details",
+    "projectSectionHint": "Name, URL and category shown on the board."
   }
 }

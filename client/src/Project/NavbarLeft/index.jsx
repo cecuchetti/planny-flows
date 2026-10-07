@@ -1,10 +1,8 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 
 import { Icon, AboutTooltip } from 'shared/components';
-import useCurrentUser from 'shared/hooks/currentUser';
 
 import {
   NavLeft,
@@ -24,7 +22,6 @@ const propTypes = {
 
 const ProjectNavbarLeft = ({ issueSearchModalOpen, issueCreateModalOpen }) => {
   const { t, i18n } = useTranslation();
-  const { isAdmin } = useCurrentUser();
 
   return (
     <NavLeft>
@@ -51,13 +48,6 @@ const ProjectNavbarLeft = ({ issueSearchModalOpen, issueCreateModalOpen }) => {
         <Icon type="plus" size={27} />
         <ItemText>{t('nav.createIssue')}</ItemText>
       </Item>
-
-      {isAdmin && (
-        <Item as={Link} to="/configuration" aria-label={t('configuration.title')}>
-          <Icon type="settings" size={22} top={1} left={3} />
-          <ItemText>{t('configuration.title')}</ItemText>
-        </Item>
-      )}
 
       <Bottom>
         <LangSwitcher>

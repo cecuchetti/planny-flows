@@ -1,4 +1,5 @@
 export { default as AboutTooltip } from './AboutTooltip';
+export { default as Accordion } from './Accordion';
 export { default as Avatar } from './Avatar';
 export { default as Button } from './Button';
 export { default as Breadcrumbs } from './Breadcrumbs';
