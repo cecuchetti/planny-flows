@@ -11,7 +11,9 @@
     "githubRepo": "Github Repo",
     "saveChanges": "Save changes",
     "name": "Name",
-    "url": "URL"
+    "url": "URL",
+    "loans": "Loans",
+    "borrowers": "Borrowers"
   },
   "nav": {
     "searchIssues": "Search issues",

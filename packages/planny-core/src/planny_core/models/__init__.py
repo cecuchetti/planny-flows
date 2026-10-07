@@ -14,6 +14,7 @@ from sqlalchemy import Column, ForeignKey, Integer, Table
 
 from planny_core.db.base import Base
 from planny_core.models.app_setting import AppSetting
+from planny_core.models.borrower import Borrower
 from planny_core.models.comment import Comment
 from planny_core.models.daily_hours import DailyHours
 from planny_core.models.external_hours_daily import ExternalHoursDaily
@@ -38,6 +39,7 @@ user_projects = Table(
 
 __all__ = [
     "AppSetting",
+    "Borrower",
     "Base",
     "Comment",
     "DailyHours",

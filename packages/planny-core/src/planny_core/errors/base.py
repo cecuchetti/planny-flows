@@ -79,9 +79,9 @@ class RouteNotFoundError(AppError):
 class EntityNotFoundError(AppError):
     """Raised when a requested entity does not exist in the database."""
 
-    def __init__(self, entity_name: str) -> None:
+    def __init__(self, entity_name: str, message: str | None = None) -> None:
         super().__init__(
-            message=f"{entity_name} not found.",
+            message=message or f"{entity_name} not found.",
             code=ErrorCode.ENTITY_NOT_FOUND,
             status_code=404,
         )
@@ -90,9 +90,11 @@ class EntityNotFoundError(AppError):
 class BadUserInputError(AppError):
     """Raised when the client sends invalid data."""
 
-    def __init__(self, error_data: dict[str, object]) -> None:
+    def __init__(
+        self, error_data: dict[str, object], message: str = "There were validation errors."
+    ) -> None:
         super().__init__(
-            message="There were validation errors.",
+            message=message,
             code=ErrorCode.BAD_USER_INPUT,
             status_code=400,
             data=error_data,

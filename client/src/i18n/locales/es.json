@@ -11,7 +11,9 @@
     "githubRepo": "Repositorio en Github",
     "saveChanges": "Guardar cambios",
     "name": "Nombre",
-    "url": "URL"
+    "url": "URL",
+    "loans": "Préstamos",
+    "borrowers": "Personas"
   },
   "nav": {
     "searchIssues": "Buscar issues",

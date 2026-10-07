@@ -5,6 +5,7 @@ import { navigationRef } from 'shared/utils/navigationRef';
 import PageLoader from 'shared/components/PageLoader';
 
 const Project = lazy(() => import('Project'));
+const Loans = lazy(() => import('Loans'));
 const Authenticate = lazy(() => import('Auth/Authenticate'));
 const PageError = lazy(() => import('shared/components/PageError'));
 
@@ -33,6 +34,7 @@ const RoutesComponent = () => (
           <Route path="/" element={<Navigate to="/project" replace />} />
           <Route path="/authenticate" element={<Authenticate />} />
           <Route path="/project/*" element={<Project />} />
+          <Route path="/loans/*" element={<Loans />} />
           <Route path="*" element={<PageError />} />
         </Routes>
       </Suspense>

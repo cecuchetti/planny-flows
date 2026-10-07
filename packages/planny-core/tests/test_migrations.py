@@ -132,8 +132,18 @@ class TestSchemaFollowsTheMigrations:
 
         assert "app_setting" in Base.metadata.tables
 
+    def test_borrower_table_has_required_optional_columns(self) -> None:
+        import planny_core.models  # noqa: F401 - registers every table
+        from planny_core.db.base import Base
+
+        columns = Base.metadata.tables["borrower"].columns
+        assert {"firstName", "lastName", "email", "phone", "address", "nationalId", "notes"} <= {
+            column.name for column in columns
+        }
+
     def test_some_migration_mentions_each_new_object(self) -> None:
         """Guards against adding a model and forgetting the migration."""
         sources = "\n".join(path.read_text(encoding="utf-8") for path in _migration_files())
         assert re.search(r'add_column\(\s*"user"', sources), "user.role migration is missing"
         assert "create_table(\n        \"app_setting\"" in sources or "app_setting" in sources
+        assert 'create_table(\n        "borrower"' in sources or '"borrower"' in sources
