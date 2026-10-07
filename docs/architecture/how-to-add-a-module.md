@@ -150,6 +150,22 @@ Installing the package is then the entire integration step.
 MODULES_PACKAGES=["my_project.modules"]
 ```
 
+### Leaving a module out of a deployment
+
+Installing the package is the only thing that registers its domains, so shipping without
+them means not installing them — there is no registry to edit, no flag to flip and no
+import to guard. The distribution stays an ordinary dependency of the project that wants
+it; a deployment that does not can drop it from that manifest, or keep the manifest and
+exclude it at sync time:
+
+```bash
+uv sync --no-install-package my-project
+```
+
+That applies to the whole distribution, so keep each optional domain in its own package
+rather than grouping unrelated ones together. Models and their migrations are a separate
+concern and stay with the kernel, as `planny-jira` does.
+
 ---
 
 ## 6. Configuration

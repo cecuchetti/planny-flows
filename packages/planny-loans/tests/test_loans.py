@@ -12,12 +12,11 @@ from datetime import date
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from planny_api.dependencies import get_db
+from planny_api.main import create_app
 from planny_core.database import Base
 from planny_core.models import Borrower, Loan
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-
-from planny_api.dependencies import get_db
-from planny_api.main import create_app
 
 
 @pytest.fixture

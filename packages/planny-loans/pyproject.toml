@@ -1,0 +1,43 @@
+[project]
+name = "planny-loans"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "planny-core",
+    "planny-api",
+    "fastapi>=0.115",
+]
+
+[project.entry-points."planny.modules"]
+planny_loans = "planny_loans.modules"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/planny_loans"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unused_ignores = true
+exclude = [
+    "tests/",
+]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+ignore_errors = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"

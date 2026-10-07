@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query
+from planny_api.dependencies import get_db
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from planny_api.dependencies import get_db
-from planny_api.modules.borrowers import repository, service
-from planny_api.modules.borrowers.schemas import BorrowerRequest
-from planny_api.modules.borrowers.serializers import borrower_to_dict
+from planny_loans.borrowers import repository, service
+from planny_loans.borrowers.schemas import BorrowerRequest
+from planny_loans.borrowers.serializers import borrower_to_dict
 
 router = APIRouter(prefix="/borrowers", tags=["borrowers"])
 

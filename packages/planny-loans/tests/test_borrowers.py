@@ -5,13 +5,13 @@ from unittest.mock import AsyncMock
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from planny_api.dependencies import get_db
+from planny_api.main import create_app
 from planny_core.database import Base
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from planny_api.dependencies import get_db
-from planny_api.main import create_app
-from planny_api.modules.borrowers import repository
+from planny_loans.borrowers import repository
 
 
 @pytest.fixture

@@ -19,7 +19,7 @@ from planny_core.errors import BadUserInputError, EntityNotFoundError
 from planny_core.models import Loan
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from planny_api.modules.loans import repository
+from planny_loans.loans import repository
 
 CURRENCIES = ("USD", "ARS")
 DEFAULT_CITY = "Córdoba"

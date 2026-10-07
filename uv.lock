@@ -12,6 +12,7 @@ members = [
     "planny-core",
     "planny-flows",
     "planny-jira",
+    "planny-loans",
 ]
 
 [[package]]
@@ -759,6 +760,7 @@ dependencies = [
     { name = "planny-api" },
     { name = "planny-core" },
     { name = "planny-jira" },
+    { name = "planny-loans" },
 ]
 
 [package.dev-dependencies]
@@ -777,6 +779,7 @@ requires-dist = [
     { name = "planny-api", editable = "packages/planny-api" },
     { name = "planny-core", editable = "packages/planny-core" },
     { name = "planny-jira", editable = "packages/planny-jira" },
+    { name = "planny-loans", editable = "packages/planny-loans" },
 ]
 
 [package.metadata.requires-dev]
@@ -807,6 +810,23 @@ requires-dist = [
     { name = "planny-core" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "structlog", specifier = ">=24.0" },
+]
+
+[[package]]
+name = "planny-loans"
+version = "0.1.0"
+source = { editable = "packages/planny-loans" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "planny-api" },
+    { name = "planny-core" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "planny-api" },
+    { name = "planny-core" },
 ]
 
 [[package]]

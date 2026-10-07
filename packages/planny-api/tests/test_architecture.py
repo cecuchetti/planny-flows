@@ -9,6 +9,7 @@ import order and side effects.
 from __future__ import annotations
 
 import ast
+import importlib.metadata
 from pathlib import Path
 
 import planny_core
@@ -21,6 +22,12 @@ CORE_ROOT = Path(planny_core.__file__).resolve().parent
 MODULES_DIR = API_ROOT / "modules"
 #: .../packages — the root that contains every workspace package.
 PACKAGES_DIR = CORE_ROOT.parents[2]
+
+#: The optional plugin distribution, whose domains live outside ``planny_api``.
+#: A deployment that does not install it has none of these paths on disk, so
+#: every scan over them must stay a no-op.
+PLUGIN_ROOT = PACKAGES_DIR / "planny-loans" / "src" / "planny_loans"
+PLUGIN_IMPORT = "planny_loans"
 
 
 def _imported_names(path: Path) -> set[str]:
@@ -106,6 +113,32 @@ def _module_packages() -> list[Path]:
         for path in MODULES_DIR.iterdir()
         if path.is_dir() and not path.name.startswith("_") and (path / "__init__.py").is_file()
     )
+
+
+def _plugin_domain_packages() -> list[Path]:
+    """The plugin's domain packages, or nothing when it is not installed.
+
+    ``TestModulePackages`` parametrizes over ``_module_packages()``, which only
+    reaches ``planny_api/modules``. The plugin's domains live outside it, so the
+    declarations that rule protects have to be checked separately or the move
+    would quietly drop them from the suite.
+    """
+    if not PLUGIN_ROOT.is_dir():
+        return []
+    return [
+        path
+        for path in sorted(PLUGIN_ROOT.iterdir())
+        if path.is_dir() and not path.name.startswith("_") and (path / "__init__.py").is_file()
+    ]
+
+
+def _plugin_is_installed() -> bool:
+    """Whether the optional ``planny-loans`` distribution is installed here."""
+    try:
+        importlib.metadata.version("planny-loans")
+    except importlib.metadata.PackageNotFoundError:
+        return False
+    return True
 
 
 class TestModulePackages:
@@ -256,12 +289,18 @@ class TestRouterThinness:
 
     def _routers_constructing_queries(self) -> set[str]:
         offenders: set[str] = set()
+        # The application's own domains live under planny_api/modules.
         for path in _python_files(API_ROOT):
             in_domain = "modules" in path.parts or "routers" in path.parts
             if not in_domain or path.name not in self.ROUTER_FILENAMES:
                 continue
             if _constructs_queries(path):
                 offenders.add(path.relative_to(API_ROOT).as_posix())
+        # An installed plugin's domains sit at the root of its import package
+        # rather than under a ``modules`` directory, so every router file counts.
+        for path in _python_files(PLUGIN_ROOT):
+            if path.name in self.ROUTER_FILENAMES and _constructs_queries(path):
+                offenders.add(path.relative_to(PACKAGES_DIR).as_posix())
         return offenders
 
     def test_only_known_routers_build_queries(self) -> None:
@@ -274,4 +313,68 @@ class TestRouterThinness:
         assert not (self.KNOWN_DEBT - offenders), (
             "debt registry is stale: these routers no longer build queries, "
             f"remove them from KNOWN_DEBT: {sorted(self.KNOWN_DEBT - offenders)}"
+        )
+
+
+class TestOptionalPluginBoundary:
+    """P6 — the plugin is optional, so the application must not import it.
+
+    ``planny-loans`` ships ``borrowers`` and ``loans`` and is discovered through
+    the ``planny.modules`` entry point installed with the distribution. A
+    deployment that omits the package must boot unchanged, which only holds
+    while nothing under ``planny_api`` reaches for it.
+    """
+
+    def test_the_application_does_not_import_the_plugin(self) -> None:
+        offenders = [
+            path.relative_to(API_ROOT).as_posix()
+            for path in _python_files(API_ROOT)
+            if any(
+                name == PLUGIN_IMPORT or name.startswith(f"{PLUGIN_IMPORT}.")
+                for name in _imported_names(path)
+            )
+        ]
+        assert not offenders, (
+            "planny_api must not import the optional plugin; it is discovered "
+            f"through the {PLUGIN_IMPORT!r} entry point: {offenders}"
+        )
+
+    def test_the_plugins_domains_declare_themselves(self) -> None:
+        """Keep the P1 declaration rule reaching the domains that moved out.
+
+        ``TestModulePackages.test_package_exposes_a_module_or_modules`` is
+        parametrized over ``planny_api/modules``, so it stopped covering these
+        two the moment they moved. The registry would fail loudly on a missing
+        ``MODULE``/``MODULES``, but the rule is meant to catch it here.
+        """
+        missing = [
+            path.name
+            for path in _plugin_domain_packages()
+            if not (_top_level_names(path / "__init__.py") & {"MODULE", "MODULES"})
+        ]
+        assert not missing, (
+            f"{missing} expose neither MODULE nor MODULES, so the registry "
+            "cannot discover them through the plugin's MODULES tuple"
+        )
+
+    def test_the_plugin_scans_are_not_silently_empty(self) -> None:
+        """A misplaced plugin must fail loudly instead of skipping its own rules.
+
+        Every plugin scan in this file is a no-op when the sources are not where
+        they are expected. That is right for an environment that never installs
+        the distribution, and dangerous everywhere else: a rename or a
+        restructure would quietly stop governing two whole domains, which is the
+        exact class of silent erosion this file exists to prevent. Installed
+        distribution and findable sources are the same fact in practice, so the
+        two are tied together here.
+        """
+        if not _plugin_is_installed():
+            return
+        assert PLUGIN_ROOT.is_dir(), (
+            f"{PLUGIN_IMPORT} is installed but its sources are not at {PLUGIN_ROOT}; "
+            "the plugin scans in this file are checking nothing"
+        )
+        assert _plugin_domain_packages(), (
+            f"{PLUGIN_ROOT} holds no domain packages; "
+            "the plugin scans in this file are checking nothing"
         )

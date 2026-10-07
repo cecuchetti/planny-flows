@@ -4,7 +4,7 @@ from planny_core.errors import BadUserInputError, ConflictError, EntityNotFoundE
 from planny_core.models import Borrower
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from planny_api.modules.borrowers import repository
+from planny_loans.borrowers import repository
 
 
 def _clean(value: str | None) -> str:

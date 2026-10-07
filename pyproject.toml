@@ -6,6 +6,9 @@ dependencies = [
     "planny-core",
     "planny-jira",
     "planny-api",
+    # Optional in a deployment; a dependency here so the dev and CI
+    # environments keep it installed and every test stays meaningful.
+    "planny-loans",
 ]
 
 [tool.uv.workspace]
@@ -26,6 +29,7 @@ dev-dependencies = [
 planny-api = { workspace = true }
 planny-jira = { workspace = true }
 planny-core = { workspace = true }
+planny-loans = { workspace = true }
 
 [tool.mypy]
 python_version = "3.12"
