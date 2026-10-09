@@ -1,6 +1,7 @@
 const path = require('path');
 const webpack = require('webpack');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+const { loansEnabled } = require('./webpack.flags');
 
 module.exports = {
   mode: 'development',
@@ -58,6 +59,7 @@ module.exports = {
       'process.env.REACT_APP_JIRA_BASE_URL': JSON.stringify(
         process.env.REACT_APP_JIRA_BASE_URL || '',
       ),
+      'process.env.REACT_APP_ENABLED_LOANS': JSON.stringify(loansEnabled ? 'true' : 'false'),
     }),
     new HtmlWebpackPlugin({
       template: path.join(__dirname, 'src/index.html'),

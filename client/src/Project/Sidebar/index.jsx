@@ -3,6 +3,8 @@ import PropTypes from 'prop-types';
 import { useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
+import { LOANS_ENABLED } from 'shared/utils/loansFlag';
+
 import {
   Sidebar,
   NavSection,
@@ -40,7 +42,16 @@ const NAV_ITEMS = [
   },
 ];
 
-const QUICK_ACTIONS_ITEMS = [
+/*
+ * Quick actions is always present; Loans only when it was built in. With the
+ * flag off the entry is not rendered at all, so nothing points at a route that
+ * is not registered.
+ *
+ * `absolute` marks a path that lives outside the project's URL space. The
+ * project items are relative to `/project`; `/loans` is a top-level route of
+ * its own, so it must not be prefixed.
+ */
+const MORE_ITEMS = [
   {
     key: 'quick-actions',
     labelKey: 'sidebar.quickActions',
@@ -48,6 +59,18 @@ const QUICK_ACTIONS_ITEMS = [
     icon: '🔧',
     bg: '#059669',
   },
+  ...(LOANS_ENABLED
+    ? [
+        {
+          key: 'loans',
+          labelKey: 'common.loans',
+          path: '/loans',
+          icon: '💸',
+          bg: '#7c3aed',
+          absolute: true,
+        },
+      ]
+    : []),
 ];
 
 const DISABLED_ITEMS = [
@@ -61,9 +84,11 @@ const ProjectSidebar = ({ project: _project, onNavClick, isMobile }) => {
   const { t } = useTranslation();
   const basePath = '/project';
 
-  const isActiveLink = (itemPath) => {
-    const [pathPart, queryString] = itemPath.split('?');
-    const fullPath = `${basePath}${pathPart}`;
+  const itemPath = (item) => (item.absolute ? item.path : `${basePath}${item.path}`);
+
+  const isActiveLink = (item) => {
+    const [pathPart, queryString] = item.path.split('?');
+    const fullPath = item.absolute ? pathPart : `${basePath}${pathPart}`;
     const pathMatches =
       location.pathname === fullPath || location.pathname.startsWith(`${fullPath}/`);
 
@@ -71,7 +96,7 @@ const ProjectSidebar = ({ project: _project, onNavClick, isMobile }) => {
       // Item has a query-param requirement
       return pathMatches && location.search === `?${queryString}`;
     }
-    if (itemPath === '/board') {
+    if (item.path === '/board') {
       // The board with no filter and the board with an explicit "all" are the
       // same view, so both keep this item highlighted.
       const filter = new URLSearchParams(location.search).get('filter');
@@ -96,11 +121,11 @@ const ProjectSidebar = ({ project: _project, onNavClick, isMobile }) => {
         <SectionLabel>Principal</SectionLabel>
 
         {NAV_ITEMS.map((item) => {
-          const isActive = isActiveLink(item.path);
+          const isActive = isActiveLink(item);
           return (
             <LinkItem
               key={item.key}
-              to={`${basePath}${item.path}`}
+              to={itemPath(item)}
               className={isActive ? 'active' : ''}
               onClick={onNavClick}
             >
@@ -113,8 +138,13 @@ const ProjectSidebar = ({ project: _project, onNavClick, isMobile }) => {
         <Divider />
         <SectionLabel>Más</SectionLabel>
 
-        {QUICK_ACTIONS_ITEMS.map((item) => (
-          <LinkItem key={item.key} to={`${basePath}${item.path}`} onClick={onNavClick}>
+        {MORE_ITEMS.map((item) => (
+          <LinkItem
+            key={item.key}
+            to={itemPath(item)}
+            className={isActiveLink(item) ? 'active' : ''}
+            onClick={onNavClick}
+          >
             <NavIcon $bg={item.bg}>{item.icon}</NavIcon>
             <LinkText>{t(item.labelKey)}</LinkText>
           </LinkItem>

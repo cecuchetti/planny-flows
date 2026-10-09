@@ -3,6 +3,7 @@ const webpack = require('webpack');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const CssMinimizerPlugin = require('css-minimizer-webpack-plugin');
+const { loansEnabled } = require('./webpack.flags');
 
 module.exports = {
   mode: 'production',
@@ -19,6 +20,12 @@ module.exports = {
   },
   cache: {
     type: 'filesystem',
+    /*
+     * The filesystem cache is not invalidated by the environment, so a warm
+     * cache served the enabled graph into a build that asked for it disabled —
+     * a silent failure. Including the flag makes both directions correct.
+     */
+    version: `${loansEnabled}`,
     buildDependencies: {
       config: [__filename],
     },
@@ -56,6 +63,16 @@ module.exports = {
   resolve: {
     modules: [path.join(__dirname, 'src'), 'node_modules'],
     extensions: ['.js', '.jsx', '.css'],
+    /*
+     * This is what actually removes the feature's code. With `Loans` mapped to
+     * webpack's empty module, the specifier never enters the module graph, so
+     * the chunk disappears instead of shipping unused. Gating the lazy import
+     * on a constant would keep it: webpack registers the `import()` before the
+     * constant is folded.
+     */
+    alias: {
+      ...(loansEnabled ? {} : { Loans: false }),
+    },
   },
   optimization: {
     runtimeChunk: 'single',
@@ -120,9 +137,8 @@ module.exports = {
         REACT_APP_DEFAULT_PROJECT_ROUTE: JSON.stringify(
           process.env.REACT_APP_DEFAULT_PROJECT_ROUTE || 'board',
         ),
-        REACT_APP_JIRA_BASE_URL: JSON.stringify(
-          process.env.REACT_APP_JIRA_BASE_URL || '',
-        ),
+        REACT_APP_JIRA_BASE_URL: JSON.stringify(process.env.REACT_APP_JIRA_BASE_URL || ''),
+        REACT_APP_ENABLED_LOANS: JSON.stringify(loansEnabled ? 'true' : 'false'),
       },
     }),
     new webpack.IgnorePlugin({ resourceRegExp: /^\.\/locale$/, contextRegExp: /moment$/ }),
