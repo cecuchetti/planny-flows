@@ -25,16 +25,44 @@ export const amountWithCurrency = (amount, currency) => {
 };
 
 /**
- * The derived pending balance: amount minus advance-paid.
+ * The derived pending balance: amount minus advance-paid minus the payments.
  *
- * Payments are not part of this stage; when they arrive they add their own
- * term here and every caller follows.
+ * `paymentsTotal` is an optional third term so the new-loan form (which has no
+ * payments yet) can call this without one. In edit mode the API's own
+ * `pendingBalance` is already net of every payment, so the preview must be built
+ * from that figure rather than from this function — passing the loaded payments
+ * here would subtract them twice.
  */
-export const pendingBalancePreview = (amount, advancePaid) => {
+export const pendingBalancePreview = (amount, advancePaid, paymentsTotal = 0) => {
   const base = toAmount(amount);
   if (base === null) return null;
   const advance = toAmount(advancePaid) || 0;
-  return roundMoney(base - advance);
+  const collected = toAmount(paymentsTotal) || 0;
+  return roundMoney(base - advance - collected);
+};
+
+/** Everything collected on a loan, from the payments the history returned. */
+export const paymentsTotal = (payments) => {
+  if (!Array.isArray(payments)) return 0;
+  return roundMoney(
+    payments.reduce((total, payment) => total + (toAmount(payment?.amount) || 0), 0),
+  );
+};
+
+/**
+ * Everything collected on a loan, recovered from the server's own figures.
+ *
+ * The API's `pendingBalance` is `amount - advancePaid - payments`, so solving
+ * for the payments term gives the collected total even when the operator has
+ * unsaved edits in the amount field — which is why it must not be recomputed
+ * from the stored amount.
+ */
+export const collectedFromLoan = (loan) => {
+  if (!loan) return 0;
+  const amount = toAmount(loan.amount) || 0;
+  const advance = toAmount(loan.advancePaid) || 0;
+  const balance = toAmount(loan.pendingBalance) || 0;
+  return roundMoney(Math.max(amount - advance - balance, 0));
 };
 
 /** The zero-padded five-digit loan number, kept as text so `00001` survives. */

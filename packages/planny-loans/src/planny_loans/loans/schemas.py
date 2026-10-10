@@ -22,3 +22,16 @@ class LoanRequest(BaseModel):
     city: object = None
     advance_paid: object = Field(default=None, alias="advancePaid")
     installment_amount: object = Field(default=None, alias="installmentAmount")
+
+
+class PaymentRequest(BaseModel):
+    """A payment payload: the amount, and nothing else.
+
+    The date is set by the server (FR10) and the snapshot is derived, so neither
+    is accepted here even if a client sends one. Like ``LoanRequest``, the field
+    is permissive on purpose: the service raises the catalogued
+    ``BAD_USER_INPUT`` with a Spanish message rather than FastAPI's ``422``.
+    """
+
+    model_config = ConfigDict(populate_by_name=True, extra="ignore")
+    amount: object = None

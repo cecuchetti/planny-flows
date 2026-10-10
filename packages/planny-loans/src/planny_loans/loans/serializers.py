@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from planny_core.models import Loan
+from planny_core.models import Loan, Payment
 
 
 def padded_number(number: int) -> str:
@@ -36,4 +36,37 @@ def loan_to_dict(loan: Loan, pending_balance: Decimal) -> dict[str, object]:
         "lender": loan.lender,
         "city": loan.city,
         "createdAt": loan.createdAt.isoformat(),
+    }
+
+
+def payment_to_dict(payment: Payment) -> dict[str, object]:
+    """One payment and the snapshot it was frozen with.
+
+    ``paymentsHistory`` is passed through as stored — the service froze it with
+    the single ``history_entry`` builder, so re-deriving it here would be a
+    second builder and would silently drop whatever it did not think to copy.
+
+    The one normalisation is the amount's type. Rows written by this build store
+    the two-decimal string ``history_entry`` produces, but a row written earlier
+    (or migrated in) may hold a bare JSON number, and a reader that echoed that
+    back would hand the client a shape no other payment has.
+    """
+    return {
+        "id": payment.id,
+        "loanId": payment.loan_id,
+        "amount": money(payment.amount),
+        "date": payment.date.isoformat(),
+        "createdAt": payment.createdAt.isoformat(),
+        "snapshot": {
+            "pendingBalance": money(payment.pendingBalanceAtPayment),
+            "totalPaid": money(payment.totalPaidAtPayment),
+            "advancePaid": money(payment.advancePaidAtPayment),
+            "paymentsHistory": [
+                {
+                    **entry,
+                    "amount": f"{Decimal(str(entry['amount'])):.2f}",
+                }
+                for entry in payment.paymentsHistoryAtPayment
+            ],
+        },
     }

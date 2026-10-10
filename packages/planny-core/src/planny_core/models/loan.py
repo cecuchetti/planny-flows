@@ -24,6 +24,7 @@ from planny_core.db.base import Base
 
 if TYPE_CHECKING:
     from planny_core.models.borrower import Borrower
+    from planny_core.models.payment import Payment
 
 
 class Loan(Base):
@@ -52,6 +53,14 @@ class Loan(Base):
     # ``joined`` so listing loans with their borrower stays a single query.
     borrower: Mapped[Borrower] = relationship(
         "Borrower", back_populates="loans", lazy="joined"
+    )
+
+    # Left lazy: the loan list must not pay for a history it never renders, and
+    # the balance is derived from an aggregate, not from loading every row.
+    payments: Mapped[list[Payment]] = relationship(
+        "Payment",
+        back_populates="loan",
+        order_by="Payment.date, Payment.id",
     )
 
 

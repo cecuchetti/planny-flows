@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from planny_core.models import Borrower, Loan
+from decimal import Decimal
+
+from planny_core.models import Borrower, Loan, Payment
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -28,3 +30,27 @@ async def next_number(db: AsyncSession) -> int:
     """
     result = await db.execute(select(func.max(Loan.number)))
     return int(result.scalar_one() or 0) + 1
+
+
+async def list_payments(db: AsyncSession, loan_id: int) -> list[Payment]:
+    """The loan's payments, oldest first — the order a receipt reads in."""
+    query = (
+        select(Payment)
+        .where(Payment.loan_id == loan_id)
+        .order_by(Payment.date.asc(), Payment.id.asc())
+    )
+    return list((await db.execute(query)).scalars().all())
+
+
+async def sum_payments(db: AsyncSession, loan_id: int) -> Decimal:
+    """Everything collected against the loan, rounded like every other sum."""
+    result = await db.execute(
+        select(func.coalesce(func.sum(Payment.amount), 0)).where(Payment.loan_id == loan_id)
+    )
+    return Decimal(result.scalar_one())
+
+
+async def get_payment(db: AsyncSession, loan_id: int, payment_id: int) -> Payment | None:
+    """One payment, scoped to its loan so an id from another loan is a 404."""
+    query = select(Payment).where(Payment.id == payment_id, Payment.loan_id == loan_id)
+    return (await db.execute(query)).scalars().first()

@@ -1,8 +1,10 @@
 import {
   CURRENCIES,
   amountWithCurrency,
+  collectedFromLoan,
   formatDate,
   formatLoanNumber,
+  paymentsTotal,
   pendingBalancePreview,
   roundMoney,
   toAmount,
@@ -60,6 +62,36 @@ describe('pendingBalancePreview', () => {
 
   it('treats a non-numeric amount as unknown rather than zero', () => {
     expect(pendingBalancePreview('abc', '0')).toBeNull();
+  });
+
+  it('subtracts the payments term when one is given', () => {
+    expect(pendingBalancePreview('1000', '100', '250')).toBe(650);
+    expect(pendingBalancePreview('1000', '100')).toBe(900);
+  });
+});
+
+describe('paymentsTotal', () => {
+  it('adds every registered payment', () => {
+    expect(paymentsTotal([{ amount: '250.00' }, { amount: '25.50' }])).toBe(275.5);
+  });
+
+  it('is zero without payments', () => {
+    expect(paymentsTotal([])).toBe(0);
+    expect(paymentsTotal(undefined)).toBe(0);
+  });
+});
+
+describe('collectedFromLoan', () => {
+  it('recovers the collected total from the server balance', () => {
+    expect(
+      collectedFromLoan({ amount: '1000.00', advancePaid: '100.00', pendingBalance: '650.00' }),
+    ).toBe(250);
+  });
+
+  it('is zero when nothing was collected', () => {
+    expect(
+      collectedFromLoan({ amount: '1000.00', advancePaid: '0.00', pendingBalance: '1000.00' }),
+    ).toBe(0);
   });
 });
 

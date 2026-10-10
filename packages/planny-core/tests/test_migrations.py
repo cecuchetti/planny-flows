@@ -162,6 +162,25 @@ class TestSchemaFollowsTheMigrations:
         assert columns["amount"].type.precision == 14
         assert columns["amount"].type.scale == 2
 
+    def test_payment_table_has_its_snapshot_columns(self) -> None:
+        import planny_core.models  # noqa: F401 - registers every table
+        from planny_core.db.base import Base
+
+        columns = Base.metadata.tables["payment"].columns
+        assert {
+            "loan_id",
+            "amount",
+            "date",
+            "pendingBalanceAtPayment",
+            "totalPaidAtPayment",
+            "advancePaidAtPayment",
+            "paymentsHistoryAtPayment",
+        } <= {column.name for column in columns}
+        assert columns["amount"].type.precision == 14
+        assert columns["amount"].type.scale == 2
+        assert not columns["pendingBalanceAtPayment"].nullable
+        assert not columns["paymentsHistoryAtPayment"].nullable
+
     def test_some_migration_mentions_each_new_object(self) -> None:
         """Guards against adding a model and forgetting the migration."""
         sources = "\n".join(path.read_text(encoding="utf-8") for path in _migration_files())
@@ -169,3 +188,4 @@ class TestSchemaFollowsTheMigrations:
         assert "create_table(\n        \"app_setting\"" in sources or "app_setting" in sources
         assert 'create_table(\n        "borrower"' in sources or '"borrower"' in sources
         assert 'create_table(\n        "loan"' in sources or '"loan"' in sources
+        assert 'create_table(\n        "payment"' in sources or '"payment"' in sources

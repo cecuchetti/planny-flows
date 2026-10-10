@@ -57,6 +57,28 @@ export const loanFormCopy = {
   emptyPicker: 'Elegí una persona para continuar.',
 };
 
+export const paymentsCopy = {
+  title: 'Pagos',
+  amount: 'Monto del pago',
+  amountPlaceholder: '0.00',
+  register: 'Registrar pago',
+  registering: 'Registrando…',
+  registered: 'Pago registrado.',
+  removed: 'Pago eliminado.',
+  loading: 'Cargando pagos…',
+  loadError: 'No pudimos cargar los pagos. Intentá de nuevo.',
+  retry: 'Reintentar',
+  empty: 'Todavía no hay pagos registrados.',
+  total: 'Total cobrado',
+  history: 'Historial de pagos',
+  date: 'Fecha',
+  remove: 'Eliminar',
+  removeTitle: '¿Eliminar pago?',
+  removeMessage: 'Se elimina el pago y el saldo pendiente se recalcula. No se puede deshacer.',
+  currencyLocked:
+    'No podés cambiar la moneda: el préstamo ya tiene pago adelantado o pagos registrados.',
+};
+
 export const loansListCopy = {
   title: 'Préstamos',
   empty: 'Todavía no hay préstamos. Cargá el primero.',
@@ -66,7 +88,7 @@ export const loansListCopy = {
   edit: 'Editar',
   remove: 'Eliminar',
   removeTitle: '¿Eliminar préstamo?',
-  removeMessage: 'Se elimina el préstamo. No se puede deshacer.',
+  removeMessage: 'Se elimina el préstamo y sus pagos asociados. No se puede deshacer.',
   borrower: 'Persona',
   balance: 'Saldo pendiente',
   installment: 'Cuota',

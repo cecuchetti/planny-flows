@@ -1,7 +1,7 @@
 """SQLAlchemy 2.0 models mirroring TypeORM entities exactly.
 
-All 9 models plus the ``issue_users_user`` and ``user_projects`` junction
-tables are exported here. Import directly from this module:
+Every model plus the ``issue_users_user`` and ``user_projects`` junction tables
+are exported here. Import directly from this module:
 
 .. code:: python
 
@@ -23,6 +23,7 @@ from planny_core.models.issue import (
     issue_users,  # noqa: F401 — register junction table
 )
 from planny_core.models.loan import Loan
+from planny_core.models.payment import Payment
 from planny_core.models.project import Project
 from planny_core.models.tempo_hours_daily import TempoHoursDaily
 from planny_core.models.user import User
@@ -47,6 +48,7 @@ __all__ = [
     "ExternalHoursDaily",
     "Issue",
     "Loan",
+    "Payment",
     "Project",
     "TempoHoursDaily",
     "User",

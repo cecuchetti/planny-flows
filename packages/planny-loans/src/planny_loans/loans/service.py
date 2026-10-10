@@ -1,23 +1,28 @@
-"""Loan business rules.
+"""Loan and payment business rules.
 
 Money is normalised through a single :func:`_money` helper so rounding is one
 decision, not one per field. ``pendingBalance`` is never stored: it is derived
-as ``amount - advancePaid`` here (payments add their sum in a later epic) and
-the serializer exposes it.
+as ``amount - advancePaid - Σ payments`` by :func:`pending_balance`, which is the
+one place every balance-affecting path goes through.
 
 The API never accepts or edits ``number``; the service assigns it from
 ``max(number) + 1`` so a backfilled legacy maximum continues the sequence.
+
+Each payment stores its own immutable snapshot rather than recomputing it from
+sibling rows: deleting a later payment must not rewrite a receipt that was
+already handed over.
 """
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from planny_core.errors import BadUserInputError, EntityNotFoundError
-from planny_core.models import Loan
+from planny_core.models import Loan, Payment
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.attributes import flag_modified
 
 from planny_loans.loans import repository
 
@@ -26,6 +31,7 @@ DEFAULT_CITY = "Córdoba"
 DEFAULT_CURRENCY = "USD"
 
 _CENT = Decimal("0.01")
+_ZERO = Decimal("0.00")
 _MISSING = object()
 """Sentinel distinguishing "field omitted" from "field explicitly cleared"."""
 
@@ -62,10 +68,40 @@ def _date(value: object, field: str, errors: dict[str, str]) -> date | None:
         return None
 
 
-def pending_balance(loan: Loan) -> Decimal:
-    """The derived balance: amount minus advance-paid."""
-    advance = loan.advancePaid or Decimal("0.00")
-    return _money((loan.amount or Decimal("0.00")) - advance)
+def history_entry(amount: Decimal, payment_id: int | None = None) -> dict[str, object]:
+    """The canonical payment-history entry.
+
+    One builder, used for the entry a payment freezes into its own
+    ``paymentsHistoryAtPayment`` and for the entries the API returns, so the
+    stored snapshot and the response shape cannot drift apart. The amount is a
+    two-decimal string: it is what the API returns and what the JSON column
+    stores, so the frozen snapshot round-trips without a precision question.
+    """
+    return {"id": payment_id, "amount": f"{_money(amount):.2f}"}
+
+
+def payments_history(payments: list[Payment]) -> list[dict[str, object]]:
+    """The canonical history of a list of payments, oldest first."""
+    return [history_entry(payment.amount, payment.id) for payment in payments]
+
+
+def _balance_of(loan: Loan, collected: Decimal) -> Decimal:
+    advance = loan.advancePaid or _ZERO
+    return _money((loan.amount or _ZERO) - advance - collected)
+
+
+async def pending_balance(db: AsyncSession, loan: Loan) -> Decimal:
+    """The derived balance: ``amount - advancePaid - Σ payments``.
+
+    **This is the single recalculation point.** Every path that can move a
+    balance — loan create, loan update, payment create, payment delete — ends
+    here, and no path stores the result. Epic 3's status evaluation (``closed``
+    with ``closedAt`` when the balance reaches zero, auto-reopen when it rises
+    again) attaches here, so it sees each of those events exactly once.
+    """
+    # A loan being created has no id yet, and therefore no payments.
+    collected = await repository.sum_payments(db, loan.id) if loan.id is not None else _ZERO
+    return _balance_of(loan, collected)
 
 
 def _required(value: object, field: str, label: str, errors: dict[str, str]) -> str | None:
@@ -80,12 +116,15 @@ def _common_rules(
     values: dict[str, Any],
     current: Loan | None,
     errors: dict[str, str],
+    collected: Decimal,
 ) -> dict[str, Any]:
     """Validate one loan payload and return its resolved field values.
 
     ``current`` is ``None`` on create and the stored loan on update, so a
     partial update is validated against the values it will actually leave
     behind (an amount lower than an existing advance-paid is refused).
+    ``collected`` is everything already paid against the loan, which the derived
+    balance subtracts too.
     """
 
     def _effective(field: str) -> object:
@@ -115,7 +154,7 @@ def _common_rules(
         errors["currency"] = "Elegí una moneda válida (USD o ARS)."
 
     supplied = set(values)
-    resolved_advance = advance if advance is not None else Decimal("0.00")
+    resolved_advance = advance if advance is not None else _ZERO
     if "advancePaid" not in errors:
         if resolved_advance < 0:
             errors["advancePaid"] = "El pago adelantado no puede ser negativo."
@@ -129,6 +168,17 @@ def _common_rules(
             else:
                 errors["advancePaid"] = "El pago adelantado no puede superar el monto del préstamo."
 
+    # The mirror guard for what was already collected. Without it an edit can
+    # drive the derived balance below zero and leave it stuck there: the next
+    # payment is then larger than the outstanding balance and is refused, so
+    # nothing can ever pay the negative balance down.
+    if collected > 0 and "amount" not in errors and amount is not None:
+        if amount < collected and not (resolved_advance > amount):
+            # ``advancePaid <= amount`` already holds on this branch, so the
+            # shortfall can only come from the amount — including when the
+            # payload carried both fields and only the amount moved.
+            errors["amount"] = "El monto no puede ser menor a lo ya cobrado del préstamo."
+
     if "installmentAmount" not in errors and installment is not None and installment < 0:
         errors["installmentAmount"] = "La cuota no puede ser negativa."
 
@@ -138,9 +188,17 @@ def _common_rules(
     elif amount <= 0:
         errors["amount"] = "El monto debe ser mayor a cero."
 
-    if current is not None and currency != current.currency and resolved_advance > 0:
+    # FR4: currency is editable only while there is no advance-paid and no
+    # payment. Either one would leave money of one currency inside a loan of
+    # another.
+    if (
+        current is not None
+        and currency != current.currency
+        and (resolved_advance > 0 or collected > 0)
+    ):
         errors["currency"] = (
-            "No podés cambiar la moneda de un préstamo con pago adelantado registrado."
+            "No podés cambiar la moneda de un préstamo con pago adelantado "
+            "o pagos registrados."
         )
 
     if errors:
@@ -179,8 +237,15 @@ def _apply(loan: Loan, resolved: dict[str, Any]) -> None:
     loan.city = resolved["city"]
 
 
+async def _require_loan(db: AsyncSession, loan_id: int) -> Loan:
+    loan = await repository.get(db, loan_id)
+    if loan is None:
+        raise EntityNotFoundError("Loan", message="No encontramos ese préstamo.")
+    return loan
+
+
 async def create(db: AsyncSession, values: dict[str, Any]) -> Loan:
-    resolved = _common_rules(values, None, {})
+    resolved = _common_rules(values, None, {}, _ZERO)
 
     if values.get("borrowerId") is None:
         raise BadUserInputError(
@@ -201,11 +266,9 @@ async def create(db: AsyncSession, values: dict[str, Any]) -> Loan:
 
 
 async def update(db: AsyncSession, loan_id: int, values: dict[str, Any]) -> Loan:
-    loan = await repository.get(db, loan_id)
-    if loan is None:
-        raise EntityNotFoundError("Loan", message="No encontramos ese préstamo.")
+    loan = await _require_loan(db, loan_id)
 
-    resolved = _common_rules(values, loan, {})
+    resolved = _common_rules(values, loan, {}, await repository.sum_payments(db, loan_id))
 
     if values.get("borrowerId") is not None:
         borrower_key = _borrower_key(values["borrowerId"])
@@ -220,8 +283,80 @@ async def update(db: AsyncSession, loan_id: int, values: dict[str, Any]) -> Loan
 
 
 async def delete(db: AsyncSession, loan_id: int) -> None:
-    loan = await repository.get(db, loan_id)
-    if loan is None:
-        raise EntityNotFoundError("Loan", message="No encontramos ese préstamo.")
+    """Delete the loan and every payment collected against it (FR5)."""
+    loan = await _require_loan(db, loan_id)
+    # Explicit rather than left to the ORM cascade, so a backend that does not
+    # enforce the foreign key cannot leave orphan rows behind.
+    for payment in await repository.list_payments(db, loan_id):
+        await db.delete(payment)
     await db.delete(loan)
+    await db.flush()
+
+
+async def list_payments(db: AsyncSession, loan_id: int) -> list[Payment]:
+    """The loan's payments, oldest first, or a 404 if the loan is unknown."""
+    await _require_loan(db, loan_id)
+    return await repository.list_payments(db, loan_id)
+
+
+async def create_payment(db: AsyncSession, loan_id: int, values: dict[str, Any]) -> Payment:
+    """Register a payment and freeze the snapshot it will be read back from.
+
+    The amount must be positive and no larger than the true outstanding balance
+    (``amount - advancePaid - Σ payments``). The date is always the server's
+    insert time, never a client-supplied one (FR10).
+    """
+    loan = await _require_loan(db, loan_id)
+
+    payments = await repository.list_payments(db, loan_id)
+    collected = _money(sum((item.amount for item in payments), _ZERO))
+    outstanding = _balance_of(loan, collected)
+
+    errors: dict[str, str] = {}
+    amount = _decimal(values.get("amount"), "amount", errors)
+    if errors:
+        raise BadUserInputError({"fields": errors}, message="Revisá los datos del pago.")
+    if amount is None:
+        errors["amount"] = "Ingresá el monto del pago."
+    elif amount <= 0:
+        errors["amount"] = "El monto del pago debe ser mayor a cero."
+    elif amount > outstanding:
+        errors["amount"] = "El pago no puede superar el saldo pendiente."
+
+    if errors or amount is None:
+        raise BadUserInputError({"fields": errors}, message="Revisá los datos del pago.")
+
+    history = payments_history(payments)
+    entry = history_entry(amount)
+    history.append(entry)
+
+    payment = Payment(
+        loan_id=loan_id,
+        amount=amount,
+        date=datetime.utcnow(),
+        pendingBalanceAtPayment=_money(outstanding - amount),
+        totalPaidAtPayment=_money(collected + amount),
+        advancePaidAtPayment=loan.advancePaid if loan.advancePaid is not None else _ZERO,
+        paymentsHistoryAtPayment=history,
+    )
+    db.add(payment)
+    await db.flush()
+    # The snapshot is part of the frozen record, so the row's own id belongs in
+    # it — and only the row knows that id, which is why this happens after the
+    # flush. SQLAlchemy cannot see a change made *inside* a ``JSON`` column and
+    # leaves the instance clean, so the attribute has to be flagged explicitly;
+    # otherwise the mutation is never written and every later read of this row
+    # returns the ``None`` id it was inserted with.
+    if entry["id"] is None:
+        entry["id"] = payment.id
+        flag_modified(payment, "paymentsHistoryAtPayment")
+        await db.flush()
+    return payment
+
+async def delete_payment(db: AsyncSession, loan_id: int, payment_id: int) -> None:
+    """Remove one payment; the balance recomputes through the single point."""
+    payment = await repository.get_payment(db, loan_id, payment_id)
+    if payment is None:
+        raise EntityNotFoundError("Payment", message="No encontramos ese pago.")
+    await db.delete(payment)
     await db.flush()
