@@ -23,7 +23,8 @@
   "sidebar": {
     "kanbanBoard": "Tablero Kanban",
     "projectSettings": "Configuración",
-    "quickActions": "Atajos"
+    "quickActions": "Atajos",
+    "borrowers": "Personas"
   },
   "quickActions": {
     "pageTitle": "Atajos",

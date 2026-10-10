@@ -1,11 +1,17 @@
 /* eslint-disable react/require-default-props */
-import React, { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
+import React, { Fragment, useCallback, useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
+import { useFormikContext } from 'formik';
+
 import Button from 'shared/components/Button';
 import ConfirmModal from 'shared/components/ConfirmModal';
+import Form from 'shared/components/Form';
+import Input from 'shared/components/Input';
+import PageLoader from 'shared/components/PageLoader';
 import api from 'shared/utils/api';
 import toast from 'shared/utils/toast';
+
 import BorrowerPicker from '../BorrowerPicker';
 import { loanFormCopy, paymentsCopy } from '../copy';
 import {
@@ -17,7 +23,19 @@ import {
   pendingBalancePreview,
   toAmount,
 } from '../money';
-import { ErrorText, Field, Input, Muted, Panel, Row, Select } from '../Styles';
+import {
+  CardTitle,
+  EmptyState,
+  ErrorText,
+  FieldErrorText,
+  FieldLabelText,
+  FieldShell,
+  List,
+  ListRow,
+  Muted,
+  Row,
+  Section,
+} from '../Styles';
 
 /** Today in the operator's own timezone, not UTC (`toISOString` can shift a day). */
 const today = () => {
@@ -49,11 +67,87 @@ const formFromLoan = (loan) => ({
   installmentAmount: loan.installmentAmount ?? '',
 });
 
-function LoanForm({ loanId }) {
+/*
+ * The rules stay here so the messages are the module's own Spanish copy; the
+ * focus, the border and the error slot come from `Form.Field`.
+ *
+ * A cleared number field hands back `''` — "nothing typed", not an invalid
+ * amount — so only the fields the API requires are checked, and each one is
+ * checked against exactly that empty case.
+ */
+const validateRequired = (values, names) =>
+  names.reduce((errors, name) => {
+    const value = values[name];
+    const isEmpty = value === undefined || value === null || String(value).trim() === '';
+    return isEmpty ? { ...errors, [name]: loanFormCopy.required } : errors;
+  }, {});
+
+const validateLoan = (values) => validateRequired(values, ['amount', 'date', 'concept', 'lender']);
+
+/**
+ * The currency, locked while anything was paid.
+ *
+ * `advancePaid` is a sibling in the same form, so the lock is read from Formik
+ * rather than from a parallel copy of the values. It renders the shared
+ * `Select` in its disabled state, with the reason underneath — not a second
+ * control next to it.
+ */
+function CurrencyField({ isLocked }) {
+  return (
+    <Form.Field.Select
+      name="currency"
+      label={loanFormCopy.currency}
+      options={CURRENCIES.map((item) => ({ value: item, label: item }))}
+      disabled={isLocked}
+      withClearValue={false}
+      tip={isLocked ? paymentsCopy.currencyLocked : undefined}
+    />
+  );
+}
+
+CurrencyField.propTypes = { isLocked: PropTypes.bool.isRequired };
+
+/**
+ * The payment capture, outside the loan's Formik form.
+ *
+ * A payment is a separate write with a separate submit, so it keeps its own
+ * local state and its own action. Binding it to a Formik field would have made
+ * typing an amount write a `paymentAmount` into the loan payload, and nesting a
+ * second `<form>` inside the loan form is invalid HTML.
+ */
+function PaymentAmountField({ value, onChange }) {
+  return (
+    <FieldShell data-testid="form-field:paymentAmount">
+      <FieldLabelText htmlFor="loan-payment-amount">{paymentsCopy.amount}</FieldLabelText>
+      <Input
+        id="loan-payment-amount"
+        name="paymentAmount"
+        type="number"
+        step="0.01"
+        min="0"
+        placeholder={paymentsCopy.amountPlaceholder}
+        value={value}
+        onChange={onChange}
+      />
+    </FieldShell>
+  );
+}
+
+PaymentAmountField.propTypes = {
+  value: PropTypes.string.isRequired,
+  onChange: PropTypes.func.isRequired,
+};
+
+function LoanForm({ loanId = undefined }) {
   const navigate = useNavigate();
+  const params = useParams();
+  // The route supplies the id in edit mode; the prop stays for a direct render.
+  const id = loanId ?? params.loanId ?? null;
+
   const [borrower, setBorrower] = useState(null);
-  const [form, setForm] = useState(emptyForm);
-  const [isLoading, setLoading] = useState(Boolean(loanId));
+  const [borrowerError, setBorrowerError] = useState(null);
+  const [initialForm, setInitialForm] = useState(emptyForm);
+  const [isLoading, setLoading] = useState(Boolean(id));
   const [loadError, setLoadError] = useState(null);
   const [isSaving, setSaving] = useState(false);
 
@@ -62,32 +156,33 @@ function LoanForm({ loanId }) {
   // own load state, and a failed one must not make the balance look wrong.
   const [collected, setCollected] = useState(0);
   const [payments, setPayments] = useState([]);
-  const [paymentsLoading, setPaymentsLoading] = useState(Boolean(loanId));
+  const [paymentsLoading, setPaymentsLoading] = useState(Boolean(id));
   const [paymentsError, setPaymentsError] = useState(null);
   const [paymentAmount, setPaymentAmount] = useState('');
   const [isPaying, setPaying] = useState(false);
 
   const loadLoan = useCallback(() => {
-    if (!loanId) return Promise.resolve();
-    return api.get(`/api/v1/loans/${loanId}`).then((data) => {
+    if (!id) return Promise.resolve();
+    return api.get(`/api/v1/loans/${id}`).then((data) => {
       if (!data.loan) return;
-      setForm(formFromLoan(data.loan));
+      setInitialForm(formFromLoan(data.loan));
       setBorrower(data.loan.borrower || null);
       setCollected(collectedFromLoan(data.loan));
     });
-  }, [loanId]);
+  }, [id]);
 
   const loadPayments = useCallback(() => {
-    if (!loanId) return Promise.resolve();
-    return api.get(`/api/v1/loans/${loanId}/payments`).then((data) => {
+    if (!id) return Promise.resolve();
+    return api.get(`/api/v1/loans/${id}/payments`).then((data) => {
       setPayments(data.payments || []);
     });
-  }, [loanId]);
+  }, [id]);
 
   useEffect(() => {
-    if (!loanId) {
+    if (!id) {
       setBorrower(null);
-      setForm(emptyForm());
+      setBorrowerError(null);
+      setInitialForm(emptyForm());
       setCollected(0);
       setPayments([]);
       setPaymentAmount('');
@@ -121,7 +216,7 @@ function LoanForm({ loanId }) {
     return () => {
       cancelled = true;
     };
-  }, [loanId, loadLoan, loadPayments]);
+  }, [id, loadLoan, loadPayments]);
 
   /**
    * Refresh the derived figures only, so unsaved edits survive a mutation.
@@ -134,7 +229,7 @@ function LoanForm({ loanId }) {
     () =>
       Promise.all([
         api
-          .get(`/api/v1/loans/${loanId}`)
+          .get(`/api/v1/loans/${id}`)
           .then((data) => {
             if (!data.loan) return;
             // The form itself is deliberately left alone: a payment must not
@@ -152,21 +247,13 @@ function LoanForm({ loanId }) {
       ]).catch((error) => {
         toast.error(error);
       }),
-    [loanId, loadPayments],
+    [id, loadPayments],
   );
 
-  const change = (name) => (event) => setForm({ ...form, [name]: event.target.value });
-
-  const balance = useMemo(() => {
-    if (!loanId) return pendingBalancePreview(form.amount, form.advancePaid);
-    // The payments term is applied exactly once: ``collected`` is the server's
-    // own figure, so it already covers every payment the history lists.
-    return pendingBalancePreview(form.amount, form.advancePaid, collected);
-  }, [loanId, form.amount, form.advancePaid, collected]);
-
-  // Currency is editable only while nothing has been paid: an advance or a
-  // registered payment would leave money of one currency inside another loan.
-  const currencyLocked = toAmount(form.advancePaid) > 0 || payments.length > 0;
+  const selectBorrower = (next) => {
+    setBorrower(next);
+    if (next) setBorrowerError(null);
+  };
 
   const retry = () => {
     setLoadError(null);
@@ -189,11 +276,10 @@ function LoanForm({ loanId }) {
       .finally(() => setPaymentsLoading(false));
   };
 
-  const registerPayment = (event) => {
-    event.preventDefault();
+  const registerPayment = () => {
     setPaying(true);
     api
-      .post(`/api/v1/loans/${loanId}/payments`, { amount: paymentAmount })
+      .post(`/api/v1/loans/${id}/payments`, { amount: paymentAmount })
       .then(() => {
         toast.success(paymentsCopy.registered);
         setPaymentAmount('');
@@ -205,28 +291,33 @@ function LoanForm({ loanId }) {
 
   const removePayment = (paymentId) =>
     api
-      .delete(`/api/v1/loans/${loanId}/payments/${paymentId}`)
+      .delete(`/api/v1/loans/${id}/payments/${paymentId}`)
       .then(() => {
         toast.success(paymentsCopy.removed);
         return refresh();
       })
       .catch((error) => toast.error(error));
 
-  const save = (event) => {
-    event.preventDefault();
+  /*
+   * The person is deliberately outside `values`: `Form.Field` binds a control,
+   * and the picker is a search with its own request. The loan itself is then
+   * the submitted values plus the chosen id.
+   */
+  const save = (values) => {
     if (!borrower) {
+      setBorrowerError(loanFormCopy.emptyPicker);
       toast.error({ message: loanFormCopy.emptyPicker });
       return;
     }
     setSaving(true);
-    const payload = { ...form, borrowerId: borrower.id };
-    const request = loanId
-      ? api.put(`/api/v1/loans/${loanId}`, payload)
+    const payload = { ...values, borrowerId: borrower.id };
+    const request = id
+      ? api.put(`/api/v1/loans/${id}`, payload)
       : api.post('/api/v1/loans', payload);
     request
       .then(() => {
-        toast.success(loanId ? loanFormCopy.updated : loanFormCopy.created);
-        navigate('/loans/loans');
+        toast.success(id ? loanFormCopy.updated : loanFormCopy.created);
+        navigate('/project/loans');
       })
       .catch((error) => toast.error(error))
       .finally(() => setSaving(false));
@@ -234,180 +325,202 @@ function LoanForm({ loanId }) {
 
   let paymentsContent;
   if (paymentsLoading) {
-    paymentsContent = <Muted>{paymentsCopy.loading}</Muted>;
+    paymentsContent = <EmptyState>{paymentsCopy.loading}</EmptyState>;
   } else if (paymentsError) {
     paymentsContent = (
       <div role="alert">
         <ErrorText>{paymentsError}</ErrorText>
-        <Button onClick={retryPayments}>{paymentsCopy.retry}</Button>
+        {/* Not a submit: the register form above must not be fired by the retry. */}
+        <Button type="button" onClick={retryPayments}>
+          {paymentsCopy.retry}
+        </Button>
       </div>
     );
   } else if (payments.length === 0) {
-    paymentsContent = <Muted>{paymentsCopy.empty}</Muted>;
+    paymentsContent = <EmptyState>{paymentsCopy.empty}</EmptyState>;
   } else {
     const paid = paymentsTotal(payments);
     paymentsContent = (
       <Fragment>
-        <p>
-          {paymentsCopy.total}: <strong>{amountWithCurrency(paid, form.currency)}</strong>
-        </p>
-        <h3>{paymentsCopy.history}</h3>
-        {payments.map((payment) => (
-          <Row key={payment.id}>
-            <Muted>{formatDate(payment.date)}</Muted>
-            <span>{amountWithCurrency(payment.amount, form.currency)}</span>
-            <ConfirmModal
-              variant="danger"
-              title={paymentsCopy.removeTitle}
-              message={paymentsCopy.removeMessage}
-              confirmText={paymentsCopy.remove}
-              renderLink={({ open }) => <Button onClick={open}>{paymentsCopy.remove}</Button>}
-              onConfirm={({ close }) => removePayment(payment.id).finally(close)}
-            />
-          </Row>
-        ))}
+        <EmptyState>
+          {paymentsCopy.total}: <strong>{amountWithCurrency(paid, initialForm.currency)}</strong>
+        </EmptyState>
+        <CardTitle as="h3">{paymentsCopy.history}</CardTitle>
+        <List>
+          {payments.map((payment) => (
+            <ListRow key={payment.id}>
+              <Muted>{formatDate(payment.date)}</Muted>
+              <span>{amountWithCurrency(payment.amount, initialForm.currency)}</span>
+              <ConfirmModal
+                variant="danger"
+                title={paymentsCopy.removeTitle}
+                message={paymentsCopy.removeMessage}
+                confirmText={paymentsCopy.remove}
+                renderLink={({ open }) => (
+                  <Button type="button" onClick={open}>
+                    {paymentsCopy.remove}
+                  </Button>
+                )}
+                onConfirm={({ close }) => removePayment(payment.id).finally(close)}
+              />
+            </ListRow>
+          ))}
+        </List>
       </Fragment>
     );
   }
 
   const paymentSection = (
-    <Panel>
-      <h2>{paymentsCopy.title}</h2>
-      <form onSubmit={registerPayment}>
-        <Row>
-          <Field>
-            <span>{paymentsCopy.amount}</span>
-            <Input
-              required
-              type="number"
-              step="0.01"
-              min="0"
-              name="paymentAmount"
-              placeholder={paymentsCopy.amountPlaceholder}
-              value={paymentAmount}
-              onChange={(event) => setPaymentAmount(event.target.value)}
-            />
-          </Field>
-          <Button variant="primary" isWorking={isPaying}>
-            {isPaying ? paymentsCopy.registering : paymentsCopy.register}
-          </Button>
-        </Row>
-      </form>
+    <Section>
+      <CardTitle>{paymentsCopy.title}</CardTitle>
+      {/*
+       * Nested form-shaped markup would be invalid HTML, so the payment capture
+       * is a plain row: the button handles the write itself and the loan form
+       * around it owns the only submit.
+       */}
+      <Row>
+        <PaymentAmountField value={paymentAmount} onChange={setPaymentAmount} />
+        <Button type="button" variant="primary" isWorking={isPaying} onClick={registerPayment}>
+          {isPaying ? paymentsCopy.registering : paymentsCopy.register}
+        </Button>
+      </Row>
       {paymentsContent}
-    </Panel>
+    </Section>
   );
 
-  if (isLoading) return <Panel>{loanFormCopy.loading}</Panel>;
+  if (isLoading) return <PageLoader />;
 
   if (loadError) {
     return (
-      <Panel>
+      <Section>
         <div role="alert">
           <ErrorText>{loadError}</ErrorText>
-          <Button onClick={retry}>{loanFormCopy.retry}</Button>
+          <Button type="button" onClick={retry}>
+            {loanFormCopy.retry}
+          </Button>
         </div>
-      </Panel>
+      </Section>
     );
   }
 
   return (
     <Fragment>
-      <Panel>
-        <h2>{loanId ? loanFormCopy.editTitle : loanFormCopy.createTitle}</h2>
-        <form onSubmit={save}>
-          <Field>
-            <span>{loanFormCopy.picker}</span>
-            <BorrowerPicker value={borrower} onChange={setBorrower} />
-          </Field>
-          <Row>
-            <Field>
-              <span>{loanFormCopy.amount}</span>
-              <Input
-                required
-                type="number"
-                step="0.01"
-                min="0"
+      <Section>
+        <CardTitle>{id ? loanFormCopy.editTitle : loanFormCopy.createTitle}</CardTitle>
+        <Form
+          initialValues={initialForm}
+          validate={validateLoan}
+          validateOnChange={false}
+          onSubmit={save}
+        >
+          {/*
+           * `Form.Element` is the actual <form>: `Form` only installs the
+           * Formik context. Without it the fields render but nothing submits.
+           */}
+          <Form.Element data-testid="loan-form">
+            {/* The picker is not a Formik value, so it gets the field chrome by hand. */}
+            <FieldShell data-testid="form-field:borrower">
+              <FieldLabelText htmlFor="loan-borrower-picker">{loanFormCopy.picker}</FieldLabelText>
+              <div id="loan-borrower-picker">
+                <BorrowerPicker value={borrower} onChange={selectBorrower} />
+              </div>
+              {borrowerError && <FieldErrorText role="alert">{borrowerError}</FieldErrorText>}
+            </FieldShell>
+
+            <Row>
+              <Form.Field.Input
                 name="amount"
-                value={form.amount}
-                onChange={change('amount')}
-              />
-            </Field>
-            <Fragment>
-              <Field>
-                <span>{loanFormCopy.currency}</span>
-                <Select
-                  name="currency"
-                  value={form.currency}
-                  disabled={currencyLocked}
-                  onChange={change('currency')}
-                >
-                  {CURRENCIES.map((item) => (
-                    <option key={item} value={item}>
-                      {item}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              {currencyLocked && <Muted role="note">{paymentsCopy.currencyLocked}</Muted>}
-            </Fragment>
-            <Field>
-              <span>{loanFormCopy.date}</span>
-              <Input required type="date" name="date" value={form.date} onChange={change('date')} />
-            </Field>
-          </Row>
-          <Row>
-            <Field>
-              <span>{loanFormCopy.concept}</span>
-              <Input required name="concept" value={form.concept} onChange={change('concept')} />
-            </Field>
-            <Field>
-              <span>{loanFormCopy.lender}</span>
-              <Input required name="lender" value={form.lender} onChange={change('lender')} />
-            </Field>
-            <Field>
-              <span>{loanFormCopy.city}</span>
-              <Input name="city" value={form.city} onChange={change('city')} />
-            </Field>
-          </Row>
-          <Row>
-            <Field>
-              <span>{loanFormCopy.advancePaid}</span>
-              <Input
+                label={loanFormCopy.amount}
                 type="number"
                 step="0.01"
                 min="0"
+              />
+              <CurrencyFieldState hasPayments={payments.length > 0} />
+              <Form.Field.DatePicker name="date" label={loanFormCopy.date} withTime={false} />
+            </Row>
+
+            <Row>
+              <Form.Field.Input name="concept" label={loanFormCopy.concept} />
+              <Form.Field.Input name="lender" label={loanFormCopy.lender} />
+              <Form.Field.Input name="city" label={loanFormCopy.city} />
+            </Row>
+
+            <Row>
+              <Form.Field.Input
                 name="advancePaid"
-                value={form.advancePaid}
-                onChange={change('advancePaid')}
-              />
-            </Field>
-            <Field>
-              <span>
-                {loanFormCopy.installmentAmount} <Muted>({loanFormCopy.installmentOptional})</Muted>
-              </span>
-              <Input
+                label={loanFormCopy.advancePaid}
                 type="number"
                 step="0.01"
                 min="0"
-                name="installmentAmount"
-                value={form.installmentAmount}
-                onChange={change('installmentAmount')}
               />
-            </Field>
-          </Row>
-          <p>
-            {loanFormCopy.balancePreview}:{' '}
-            <strong>{balance === null ? '—' : amountWithCurrency(balance, form.currency)}</strong>
-          </p>
-          <Button variant="primary" isWorking={isSaving}>
-            {loanId ? loanFormCopy.saveChanges : loanFormCopy.save}
-          </Button>
-        </form>
-      </Panel>
-      {loanId && paymentSection}
+              <Form.Field.Input
+                name="installmentAmount"
+                label={loanFormCopy.installmentAmount}
+                tip={loanFormCopy.installmentOptional}
+                type="number"
+                step="0.01"
+                min="0"
+              />
+            </Row>
+
+            <LoanBalanceFooter isSaving={isSaving} isEdit={Boolean(id)} collected={collected} />
+          </Form.Element>
+        </Form>
+      </Section>
+      {id && paymentSection}
     </Fragment>
   );
 }
+
+/**
+ * Reads the lock out of the form and hands it to the field.
+ *
+ * Phrased as a component because Formik's values are only reachable inside the
+ * provider: `advancePaid` is a sibling field, and the lock has to follow it as
+ * the operator types. The other half of the lock — registered payments — is
+ * owned by the page and passed in.
+ */
+function CurrencyFieldState({ hasPayments }) {
+  const { values } = useFormikContext();
+  return <CurrencyField isLocked={hasPayments || toAmount(values.advancePaid) > 0} />;
+}
+
+CurrencyFieldState.propTypes = { hasPayments: PropTypes.bool.isRequired };
+
+/**
+ * The derived balance and the submit, inside the provider for the same reason as
+ * the currency lock: the preview is `amount - advance - payments`, and `amount`
+ * changes as the operator types.
+ *
+ * In edit mode the payments term comes from the server's own `pendingBalance`
+ * (`collected`), applied exactly once — never also from the history, which would
+ * subtract every payment twice.
+ */
+function LoanBalanceFooter({ isSaving, isEdit, collected }) {
+  const { values } = useFormikContext();
+  const balance = isEdit
+    ? pendingBalancePreview(values.amount, values.advancePaid, collected)
+    : pendingBalancePreview(values.amount, values.advancePaid);
+
+  return (
+    <Row>
+      <span>
+        {loanFormCopy.balancePreview}:{' '}
+        <strong>{balance === null ? '—' : amountWithCurrency(balance, values.currency)}</strong>
+      </span>
+      <Button type="submit" variant="primary" isWorking={isSaving}>
+        {isEdit ? loanFormCopy.saveChanges : loanFormCopy.save}
+      </Button>
+    </Row>
+  );
+}
+
+LoanBalanceFooter.propTypes = {
+  isSaving: PropTypes.bool.isRequired,
+  isEdit: PropTypes.bool.isRequired,
+  collected: PropTypes.number.isRequired,
+};
+
 LoanForm.propTypes = { loanId: PropTypes.string };
 
 export default LoanForm;

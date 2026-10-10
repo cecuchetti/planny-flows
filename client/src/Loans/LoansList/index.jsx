@@ -1,12 +1,30 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+
 import Button from 'shared/components/Button';
 import ConfirmModal from 'shared/components/ConfirmModal';
+import PageLoader from 'shared/components/PageLoader';
 import api from 'shared/utils/api';
 import toast from 'shared/utils/toast';
+
 import { loanFormCopy, loansListCopy } from '../copy';
 import { amountWithCurrency, formatDate, formatLoanNumber } from '../money';
-import { Card, ErrorText, Muted, Panel, Row } from '../Styles';
+import {
+  CardAmount,
+  CardGrid,
+  CardHeader,
+  CardKey,
+  CardTitle,
+  Chip,
+  EmptyState,
+  ErrorText,
+  ListCard,
+  MetaLabel,
+  MetaRow,
+  Row,
+  RowSpaced,
+  Section,
+} from '../Styles';
 
 const borrowerName = (loan) => {
   const { borrower } = loan;
@@ -55,60 +73,111 @@ function LoansList() {
 
   if (loadError) {
     return (
-      <Panel>
+      <Section>
         <div role="alert">
           <ErrorText>{loadError}</ErrorText>
-          <Button onClick={retry}>{loansListCopy.retry}</Button>
+          <Button type="button" onClick={retry}>
+            {loansListCopy.retry}
+          </Button>
         </div>
-      </Panel>
+      </Section>
     );
   }
 
-  if (isLoading) return <Panel>{loansListCopy.loading}</Panel>;
-
-  if (loans.length === 0) return <Panel>{loansListCopy.empty}</Panel>;
+  if (isLoading) return <PageLoader />;
 
   return (
-    <Panel>
-      <h2>{loansListCopy.title}</h2>
-      {loans.map((loan) => (
-        <Card key={loan.id}>
-          <Row>
-            <strong>Nº {formatLoanNumber(loan.number)}</strong>
-            <span>{amountWithCurrency(loan.amount, loan.currency)}</span>
-            <Muted>{borrowerName(loan)}</Muted>
-            <Muted>{formatDate(loan.date)}</Muted>
-          </Row>
-          <p>
-            {loansListCopy.concept}: {loan.concept} · {loansListCopy.lender}: {loan.lender} ·{' '}
-            {loansListCopy.city}: {loan.city}
-          </p>
-          {loan.installmentAmount !== null && loan.installmentAmount !== undefined && (
-            <p>
-              {loansListCopy.installment}:{' '}
-              {amountWithCurrency(loan.installmentAmount, loan.currency)}
-            </p>
-          )}
-          <p>
-            {loansListCopy.balance}:{' '}
-            <strong>{amountWithCurrency(loan.pendingBalance, loan.currency)}</strong>
-          </p>
-          <Row>
-            <Button onClick={() => navigate(`/loans/new-loan/${loan.id}`)}>
-              {loansListCopy.edit}
-            </Button>
-            <ConfirmModal
-              variant="danger"
-              title={loansListCopy.removeTitle}
-              message={loansListCopy.removeMessage}
-              confirmText={loansListCopy.remove}
-              renderLink={({ open }) => <Button onClick={open}>{loansListCopy.remove}</Button>}
-              onConfirm={({ close }) => remove(loan.id).finally(close)}
-            />
-          </Row>
-        </Card>
-      ))}
-    </Panel>
+    <Section>
+      <CardTitle>{loansListCopy.title}</CardTitle>
+
+      <RowSpaced>
+        <Button
+          type="button"
+          variant="primary"
+          data-testid="loans:new"
+          onClick={() => navigate('/project/loans/new-loan')}
+        >
+          {loansListCopy.newLoan}
+        </Button>
+      </RowSpaced>
+
+      {loans.length === 0 ? (
+        <EmptyState>{loansListCopy.empty}</EmptyState>
+      ) : (
+        <CardGrid>
+          {loans.map((loan) => (
+            <ListCard key={loan.id}>
+              <CardHeader>
+                <CardKey>
+                  {loansListCopy.number} {formatLoanNumber(loan.number)}
+                </CardKey>
+                <CardAmount>{amountWithCurrency(loan.amount, loan.currency)}</CardAmount>
+                <Chip>{loan.currency}</Chip>
+              </CardHeader>
+
+              <MetaRow>
+                <span>
+                  <MetaLabel>{loansListCopy.borrower}: </MetaLabel>
+                  {borrowerName(loan)}
+                </span>
+                <span>
+                  <MetaLabel>{loansListCopy.date}: </MetaLabel>
+                  {formatDate(loan.date)}
+                </span>
+                <span>
+                  <MetaLabel>{loansListCopy.balance}: </MetaLabel>
+                  <strong>{amountWithCurrency(loan.pendingBalance, loan.currency)}</strong>
+                </span>
+              </MetaRow>
+
+              <MetaRow>
+                <span>
+                  <MetaLabel>{loansListCopy.concept}: </MetaLabel>
+                  {loan.concept}
+                </span>
+                <span>
+                  <MetaLabel>{loansListCopy.lender}: </MetaLabel>
+                  {loan.lender}
+                </span>
+                {loan.city && (
+                  <span>
+                    <MetaLabel>{loansListCopy.city}: </MetaLabel>
+                    {loan.city}
+                  </span>
+                )}
+                {loan.installmentAmount !== null && loan.installmentAmount !== undefined && (
+                  <span>
+                    <MetaLabel>{loansListCopy.installment}: </MetaLabel>
+                    {amountWithCurrency(loan.installmentAmount, loan.currency)}
+                  </span>
+                )}
+              </MetaRow>
+
+              <Row>
+                <Button
+                  type="button"
+                  onClick={() => navigate(`/project/loans/new-loan/${loan.id}`)}
+                >
+                  {loansListCopy.edit}
+                </Button>
+                <ConfirmModal
+                  variant="danger"
+                  title={loansListCopy.removeTitle}
+                  message={loansListCopy.removeMessage}
+                  confirmText={loansListCopy.remove}
+                  renderLink={({ open }) => (
+                    <Button type="button" onClick={open}>
+                      {loansListCopy.remove}
+                    </Button>
+                  )}
+                  onConfirm={({ close }) => remove(loan.id).finally(close)}
+                />
+              </Row>
+            </ListCard>
+          ))}
+        </CardGrid>
+      )}
+    </Section>
   );
 }
 

@@ -6,18 +6,19 @@ import { LOANS_ENABLED } from 'shared/utils/loansFlag';
 import PageLoader from 'shared/components/PageLoader';
 
 const Project = lazy(() => import('Project'));
-const Loans = lazy(() => import('Loans'));
 const Authenticate = lazy(() => import('Auth/Authenticate'));
 const PageError = lazy(() => import('shared/components/PageError'));
 
 /*
- * The optional Loans app is registered only when it was built in: with the flag
- * off, `/loans` falls through to `PageError` instead of loading a feature that
- * is not there. `shared/utils/loansFlag` is the single client-side read.
+ * Loans is not an app of its own: it is one more view inside the project shell,
+ * registered as a child route of `/project` (see `Project/index.jsx`). That is
+ * what gives it the host's sidebar and page header instead of a parallel
+ * navigation, and it is where the `LOANS_ENABLED` flag is read now.
  *
- * The lazy import above stays unconditional on purpose. Removing the feature's
- * code is the production config's job (`resolve.alias`), not this file's — an
- * `import()` guarded by a folded constant still enters the module graph.
+ * The legacy `/loans` path is kept so a bookmark or an external link keeps
+ * working — but only while the feature was built in. With the flag off there is
+ * no view to land on and the redirect would leave the shell empty, so it falls
+ * to `PageError` like any other path that is not there.
  */
 
 const NavigateRefSetter = () => {
@@ -45,7 +46,10 @@ const RoutesComponent = () => (
           <Route path="/" element={<Navigate to="/project" replace />} />
           <Route path="/authenticate" element={<Authenticate />} />
           <Route path="/project/*" element={<Project />} />
-          {LOANS_ENABLED && <Route path="/loans/*" element={<Loans />} />}
+          <Route
+            path="/loans/*"
+            element={LOANS_ENABLED ? <Navigate to="/project/loans" replace /> : <PageError />}
+          />
           <Route path="*" element={<PageError />} />
         </Routes>
       </Suspense>

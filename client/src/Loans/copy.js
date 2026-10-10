@@ -1,26 +1,37 @@
+/*
+ * Préstamos is a view of the project, not an app of its own, so there is no
+ * `loanNavigation` here any more: the host sidebar carries the navigation and
+ * `loanCopy` labels the page and the sub-views linked from it.
+ */
 export const loanCopy = {
   title: 'Préstamos',
-  dashboard: 'Dashboard',
+  subtitle: 'Préstamos, personas y pagos, dentro del mismo tablero.',
   loans: 'Préstamos',
   borrowers: 'Personas',
   newLoan: 'Nuevo Préstamo',
-  receipt: 'Generar Recibo',
 };
-
-export const loanNavigation = [
-  { key: 'dashboard', label: loanCopy.dashboard },
-  { key: 'loans', label: loanCopy.loans },
-  { key: 'borrowers', label: loanCopy.borrowers },
-  { key: 'new-loan', label: loanCopy.newLoan },
-  { key: 'receipt', label: loanCopy.receipt },
-];
 
 export const borrowerCopy = {
   title: 'Personas',
   search: 'Buscá por nombre o apellido',
+  pickerSearch: 'Buscá una persona',
+  create: 'Crear persona',
+  save: 'Guardar persona',
   add: 'Agregar persona',
+  edit: 'Editar',
   empty: 'Todavía no hay personas cargadas.',
   noMatches: 'No encontramos coincidencias.',
+  loadError: 'No pudimos cargar las personas. Intentá de nuevo.',
+  retry: 'Reintentar',
+  loading: 'Cargando personas…',
+  required: 'Este campo es obligatorio.',
+  cancel: 'Cancelar',
+  created: 'Persona creada.',
+  updated: 'Persona actualizada.',
+  removed: 'Persona eliminada.',
+  removeTitle: '¿Eliminar persona?',
+  removeMessage: 'Esta acción no se puede deshacer.',
+  remove: 'Eliminar',
   firstName: 'Nombre',
   lastName: 'Apellido',
   email: 'Email',
@@ -51,10 +62,12 @@ export const loanFormCopy = {
   loading: 'Cargando préstamo…',
   loadError: 'No pudimos cargar el préstamo. Intentá de nuevo.',
   retry: 'Reintentar',
+  backToList: 'Volver a Préstamos',
   created: 'Préstamo registrado.',
   updated: 'Préstamo actualizado.',
   removed: 'Préstamo eliminado.',
   emptyPicker: 'Elegí una persona para continuar.',
+  required: 'Este campo es obligatorio.',
 };
 
 export const paymentsCopy = {
@@ -85,6 +98,7 @@ export const loansListCopy = {
   loading: 'Cargando préstamos…',
   loadError: 'No pudimos cargar los préstamos. Intentá de nuevo.',
   retry: 'Reintentar',
+  newLoan: 'Nuevo préstamo',
   edit: 'Editar',
   remove: 'Eliminar',
   removeTitle: '¿Eliminar préstamo?',
@@ -95,4 +109,6 @@ export const loansListCopy = {
   concept: 'Concepto',
   lender: 'Prestamista',
   city: 'Ciudad',
+  date: 'Fecha',
+  number: 'Nº',
 };

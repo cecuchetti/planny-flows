@@ -16,6 +16,46 @@ const loan = (overrides = {}) => ({
   ...overrides,
 });
 
+/* The board data `/project` returns, trimmed to what the shell renders. */
+const project = {
+  id: 1,
+  name: 'Planny Board',
+  url: 'https://planny.test',
+  description: 'A project',
+  category: 'software',
+  users: [],
+  issues: [],
+};
+
+/*
+ * Préstamos is a view of the project now, so entering it means the project shell
+ * has to render first. Every request that shell makes is stubbed here: an
+ * unstubbed one would reach the API, answer 401, and send the client to
+ * `/authenticate` before any loan view is reached.
+ *
+ * The patterns are anchored on the last path segment rather than on
+ * `/api/v1/...`: `API_URL` is a build-time value, so the shell's requests may
+ * arrive versioned and proxied (`/api/v1/projects`) or bare (`/projects`). Both
+ * are matched, and neither collides with a loan route.
+ */
+const stubShell = () => {
+  // A trailing wildcard covers the query string: it is part of the path as far
+  // as the glob is concerned.
+  cy.intercept('GET', '**/projects*', {
+    projects: [{ id: 1, name: project.name, sourceType: 'local', issueCount: 0 }],
+    syncScheduled: false,
+    syncIntervalMinutes: 0,
+  }).as('projects');
+  /*
+   * `/project` is fetched with `?ids=1` for the selected project, and the
+   * multi-project shape is what the shell normalizes.
+   */
+  cy.intercept('GET', '**/project?*', { projects: [project] }).as('project');
+  cy.intercept('GET', '**/currentUser*', {
+    currentUser: { id: 1, name: 'Tester', isAdmin: true },
+  }).as('currentUser');
+};
+
 /*
  * `ConfirmModal` takes its trigger through `renderLink`, which hands you an
  * `open` callback to wire yourself: `renderLink={({ open }) => <Button
@@ -44,6 +84,8 @@ describe('Loans registry', () => {
     );
     cy.intercept('POST', '**/api/v1/loans', (req) => {
       const { body } = req;
+      // eslint-disable-next-line no-console
+      console.log('CREATE LOAN BODY', JSON.stringify(body));
       createdLoan = loan({
         number: '00009',
         ...body,
@@ -133,15 +175,24 @@ describe('Loans registry', () => {
   };
 
   /**
-   * Enter the Préstamos view and wait for the list it fetches on entry.
+   * Enter Préstamos the way the operator does: from the project sidebar.
    *
-   * The list refetches whenever the view is entered, so the assertions run
-   * against the fixtures assigned just before this call rather than against the
-   * empty list the first page load fetched.
+   * This is the shell assertion as much as a navigation helper — the entry has
+   * to be reachable from the host's sidebar, in the host's own URL space. The
+   * label comes from `common.loans`; the module's own copy is Spanish, the
+   * shell's chrome is translated.
    */
   const showLoans = () => {
-    // Scoped to the nav: the page heading also reads "Préstamos".
-    cy.get('nav').contains('Préstamos').click();
+    cy.get('[data-testid="project:sidebar"]').contains('Loans').click();
+    cy.location('pathname').should('eq', '/project/loans');
+    cy.wait('@listLoans');
+  };
+
+  const showLoanViews = () => {
+    cy.get('[data-testid="project:sidebar"]').contains('Loans').click();
+    cy.location('pathname').should('eq', '/project/loans');
+    // The list owns the "Nuevo Préstamo" action, so the view has to have
+    // rendered before a flow that starts from that button clicks it.
     cy.wait('@listLoans');
   };
 
@@ -149,27 +200,49 @@ describe('Loans registry', () => {
     loans = [];
     createdLoan = null;
     payments = [];
+    stubShell();
     stubApi();
     // The guard that matters: no view in this module may reach for Jira.
     cy.intercept('GET', '**/api/v1/jira/**', { statusCode: 500 }).as('jiraRequest');
-    cy.visit('/loans');
+    cy.visit('/project/board');
+    // The shell owns the sidebar; waiting on it is waiting for the host to be up.
+    cy.get('[data-testid="project:sidebar"]').contains('Kanban Board').should('be.visible');
   });
 
-  it('navigates the five loan views without Jira requests', () => {
-    cy.contains('Dashboard').should('be.visible');
-    cy.contains('Personas').click();
-    cy.contains('Personas').should('be.visible');
-    cy.contains('Nuevo Préstamo').click();
-    cy.contains('Nuevo Préstamo').should('be.visible');
-    cy.contains('Generar Recibo').click();
-    cy.contains('Generar Recibo').should('be.visible');
+  it('navigates the loan views from the project shell without Jira requests', () => {
+    showLoanViews();
+    cy.contains('Todavía no hay préstamos').should('be.visible');
+
+    // The host sidebar stays: it is the same shell as Kanban Board.
+    cy.get('[data-testid="project:sidebar"]').contains('Kanban Board').should('be.visible');
+
+    // The host sidebar is the only navigation: Préstamos has none of its own.
+    cy.get('[data-testid="project:sidebar"]').contains('People').click();
+    cy.location('pathname').should('eq', '/project/loans/borrowers');
+    cy.get('[data-testid="project:sidebar"]').contains('Loans').click();
+    cy.location('pathname').should('eq', '/project/loans');
+    // Returning to the list refetches it, so the action has to have rendered
+    // before this flow starts from it.
+    cy.wait('@listLoans');
+    // A new loan is an action of the list, not a view of its own.
+    cy.get('[data-testid="loans:new"]').click();
+    cy.location('pathname').should('eq', '/project/loans/new-loan');
+
+    cy.get('@jiraRequest.all').should('have.length', 0);
   });
 
   it('creates a borrower inline from the picker and selects it', () => {
-    // This case needs "no matches" for the search the inline flow triggers.
-    cy.intercept('GET', '**/api/v1/borrowers*', { borrowers: [] }).as('borrowersEmpty');
-    cy.contains('Nuevo Préstamo').click();
-    cy.get('input[placeholder="Buscá una persona"]').type('Lola');
+    // This case needs "no matches" for the search the inline flow triggers. The
+    // query string keeps the wait on the *search*, not on the initial list fetch
+    // — both are GETs to the same path.
+    cy.intercept('GET', '**/borrowers?*search=Lola*', { borrowers: [] }).as('borrowersEmpty');
+    showLoanViews();
+    cy.get('[data-testid="loans:new"]').click();
+
+    cy.get('[data-testid="select:borrower"]').click();
+    // The dropdown's search box is the shared `Select`'s own, in English.
+    cy.get('input[placeholder="Search"]').type('Lola');
+    cy.wait('@borrowersEmpty');
     cy.contains('Crear persona').click();
     cy.get('input[placeholder="Nombre"]').type('Lola');
     cy.get('input[placeholder="Apellido"]').type('Paz');
@@ -179,9 +252,14 @@ describe('Loans registry', () => {
   });
 
   it('registers a loan with a live balance preview and lists it', () => {
-    cy.contains('Nuevo Préstamo').click();
-    cy.get('input[placeholder="Buscá una persona"]').type('Lola');
-    cy.contains('button', 'Lola Paz').click();
+    showLoans();
+    cy.contains('button', 'Nuevo préstamo').click();
+    cy.location('pathname').should('eq', '/project/loans/new-loan');
+
+    cy.get('[data-testid="select:borrower"]').click();
+    cy.get('input[placeholder="Search"]').type('Lola');
+    cy.get('[data-testid="select-option:Lola Paz"]').click();
+
     cy.get('input[name="amount"]').type('1500.50');
     cy.contains('Saldo pendiente').should('contain', '1500.50 USD');
     cy.get('input[name="advancePaid"]').type('500.25');
@@ -192,6 +270,7 @@ describe('Loans registry', () => {
     cy.wait('@createLoan');
 
     // The save lands on Préstamos, where the new card is visible.
+    cy.location('pathname').should('eq', '/project/loans');
     cy.wait('@listLoans');
     cy.contains('Nº 00009').should('be.visible');
     cy.contains('1500.50 USD').should('be.visible');
@@ -216,11 +295,18 @@ describe('Loans registry', () => {
     [createdLoan] = loans;
     showLoans();
     cy.contains('button', 'Editar').click();
+    cy.location('pathname').should('eq', '/project/loans/new-loan/1');
     cy.wait('@getLoan');
 
     // Edit mode preselects the person and locks the currency once paid ahead.
     cy.contains('Persona seleccionada: Lola Paz').should('be.visible');
-    cy.get('select[name="currency"]').should('be.disabled');
+    /*
+     * The lock is the shared `Select` in its disabled state. It reports that on
+     * the wrapper it owns (`aria-disabled`), and it must not open a dropdown any
+     * more — both are asserted, because a control that only *looks* locked is
+     * the failure this pins.
+     */
+    cy.get('[data-testid="select:currency"]').parent().should('have.attr', 'aria-disabled', 'true');
     cy.get('input[name="amount"]').clear();
     cy.get('input[name="amount"]').type('2000');
     cy.contains('button', 'Guardar cambios').click();
@@ -233,7 +319,8 @@ describe('Loans registry', () => {
     cy.intercept('GET', '**/api/v1/borrowers*', {
       borrowers: [{ id: 7, firstName: 'Lola', lastName: 'Paz', loanCount: 3 }],
     }).as('borrowersWithLoans');
-    cy.get('nav').contains('Personas').click();
+    showLoanViews();
+    cy.get('[data-testid="project:sidebar"]').contains('People').click();
     cy.wait('@borrowersWithLoans');
     cy.contains('Préstamos: 3').should('be.visible');
   });
@@ -261,7 +348,14 @@ describe('Loans registry', () => {
     cy.contains('button', 'Editar').click();
     cy.wait('@getLoan');
 
-    cy.get('select[name="currency"]').should('be.disabled');
+    /*
+     * The lock is the shared `Select` in its disabled state: `aria-disabled` on
+     * the control, and the proof that it no longer opens its dropdown. The
+     * explanation sits beside it, in Spanish.
+     */
+    cy.get('[data-testid="select:currency"]').parent().should('have.attr', 'aria-disabled', 'true');
+    cy.get('[data-testid="select:currency"]').click();
+    cy.get('[data-testid="select-option:ARS"]').should('not.exist');
     cy.contains('No podés cambiar la moneda').should('be.visible');
   });
 
@@ -269,7 +363,8 @@ describe('Loans registry', () => {
     cy.intercept('GET', '**/api/v1/borrowers*', {
       borrowers: [{ id: 7, firstName: 'Lola', lastName: 'Paz', loanCount: 0 }],
     }).as('borrowersWithLoans');
-    cy.get('nav').contains('Personas').click();
+    showLoanViews();
+    cy.get('[data-testid="project:sidebar"]').contains('People').click();
     cy.wait('@borrowersWithLoans');
     cy.contains('button', 'Eliminar').click();
     cy.get('[data-testid="modal:confirm"]').should('exist');
@@ -312,6 +407,10 @@ describe('Loans registry', () => {
     // `money.test.js` cases; this flow is about the capture itself.
     cy.contains('Todavía no hay pagos registrados.').should('be.visible');
     cy.get('input[name="paymentAmount"]').type('150.00');
+    /*
+     * The capture is a button, not a nested form: HTML forbids a form inside the
+     * loan form, so the register action is explicit.
+     */
     cy.contains('button', 'Registrar pago').click();
     cy.wait('@createPayment');
     cy.wait('@listPayments');

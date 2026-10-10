@@ -13,6 +13,7 @@ import useApi from 'shared/hooks/api';
 import toast from 'shared/utils/toast';
 import { updateArrayItemById } from 'shared/utils/javascript';
 import { createQueryParamModalHelpers } from 'shared/utils/queryParamModal';
+import { LOANS_ENABLED } from 'shared/utils/loansFlag';
 import { PageLoader, PageError, Modal, Icon } from 'shared/components';
 
 import { ProjectCategoryCopy } from 'shared/constants/projects';
@@ -45,6 +46,17 @@ import {
 const Board = lazy(() => import('./Board'));
 const QuickActions = lazy(() => import('./QuickActions'));
 const ProjectSettings = lazy(() => import('./ProjectSettings'));
+
+/*
+ * The optional Loans feature lives *inside* the project shell — same sidebar,
+ * same page header, same content width as Kanban Board — so it is registered as
+ * one more child route of `/project` rather than as an app of its own.
+ *
+ * The specifier stays the exact string the production config aliases to the
+ * empty module when the flag is off, so the feature is still eliminable by
+ * `resolve.alias`. An `import()` guarded by a folded constant would keep it.
+ */
+const Loans = lazy(() => import('Loans'));
 
 const availableDefaultRoutes = ['board', 'quick-actions', 'settings'];
 
@@ -416,7 +428,20 @@ function Project() {
                   path="settings"
                   element={<ProjectSettings project={project} fetchProject={fetchProject} />}
                 />
+                {/*
+                 * Loans is registered only when it was built in. With the flag
+                 * off the specifier is aliased away and this branch is dead, so
+                 * nothing points at a route that is not there.
+                 */}
+                {LOANS_ENABLED && <Route path="loans/*" element={<Loans />} />}
                 <Route index element={<Navigate to={getDefaultProjectRoute()} replace />} />
+                {/*
+                 * Without this an unknown child path — `/project/loans` on a
+                 * build without the feature, or a stale link — matches nothing
+                 * inside this nested router and renders an empty main area with
+                 * no explanation.
+                 */}
+                <Route path="*" element={<PageError />} />
               </Routes>
             </Suspense>
           </MainContent>

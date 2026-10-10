@@ -14,6 +14,7 @@ const propTypes = {
   isValueEmpty: PropTypes.bool.isRequired,
   searchValue: PropTypes.string.isRequired,
   setSearchValue: PropTypes.func.isRequired,
+  onSearch: PropTypes.func,
   $inputRef: PropTypes.object.isRequired,
   deactivateDropdown: PropTypes.func.isRequired,
   options: PropTypes.array.isRequired,
@@ -30,6 +31,7 @@ const SelectDropdown = ({
   isValueEmpty,
   searchValue,
   setSearchValue,
+  onSearch = undefined,
   $inputRef,
   deactivateDropdown,
   options,
@@ -42,6 +44,16 @@ const SelectDropdown = ({
   const [isCreatingOption, setCreatingOption] = useState(false);
 
   const $optionsRef = useRef();
+
+  /**
+   * The search box is how a caller that runs its own query learns what was typed:
+   * `onChange` fires only for a choice, so a filter backed by a request would
+   * never see a keystroke without this.
+   */
+  const handleSearchChange = (text) => {
+    setSearchValue(text);
+    if (onSearch) onSearch(text);
+  };
 
   useLayoutEffect(() => {
     const setFirstOptionAsActive = () => {
@@ -175,7 +187,7 @@ const SelectDropdown = ({
         ref={$inputRef}
         autoFocus
         onKeyDown={handleInputKeyDown}
-        onChange={(event) => setSearchValue(event.target.value)}
+        onChange={(event) => handleSearchChange(event.target.value)}
       />
 
       {!isValueEmpty && withClearValue && <ClearIcon type="close" onClick={clearOptionValues} />}

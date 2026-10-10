@@ -9,7 +9,12 @@ const ACTIVE_TEXT = '#292a2e';
 const ACTIVE_ICON = '#5c6bc0';
 const HOVER_BG    = '#eef0f5';
 
-export const Sidebar = styled.aside`
+/*
+ * `data-testid` is here because this aside is not the only one on the page:
+ * `NavbarLeft` renders one too, so a bare `aside` selector is ambiguous and
+ * `cy.within()` refuses it.
+ */
+export const Sidebar = styled.aside.attrs({ 'data-testid': 'project:sidebar' })`
   flex-shrink: 0;
   width: ${sizes.secondarySideBarWidth}px;
   padding: 12px 8px 24px;

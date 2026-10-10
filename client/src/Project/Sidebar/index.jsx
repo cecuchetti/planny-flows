@@ -44,12 +44,13 @@ const NAV_ITEMS = [
 
 /*
  * Quick actions is always present; Loans only when it was built in. With the
- * flag off the entry is not rendered at all, so nothing points at a route that
- * is not registered.
+ * flag off the entries are not rendered at all, so nothing points at a route
+ * that is not registered.
  *
- * `absolute` marks a path that lives outside the project's URL space. The
- * project items are relative to `/project`; `/loans` is a top-level route of
- * its own, so it must not be prefixed.
+ * Loans is a child of `/project` like every other item here, so it takes the
+ * host's own active highlight instead of being an `absolute` route of its own.
+ * It carries two entries because Préstamos has two top-level views and no
+ * navigation of its own: `exact` keeps the list from claiming its siblings.
  */
 const MORE_ITEMS = [
   {
@@ -67,7 +68,14 @@ const MORE_ITEMS = [
           path: '/loans',
           icon: '💸',
           bg: '#7c3aed',
-          absolute: true,
+          exact: true,
+        },
+        {
+          key: 'borrowers',
+          labelKey: 'sidebar.borrowers',
+          path: '/loans/borrowers',
+          icon: '👥',
+          bg: '#7c3aed',
         },
       ]
     : []),
@@ -89,8 +97,9 @@ const ProjectSidebar = ({ project: _project, onNavClick, isMobile }) => {
   const isActiveLink = (item) => {
     const [pathPart, queryString] = item.path.split('?');
     const fullPath = item.absolute ? pathPart : `${basePath}${pathPart}`;
-    const pathMatches =
-      location.pathname === fullPath || location.pathname.startsWith(`${fullPath}/`);
+    const pathMatches = item.exact
+      ? location.pathname === fullPath
+      : location.pathname === fullPath || location.pathname.startsWith(`${fullPath}/`);
 
     if (queryString) {
       // Item has a query-param requirement

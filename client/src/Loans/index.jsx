@@ -1,59 +1,45 @@
-import React, { useEffect, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import Sidebar from './Sidebar';
-import Borrowers from './Borrowers';
-import LoanForm from './LoanForm';
-import LoansList from './LoansList';
-import { loanCopy, loanNavigation } from './copy';
-import { Panel, Shell } from './Styles';
+import React, { Suspense, lazy } from 'react';
+import { Navigate, Route, Routes } from 'react-router-dom';
 
-/** `/loans/new-loan/12` → `12`; anything else → `null`. */
-const editLoanId = (pathname) => {
-  const [, , view, loanId] = pathname.split('/');
-  return view === 'new-loan' && loanId ? loanId : null;
-};
+import { PageLoader } from 'shared/components';
+
+import { loanCopy } from './copy';
+import { Page, PageHeader, PageSubtitle, PageTitle } from './Styles';
+
+/*
+ * Préstamos renders inside the project shell — the host sidebar, the page header
+ * and the project's content width. The host sidebar is the navigation: this view
+ * has no second one of its own, so reaching Personas or a new loan is done the
+ * same way the project reaches its other views, or from the list itself.
+ */
+const LoansList = lazy(() => import('./LoansList'));
+const Borrowers = lazy(() => import('./Borrowers'));
+const LoanForm = lazy(() => import('./LoanForm'));
 
 function Loans() {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const initial = location.pathname.split('/')[2];
-  const [view, setView] = useState(
-    loanNavigation.some((item) => item.key === initial) ? initial : 'dashboard',
-  );
-  const [loanId, setLoanId] = useState(() => editLoanId(location.pathname));
-
-  // The URL is the source of truth: the list links straight to the edit route.
-  useEffect(() => {
-    const next = editLoanId(location.pathname);
-    setLoanId(next);
-    const nextView = location.pathname.split('/')[2];
-    if (loanNavigation.some((item) => item.key === nextView)) setView(nextView);
-  }, [location.pathname]);
-
-  const select = (key) => {
-    setView(key);
-    setLoanId(null);
-    navigate(`/loans/${key}`, { replace: true });
-  };
-
-  const renderView = () => {
-    if (view === 'borrowers') return <Borrowers />;
-    if (view === 'loans') return <LoansList />;
-    if (view === 'new-loan') return <LoanForm key={loanId || 'new'} loanId={loanId} />;
-    return (
-      <Panel>
-        <h2>{loanNavigation.find((item) => item.key === view)?.label}</h2>
-        <p>Esta vista se viene pronto. Estamos preparando todo para vos.</p>
-      </Panel>
-    );
-  };
-
   return (
-    <Shell>
-      <h1>{loanCopy.title}</h1>
-      <Sidebar items={loanNavigation} active={view} onSelect={select} />
-      {renderView()}
-    </Shell>
+    <Page>
+      <PageHeader>
+        <PageTitle>{loanCopy.title}</PageTitle>
+        <PageSubtitle>{loanCopy.subtitle}</PageSubtitle>
+      </PageHeader>
+
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          {/*
+           * `/project/loans` and every unknown child fall back to the list: an
+           * unknown path inside a hosted view is not a new page, and this keeps
+           * the removed dashboard/receipt placeholders from 404-ing.
+           */}
+          <Route index element={<LoansList />} />
+          <Route path="borrowers" element={<Borrowers />} />
+          <Route path="new-loan" element={<LoanForm />} />
+          <Route path="new-loan/:loanId" element={<LoanForm />} />
+          <Route path="*" element={<Navigate to="/project/loans" replace />} />
+        </Routes>
+      </Suspense>
+    </Page>
   );
 }
+
 export default Loans;

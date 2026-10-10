@@ -27,16 +27,16 @@ const propTypes = {
   defaultValue: PropTypes.any,
   placeholder: PropTypes.string,
   invalid: PropTypes.bool,
+  disabled: PropTypes.bool,
   options: PropTypes.array.isRequired,
   onChange: PropTypes.func.isRequired,
+  onSearch: PropTypes.func,
   onCreate: PropTypes.func,
   isMulti: PropTypes.bool,
   withClearValue: PropTypes.bool,
   renderValue: PropTypes.func,
   renderOption: PropTypes.func,
 };
-
-
 
 const Select = ({
   className = undefined,
@@ -47,8 +47,10 @@ const Select = ({
   defaultValue = undefined,
   placeholder = 'Select',
   invalid = false,
+  disabled = false,
   options,
   onChange,
+  onSearch = undefined,
   onCreate = undefined,
   isMulti = false,
   withClearValue = true,
@@ -66,6 +68,7 @@ const Select = ({
   const $inputRef = useRef();
 
   const activateDropdown = () => {
+    if (disabled) return;
     if (isDropdownOpen) {
       $inputRef.current.focus();
     } else {
@@ -81,8 +84,8 @@ const Select = ({
 
   useOnOutsideClick($selectRef, isDropdownOpen, deactivateDropdown);
 
-  const preserveValueType = newValue => {
-    const areOptionValuesNumbers = options.some(option => typeof option.value === 'number');
+  const preserveValueType = (newValue) => {
+    const areOptionValuesNumbers = options.some((option) => typeof option.value === 'number');
 
     if (areOptionValuesNumbers) {
       if (isMulti) {
@@ -95,18 +98,19 @@ const Select = ({
     return newValue;
   };
 
-  const handleChange = newValue => {
+  const handleChange = (newValue) => {
     if (!isControlled) {
       setStateValue(preserveValueType(newValue));
     }
     onChange(preserveValueType(newValue));
   };
 
-  const removeOptionValue = optionValue => {
-    handleChange(value.filter(val => val !== optionValue));
+  const removeOptionValue = (optionValue) => {
+    handleChange(value.filter((val) => val !== optionValue));
   };
 
-  const handleFocusedSelectKeydown = event => {
+  const handleFocusedSelectKeydown = (event) => {
+    if (disabled) return;
     if (isDropdownOpen) return;
 
     if (event.keyCode === KeyCodes.ENTER) {
@@ -117,19 +121,21 @@ const Select = ({
     }
   };
 
-  const getOption = optionValue => options.find(option => option.value === optionValue);
-  const getOptionLabel = optionValue => (getOption(optionValue) || { label: '' }).label;
+  const getOption = (optionValue) => options.find((option) => option.value === optionValue);
+  const getOptionLabel = (optionValue) => (getOption(optionValue) || { label: '' }).label;
 
   const isValueEmpty = isMulti ? !value.length : !getOption(value);
 
   return (
     <StyledSelect
       className={className}
-       $variant={variant}
+      $variant={variant}
       ref={$selectRef}
-      tabIndex="0"
+      tabIndex={disabled ? -1 : '0'}
+      $disabled={disabled}
+      aria-disabled={disabled || undefined}
       onKeyDown={handleFocusedSelectKeydown}
-       $invalid={invalid}
+      $invalid={invalid}
     >
       <ValueContainer
         $variant={variant}
@@ -143,8 +149,8 @@ const Select = ({
           : getOptionLabel(value)}
 
         {!isValueEmpty && isMulti && (
-           <ValueMulti $variant={variant}>
-            {value.map(optionValue =>
+          <ValueMulti $variant={variant}>
+            {value.map((optionValue) =>
               propsRenderValue ? (
                 propsRenderValue({
                   value: optionValue,
@@ -181,6 +187,7 @@ const Select = ({
           deactivateDropdown={deactivateDropdown}
           options={options}
           onChange={handleChange}
+          onSearch={onSearch}
           onCreate={onCreate}
           isMulti={isMulti}
           withClearValue={withClearValue}
