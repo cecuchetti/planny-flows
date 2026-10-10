@@ -181,6 +181,27 @@ class TestSchemaFollowsTheMigrations:
         assert not columns["pendingBalanceAtPayment"].nullable
         assert not columns["paymentsHistoryAtPayment"].nullable
 
+    def test_payment_has_a_nullable_reversal_column(self) -> None:
+        """The reversal mark is one nullable date: ``NULL`` is "never reversed"."""
+        import planny_core.models  # noqa: F401 - registers every table
+        from planny_core.db.base import Base
+
+        column = Base.metadata.tables["payment"].columns["reversedAt"]
+        assert column.nullable
+        assert type(column.type).__name__ == "DateTime"
+
+    def test_a_migration_adds_the_payment_reversal_column(self) -> None:
+        """The column is only half of the change; the revision is the other half."""
+        added = [
+            path.name
+            for path in _migration_files()
+            if re.search(
+                r'add_column\(\s*"payment"\s*,\s*sa\.Column\(\s*"reversedAt"',
+                path.read_text(encoding="utf-8"),
+            )
+        ]
+        assert added, "no migration adds payment.reversedAt"
+
     def test_some_migration_mentions_each_new_object(self) -> None:
         """Guards against adding a model and forgetting the migration."""
         sources = "\n".join(path.read_text(encoding="utf-8") for path in _migration_files())

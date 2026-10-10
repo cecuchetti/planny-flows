@@ -3,8 +3,13 @@
 ``paymentsHistoryAtPayment`` holds the full history *up to and including this
 payment*, and the three balance columns hold the figures in effect at that
 moment. The snapshot is stored on the row rather than recomputed from sibling
-payments: deleting a later payment must not rewrite a receipt that was already
+payments: reversing a later payment must not rewrite a receipt that was already
 handed to a borrower.
+
+A payment is never deleted once registered: ``reversedAt`` marks and dates its
+reversal in one column, and ``NULL`` means the payment is still in force. A
+reversed row survives so a receipt issued afterwards can name it and say that
+collection was reversed; it simply stops counting towards the balance.
 
 ``loan_id`` stays snake_case on purpose, matching ``loan.borrower_id`` — the
 borrowers count guard binds those exact column names.
@@ -42,9 +47,15 @@ class Payment(Base):
     paymentsHistoryAtPayment: Mapped[list[dict[str, Any]]] = mapped_column(JSON)  # noqa: N815
     createdAt: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)  # noqa: N815
 
-    # Deleting a loan removes its payments: the service deletes them explicitly
-    # before the loan, and ``passive_deletes`` keeps the ORM from nulling the
-    # foreign key behind it.
+    # The reversal mark and its date in one column: ``None`` is "in force".
+    # A reversed payment is excluded from the payments sum the balance is derived
+    # from, and stays readable so the receipts that name it can show the
+    # reversal. Undoing it is clearing this back to ``None``.
+    reversedAt: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)  # noqa: N815
+
+    # Deleting a loan removes its payments — reversed ones included: the service
+    # deletes them explicitly before the loan, and ``passive_deletes`` keeps the
+    # ORM from nulling the foreign key behind it.
     loan: Mapped[Loan] = relationship(
         "Loan",
         back_populates="payments",

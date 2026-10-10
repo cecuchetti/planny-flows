@@ -97,7 +97,25 @@ async def create_payment(
 
 
 @router.delete("/{loan_id}/payments/{payment_id}", status_code=204)
-async def delete_payment(
+async def reverse_payment(
     loan_id: int, payment_id: int, db: AsyncSession = Depends(get_db)
 ) -> None:
-    await service.delete_payment(db, loan_id, payment_id)
+    """Reverse a payment.
+
+    The verb and the status are what they always were, because this is the
+    endpoint the client already calls and the operation it wants; what changed is
+    that the row is kept and marked instead of deleted.
+
+    There is deliberately no ``POST`` twin for this: an unused alias on a route
+    nobody calls is surface nobody tests. Undoing is the ``DELETE`` below, its
+    inverse.
+    """
+    await service.reverse_payment(db, loan_id, payment_id)
+
+
+@router.delete("/{loan_id}/payments/{payment_id}/reversal", status_code=204)
+async def undo_reversal(
+    loan_id: int, payment_id: int, db: AsyncSession = Depends(get_db)
+) -> None:
+    """Undo a reversal, so a mistaken one costs nothing."""
+    await service.unreverse_payment(db, loan_id, payment_id)

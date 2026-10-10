@@ -41,11 +41,20 @@ export const pendingBalancePreview = (amount, advancePaid, paymentsTotal = 0) =>
   return roundMoney(base - advance - collected);
 };
 
-/** Everything collected on a loan, from the payments the history returned. */
+/**
+ * Everything collected on a loan and still in force.
+ *
+ * A reversed payment keeps its row in the history but is not collected money any
+ * more, so it is left out here — the same way the server leaves it out of the
+ * `pendingBalance` this view previews from.
+ */
 export const paymentsTotal = (payments) => {
   if (!Array.isArray(payments)) return 0;
   return roundMoney(
-    payments.reduce((total, payment) => total + (toAmount(payment?.amount) || 0), 0),
+    payments.reduce(
+      (total, payment) => total + (payment?.reversedAt ? 0 : toAmount(payment?.amount) || 0),
+      0,
+    ),
   );
 };
 

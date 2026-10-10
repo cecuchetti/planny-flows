@@ -69,6 +69,18 @@ describe('Loans registry', () => {
   let createdLoan;
   let payments;
 
+  /*
+   * The balance the API would now derive: the loan minus the advance-paid minus
+   * the payments still in force. A reversed payment is not collected money, so
+   * it is left out — the stub has to agree with the server it stands in for.
+   */
+  const derivedBalance = () =>
+    (
+      Number(createdLoan.amount) -
+      Number(createdLoan.advancePaid || 0) -
+      payments.reduce((total, item) => total + (item.reversedAt ? 0 : Number(item.amount)), 0)
+    ).toFixed(2);
+
   const stubApi = () => {
     cy.intercept('GET', '**/api/v1/borrowers*', {
       borrowers: [{ id: 7, firstName: 'Lola', lastName: 'Paz', loanCount: 0 }],
@@ -149,6 +161,7 @@ describe('Loans registry', () => {
         amount: amount.toFixed(2),
         date: '2026-10-08T12:00:00',
         createdAt: '2026-10-08T12:00:00',
+        reversedAt: null,
         snapshot: {},
       };
       payments = [...payments, payment];
@@ -159,19 +172,27 @@ describe('Loans registry', () => {
       loans = [createdLoan];
       return req.reply({ statusCode: 201, body: { payment } });
     }).as('createPayment');
+    /*
+     * Reversal is not deletion: the payment keeps its row and gains a
+     * `reversedAt`. Only what is still in force counts towards the balance, so
+     * the stub has to exclude the reversed rows exactly as the API does.
+     */
+    cy.intercept('DELETE', '**/api/v1/loans/*/payments/*/reversal', (req) => {
+      const id = Number(String(req.url).split('/').slice(-2)[0]);
+      payments = payments.map((item) => (item.id === id ? { ...item, reversedAt: null } : item));
+      createdLoan = { ...createdLoan, pendingBalance: derivedBalance() };
+      loans = [createdLoan];
+      return req.reply({ statusCode: 204 });
+    }).as('undoReversal');
     cy.intercept('DELETE', '**/api/v1/loans/*/payments/*', (req) => {
       const id = Number(req.url.split('/').pop());
-      const removed = payments.find((item) => item.id === id);
-      payments = payments.filter((item) => item.id !== id);
-      if (removed) {
-        createdLoan = {
-          ...createdLoan,
-          pendingBalance: (Number(createdLoan.pendingBalance) + Number(removed.amount)).toFixed(2),
-        };
-        loans = [createdLoan];
-      }
+      payments = payments.map((item) =>
+        item.id === id ? { ...item, reversedAt: '2026-10-10T12:00:00' } : item,
+      );
+      createdLoan = { ...createdLoan, pendingBalance: derivedBalance() };
+      loans = [createdLoan];
       return req.reply({ statusCode: 204 });
-    }).as('deletePayment');
+    }).as('reversePayment');
   };
 
   /**
@@ -395,17 +416,27 @@ describe('Loans registry', () => {
   });
 
   it('registers a payment and refreshes the history and the balance', () => {
-    loans = [loan({ id: 1, pendingBalance: '800.00' })];
+    // 1000.50 on the loan with one 200.00 payment already collected is the
+    // 800.50 the API derives, pinned here so the refresh is measured against a
+    // balance the stub actually stands behind.
+    loans = [loan({ id: 1, amount: '1000.50', pendingBalance: '800.50' })];
     [createdLoan] = loans;
+    payments = [
+      {
+        id: 1,
+        loanId: 1,
+        amount: '200.00',
+        date: '2026-10-08T12:00:00',
+        createdAt: '2026-10-08T12:00:00',
+        reversedAt: null,
+        snapshot: {},
+      },
+    ];
     showLoans();
     cy.contains('button', 'Editar').click();
     cy.wait('@getLoan');
     cy.wait('@listPayments');
 
-    // The fixture's 800.00 balance on a 1500.50 loan means 700.50 was already
-    // collected. The balance the preview derives from that term is pinned by the
-    // `money.test.js` cases; this flow is about the capture itself.
-    cy.contains('Todavía no hay pagos registrados.').should('be.visible');
     cy.get('input[name="paymentAmount"]').type('150.00');
     /*
      * The capture is a button, not a nested form: HTML forbids a form inside the
@@ -415,16 +446,17 @@ describe('Loans registry', () => {
     cy.wait('@createPayment');
     cy.wait('@listPayments');
 
-    // The history refetched without a reload: the row, its amount and the
-    // running total are the payment that was just registered.
-    cy.contains('Total cobrado').should('contain', '150.00 USD');
+    // The history refetched without a reload: the running total is what is
+    // still in force, and the capture is ready for the next one.
+    cy.contains('Total cobrado').should('contain', '350.00 USD');
     cy.get('input[name="paymentAmount"]').should('have.value', '');
-    cy.contains('button', 'Eliminar').should('be.visible');
+    // The derived balance moved by exactly the payment that was just registered.
+    cy.contains('Saldo pendiente').should('contain', '650.50 USD');
     cy.contains('Todavía no hay pagos registrados.').should('not.exist');
   });
 
   it('refuses an overpayment and keeps the balance untouched', () => {
-    loans = [loan({ id: 1, pendingBalance: '800.00' })];
+    loans = [loan({ id: 1, amount: '1000.50', pendingBalance: '1000.50' })];
     [createdLoan] = loans;
     showLoans();
     cy.contains('button', 'Editar').click();
@@ -437,11 +469,15 @@ describe('Loans registry', () => {
     // The refusal is reported and the loan form is still standing: nothing was
     // written and no page reload happened.
     cy.contains('button', 'Guardar cambios').should('be.visible');
-    cy.get('input[name="amount"]').should('have.value', '1500.50');
+    cy.get('input[name="amount"]').should('have.value', '1000.50');
   });
 
-  it('deletes a payment behind a confirmation and recomputes the balance', () => {
-    loans = [loan({ id: 1, pendingBalance: '800.00' })];
+  it('reverts a payment behind a confirmation and recomputes the balance', () => {
+    // Internally consistent on purpose: 1000.50 minus the single 200.00 payment
+    // is the 800.50 below, which is what the API derives. The preview is measured
+    // against that, and a fixture that did not add up would measure the fixture
+    // instead of the reversal.
+    loans = [loan({ id: 1, amount: '1000.50', pendingBalance: '800.50' })];
     [createdLoan] = loans;
     payments = [
       {
@@ -450,6 +486,7 @@ describe('Loans registry', () => {
         amount: '200.00',
         date: '2026-10-08T12:00:00',
         createdAt: '2026-10-08T12:00:00',
+        reversedAt: null,
         snapshot: {},
       },
     ];
@@ -457,9 +494,9 @@ describe('Loans registry', () => {
     cy.contains('button', 'Editar').click();
     cy.wait('@getLoan');
     cy.wait('@listPayments');
-    cy.contains('Saldo pendiente').should('contain', '800.00 USD');
+    cy.contains('Saldo pendiente').should('contain', '800.50 USD');
 
-    // Instrumented to prove the delete trigger — which lives inside a portal —
+    // Instrumented to prove the reversal trigger — which lives inside a portal —
     // never submits the register form that sits next to it.
     cy.window().then((win) => {
       /* eslint-disable no-underscore-dangle */
@@ -474,19 +511,41 @@ describe('Loans registry', () => {
       /* eslint-enable no-underscore-dangle */
     });
 
-    cy.contains('button', 'Eliminar').click();
+    cy.contains('button', 'Revertir').click();
     cy.get('[data-testid="modal:confirm"]')
-      .should('contain', 'Se elimina el pago y el saldo pendiente se recalcula.')
+      .should('contain', 'El pago queda registrado como revertido')
       .find('button')
-      .contains('Eliminar')
+      .contains('Revertir')
       .click();
-    cy.wait('@deletePayment');
+    cy.wait('@reversePayment');
     cy.wait('@listPayments');
 
-    cy.contains('Saldo pendiente').should('contain', '1000.00 USD');
-    cy.contains('Todavía no hay pagos registrados.').should('be.visible');
+    /*
+     * The row survives and says so in words: the payment is not gone, it is
+     * marked, because a receipt issued later has to be able to name it.
+     */
+    cy.contains('Revertido').should('be.visible');
+    cy.contains('200.00 USD').should('be.visible');
+    cy.contains('Saldo pendiente').should('contain', '1000.50 USD');
+    cy.contains('Todavía no hay pagos registrados.').should('not.exist');
+    // A reversed payment is not collected money any more.
+    cy.contains('Total cobrado').should('contain', '0.00 USD');
     /* eslint-disable no-underscore-dangle */
     cy.window().its('__PAYMENT_POSTS').should('deep.equal', []);
     /* eslint-enable no-underscore-dangle */
+
+    // And it is undoable, so a misclick costs nothing.
+    cy.contains('button', 'Deshacer').click();
+    cy.get('[data-testid="modal:confirm"]')
+      .should('contain', 'El pago vuelve a contar para el saldo.')
+      .find('button')
+      .contains('Deshacer')
+      .click();
+    cy.wait('@undoReversal');
+    cy.wait('@listPayments');
+
+    cy.contains('Revertido').should('not.exist');
+    cy.contains('Saldo pendiente').should('contain', '800.50 USD');
+    cy.contains('Total cobrado').should('contain', '200.00 USD');
   });
 });

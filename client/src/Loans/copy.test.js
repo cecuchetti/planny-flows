@@ -31,6 +31,18 @@ describe('loan copy', () => {
     expect(paymentsCopy.currencyLocked).toContain('No podés cambiar la moneda');
   });
 
+  it('names the reversal instead of a deletion, and says it is undoable', () => {
+    expect(paymentsCopy.reverse).toBe('Revertir');
+    expect(paymentsCopy.reversedTag).toBe('Revertido');
+    expect(paymentsCopy.reverseMessage).toContain('deja de contar para el saldo');
+    expect(paymentsCopy.reverseMessage).toContain('Podés deshacer');
+    expect(paymentsCopy.undoReversal).toBe('Deshacer');
+    // The payment is not removed, so no copy may promise that it is.
+    expect(paymentsCopy.remove).toBeUndefined();
+    expect(paymentsCopy.removed).toBeUndefined();
+    expect(paymentsCopy.removeMessage).toBeUndefined();
+  });
+
   it('carries a Spanish message for every load failure', () => {
     expect(loanFormCopy.loadError).toContain('No pudimos cargar');
     expect(paymentsCopy.loadError).toContain('No pudimos cargar');

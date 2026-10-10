@@ -75,6 +75,13 @@ describe('paymentsTotal', () => {
     expect(paymentsTotal([{ amount: '250.00' }, { amount: '25.50' }])).toBe(275.5);
   });
 
+  it('leaves reversed payments out', () => {
+    expect(
+      paymentsTotal([{ amount: '250.00' }, { amount: '25.50', reversedAt: '2026-10-10T12:00:00' }]),
+    ).toBe(250);
+    expect(paymentsTotal([{ amount: '100.00', reversedAt: '2026-10-10T12:00:00' }])).toBe(0);
+  });
+
   it('is zero without payments', () => {
     expect(paymentsTotal([])).toBe(0);
     expect(paymentsTotal(undefined)).toBe(0);

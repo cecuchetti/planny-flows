@@ -2,15 +2,19 @@
 
 Money is normalised through a single :func:`_money` helper so rounding is one
 decision, not one per field. ``pendingBalance`` is never stored: it is derived
-as ``amount - advancePaid - Σ payments`` by :func:`pending_balance`, which is the
-one place every balance-affecting path goes through.
+as ``amount - advancePaid - Σ active payments`` by :func:`pending_balance`, which
+is the one place every balance-affecting path goes through.
 
 The API never accepts or edits ``number``; the service assigns it from
 ``max(number) + 1`` so a backfilled legacy maximum continues the sequence.
 
 Each payment stores its own immutable snapshot rather than recomputing it from
-sibling rows: deleting a later payment must not rewrite a receipt that was
-already handed over.
+sibling rows: reversing a later payment must not rewrite a receipt that was
+already handed over. A payment is never deleted either — reversing it stamps
+``reversedAt``, and the same stamp is annotated onto the frozen snapshots that
+name that row, so a receipt issued afterwards can say the collection was
+reversed without any amount being rewritten. Undoing a reversal clears the stamp
+and removes the annotation, which is what makes the operation safe to misclick.
 """
 
 from __future__ import annotations
@@ -68,7 +72,9 @@ def _date(value: object, field: str, errors: dict[str, str]) -> date | None:
         return None
 
 
-def history_entry(amount: Decimal, payment_id: int | None = None) -> dict[str, object]:
+def history_entry(
+    amount: Decimal, payment_id: int | None = None, reversed_at: datetime | None = None
+) -> dict[str, object]:
     """The canonical payment-history entry.
 
     One builder, used for the entry a payment freezes into its own
@@ -76,13 +82,50 @@ def history_entry(amount: Decimal, payment_id: int | None = None) -> dict[str, o
     stored snapshot and the response shape cannot drift apart. The amount is a
     two-decimal string: it is what the API returns and what the JSON column
     stores, so the frozen snapshot round-trips without a precision question.
+
+    ``reversedAt`` is present only on an entry that was reversed. An entry that
+    never carried the key is not an entry without a reversal — it is the exact
+    shape the snapshot was frozen with, and undoing a reversal has to restore it,
+    so the key is added and removed rather than set to ``None``.
     """
-    return {"id": payment_id, "amount": f"{_money(amount):.2f}"}
+    entry: dict[str, object] = {"id": payment_id, "amount": f"{_money(amount):.2f}"}
+    if reversed_at is not None:
+        entry["reversedAt"] = reversed_at.isoformat()
+    return entry
 
 
 def payments_history(payments: list[Payment]) -> list[dict[str, object]]:
-    """The canonical history of a list of payments, oldest first."""
-    return [history_entry(payment.amount, payment.id) for payment in payments]
+    """The canonical history of a list of active payments, oldest first."""
+    return [
+        history_entry(payment.amount, payment.id, payment.reversedAt)
+        for payment in payments
+        if payment.reversedAt is None
+    ]
+
+
+def _annotate_history(
+    payments: list[Payment], payment_id: int, reversed_at: datetime | None
+) -> None:
+    """Mark (or unmark) ``payment_id`` in every snapshot that names it.
+
+    Only the one entry for that payment is touched, and only its reversal mark:
+    the frozen amounts are left exactly as they were. Removing the mark rather
+    than setting it to ``None`` is what makes an undone reversal return the
+    snapshot to the bytes it was frozen with.
+    """
+    for payment in payments:
+        for entry in payment.paymentsHistoryAtPayment or []:
+            if entry.get("id") != payment_id:
+                continue
+            if reversed_at is None:
+                if "reversedAt" not in entry:
+                    continue
+                entry.pop("reversedAt")
+            else:
+                entry["reversedAt"] = reversed_at.isoformat()
+            # SQLAlchemy cannot see a mutation made *inside* a ``JSON`` column, so
+            # the attribute has to be flagged or the annotation is never written.
+            flag_modified(payment, "paymentsHistoryAtPayment")
 
 
 def _balance_of(loan: Loan, collected: Decimal) -> Decimal:
@@ -168,10 +211,13 @@ def _common_rules(
             else:
                 errors["advancePaid"] = "El pago adelantado no puede superar el monto del préstamo."
 
-    # The mirror guard for what was already collected. Without it an edit can
-    # drive the derived balance below zero and leave it stuck there: the next
-    # payment is then larger than the outstanding balance and is refused, so
-    # nothing can ever pay the negative balance down.
+    # The guard against what was ever collected, reversed payments included.
+    # It is deliberately not the balance's active-only term: a reversal lowers
+    # the balance, so if the amount could be cut below money that was handed
+    # over and then reversed, undoing that reversal would drive the derived
+    # balance below zero and leave it stuck there — the next payment is then
+    # larger than the outstanding balance and is refused, so nothing can ever
+    # pay it down.
     if collected > 0 and "amount" not in errors and amount is not None:
         if amount < collected and not (resolved_advance > amount):
             # ``advancePaid <= amount`` already holds on this branch, so the
@@ -268,7 +314,7 @@ async def create(db: AsyncSession, values: dict[str, Any]) -> Loan:
 async def update(db: AsyncSession, loan_id: int, values: dict[str, Any]) -> Loan:
     loan = await _require_loan(db, loan_id)
 
-    resolved = _common_rules(values, loan, {}, await repository.sum_payments(db, loan_id))
+    resolved = _common_rules(values, loan, {}, await repository.sum_all_payments(db, loan_id))
 
     if values.get("borrowerId") is not None:
         borrower_key = _borrower_key(values["borrowerId"])
@@ -308,7 +354,9 @@ async def create_payment(db: AsyncSession, loan_id: int, values: dict[str, Any])
     """
     loan = await _require_loan(db, loan_id)
 
-    payments = await repository.list_payments(db, loan_id)
+    # Only what is still in force counts: a reversed payment is not money the
+    # loan holds any more, and it must not cap what can be collected now.
+    payments = await repository.list_payments(db, loan_id, active_only=True)
     collected = _money(sum((item.amount for item in payments), _ZERO))
     outstanding = _balance_of(loan, collected)
 
@@ -353,10 +401,60 @@ async def create_payment(db: AsyncSession, loan_id: int, values: dict[str, Any])
         await db.flush()
     return payment
 
-async def delete_payment(db: AsyncSession, loan_id: int, payment_id: int) -> None:
-    """Remove one payment; the balance recomputes through the single point."""
+
+async def _require_payment(db: AsyncSession, loan_id: int, payment_id: int) -> Payment:
     payment = await repository.get_payment(db, loan_id, payment_id)
     if payment is None:
         raise EntityNotFoundError("Payment", message="No encontramos ese pago.")
-    await db.delete(payment)
+    return payment
+
+
+async def reverse_payment(db: AsyncSession, loan_id: int, payment_id: int) -> None:
+    """Reverse one payment: the row survives, marked and dated.
+
+    Nothing is deleted. The row is stamped with the server's ``reversedAt``, which
+    takes it out of the sum the balance is derived from through the single
+    recalculation point, and the reversal is annotated onto every frozen snapshot
+    that names it so an already-issued receipt can show that collection was
+    reversed. No frozen amount is rewritten.
+
+    Reversing an already-reversed payment is refused rather than treated as
+    idempotent: a second reversal is an operator error, and silently accepting it
+    would move a date the receipt may already be quoting.
+    """
+    payment = await _require_payment(db, loan_id, payment_id)
+    if payment.reversedAt is not None:
+        raise BadUserInputError(
+            {"fields": {"paymentId": "Este pago ya está revertido."}},
+            message="Este pago ya está revertido.",
+        )
+
+    reversed_at = datetime.utcnow()
+    payment.reversedAt = reversed_at
+    # The row's own snapshot is the receipt for this very collection, so it is
+    # annotated along with the later ones — without it the receipt a payee holds
+    # still claims the collection is in force while every later one says it was
+    # reversed. ``list_payments`` returns the row already stamped above.
+    _annotate_history(await repository.list_payments(db, loan_id), payment_id, reversed_at)
     await db.flush()
+
+
+async def unreverse_payment(db: AsyncSession, loan_id: int, payment_id: int) -> None:
+    """Undo a reversal: the payment counts again, exactly as it did before.
+
+    The stamp is cleared and the annotation removed from the snapshots that
+    carried it, so a mistaken reversal costs nothing. A payment that is not
+    reversed has no reversal to undo, and that is refused like any other edit
+    that does not apply.
+    """
+    payment = await _require_payment(db, loan_id, payment_id)
+    if payment.reversedAt is None:
+        raise BadUserInputError(
+            {"fields": {"paymentId": "Este pago no está revertido."}},
+            message="Este pago no está revertido.",
+        )
+
+    payment.reversedAt = None
+    _annotate_history(await repository.list_payments(db, loan_id), payment_id, None)
+    await db.flush()
+

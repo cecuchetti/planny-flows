@@ -3,12 +3,16 @@
 Same fixture as ``test_loans.py``: a real application, a real HTTP client and an
 in-memory SQLite database created from the model metadata, so the tests exercise
 the router → service → repository path rather than mocking it.
+
+The reversal rows of the plan's matrix live here: a payment is never deleted, it
+is marked with ``reversedAt`` and stops counting until the reversal is undone.
 """
 
 from __future__ import annotations
 
 import itertools
 from collections.abc import AsyncIterator
+from datetime import datetime
 from decimal import Decimal
 
 import pytest
@@ -104,6 +108,30 @@ async def balance(client: AsyncClient, loan_id: int) -> str:
     return str(response.json()["loan"]["pendingBalance"])
 
 
+async def history(client: AsyncClient, loan_id: int) -> list[dict[str, object]]:
+    """The loan's payment history as the API returns it, reversed rows included."""
+    response = await client.get(f"/api/v1/loans/{loan_id}/payments")
+    assert response.status_code == 200, response.text
+    return list(response.json()["payments"])
+
+
+async def reverse(client: AsyncClient, loan_id: int, payment_id: int) -> object:
+    """The reversal the client already calls: ``DELETE`` on the payment itself."""
+    return await client.delete(f"/api/v1/loans/{loan_id}/payments/{payment_id}")
+
+
+async def undo_reversal(client: AsyncClient, loan_id: int, payment_id: int) -> object:
+    """The dedicated endpoint that undoes a reversal."""
+    return await client.delete(f"/api/v1/loans/{loan_id}/payments/{payment_id}/reversal")
+
+
+def stored_history(payment: Payment, payment_id: int) -> dict[str, object]:
+    """The stored snapshot entry for ``payment_id``, straight off the column."""
+    return next(
+        entry for entry in payment.paymentsHistoryAtPayment if entry["id"] == payment_id
+    )
+
+
 @pytest.mark.asyncio
 async def test_pay_happy_registers_and_drops_the_balance(client: AsyncClient) -> None:
     loan_id = await make_loan(client)
@@ -195,14 +223,14 @@ async def test_history_of_an_unknown_loan_is_not_found(client: AsyncClient) -> N
 
 
 @pytest.mark.asyncio
-async def test_snapshot_is_frozen_when_a_later_payment_is_deleted(
+async def test_snapshot_is_frozen_when_a_later_payment_is_reversed(
     client: AsyncClient, db: AsyncSession
 ) -> None:
+    """Reversing a later payment leaves an earlier snapshot byte-identical."""
     loan_id = await make_loan(client, amount="1000.00")
     first = await register(client, loan_id, "100.00")
     second = await register(client, loan_id, "200.00")
-    before = await client.get(f"/api/v1/loans/{loan_id}/payments")
-    first_before = before.json()["payments"][0]
+    first_before = (await history(client, loan_id))[0]
     # The snapshot is what the row holds, not what the create response said: the
     # row's own id is written after its insert, and a missed write would leave
     # the stored entry reading ``id: None`` while the response still looked right.
@@ -212,13 +240,15 @@ async def test_snapshot_is_frozen_when_a_later_payment_is_deleted(
     ).scalars().one()
     assert stored_before.paymentsHistoryAtPayment == [{"id": first["id"], "amount": "100.00"}]
 
-    deleted = await client.delete(f"/api/v1/loans/{loan_id}/payments/{second['id']}")
-    assert deleted.status_code == 204
+    reversed_response = await reverse(client, loan_id, second["id"])
+    assert reversed_response.status_code == 204  # type: ignore[attr-defined]
 
-    after = await client.get(f"/api/v1/loans/{loan_id}/payments")
-    assert [item["id"] for item in after.json()["payments"]] == [first["id"]]
-    # Byte-identical: the first payment's snapshot was not rewritten.
-    assert after.json()["payments"][0] == first_before
+    after = await history(client, loan_id)
+    # The reversed payment is still listed; only its mark changed.
+    assert [item["id"] for item in after] == [first["id"], second["id"]]
+    # Byte-identical: the first payment's snapshot was not rewritten, and the
+    # first payment itself was not reversed.
+    assert after[0] == first_before
     db.expire_all()
     stored_after = (
         await db.execute(select(Payment).where(Payment.id == first["id"]))
@@ -227,47 +257,169 @@ async def test_snapshot_is_frozen_when_a_later_payment_is_deleted(
 
 
 @pytest.mark.asyncio
-async def test_pay_delete_recomputes_the_balance(client: AsyncClient) -> None:
+async def test_reverse_marks_the_row_and_raises_the_balance(client: AsyncClient) -> None:
+    """REVERSE_HAPPY: the row survives marked, and the balance goes back up."""
     loan_id = await make_loan(client, amount="1000.00")
     payment = await register(client, loan_id, "400.00")
     assert await balance(client, loan_id) == "600.00"
+    assert payment["reversedAt"] is None
 
-    response = await client.delete(f"/api/v1/loans/{loan_id}/payments/{payment['id']}")
+    response = await reverse(client, loan_id, payment["id"])
 
     assert response.status_code == 204
     assert await balance(client, loan_id) == "1000.00"
-    listed = await client.get(f"/api/v1/loans/{loan_id}/payments")
-    assert listed.json()["payments"] == []
+    # LIST_SHOWS_REVERSED: the reversed payment is still in the history, marked
+    # with the date the server stamped.
+    listed = await history(client, loan_id)
+    assert [item["id"] for item in listed] == [payment["id"]]
+    assert listed[0]["reversedAt"] is not None
+    assert datetime.fromisoformat(str(listed[0]["reversedAt"])) > datetime.fromisoformat(
+        str(payment["createdAt"])
+    )
 
 
 @pytest.mark.asyncio
-async def test_pay_delete_unknown_is_not_found(client: AsyncClient) -> None:
+async def test_reverse_recomputes_the_balance_from_the_active_payments(
+    client: AsyncClient,
+) -> None:
+    """REVERSE_RECALC: only the payment still in force counts."""
+    loan_id = await make_loan(client, amount="1000.00")
+    first = await register(client, loan_id, "300.00")
+    await register(client, loan_id, "200.00")
+    assert await balance(client, loan_id) == "500.00"
+
+    assert (await reverse(client, loan_id, first["id"])).status_code == 204
+
+    assert await balance(client, loan_id) == "800.00"
+    # Reversing frees the money up again: the reversed 300.00 is collectable.
+    replacement = await register(client, loan_id, "300.00")
+    assert replacement["amount"] == "300.00"
+    assert await balance(client, loan_id) == "500.00"
+
+
+@pytest.mark.asyncio
+async def test_reverse_annotates_the_snapshots_that_name_the_payment(
+    client: AsyncClient, db: AsyncSession
+) -> None:
+    """REVERSE_SNAPSHOT: a later receipt shows the reversal, without a rewrite."""
+    loan_id = await make_loan(client, amount="1000.00")
+    first = await register(client, loan_id, "100.00")
+    second = await register(client, loan_id, "200.00")
+    # The later snapshot names both payments, and neither carries a reversal mark.
+    assert (await history(client, loan_id))[1]["snapshot"]["paymentsHistory"] == [
+        {"id": first["id"], "amount": "100.00"},
+        {"id": second["id"], "amount": "200.00"},
+    ]
+
+    assert (await reverse(client, loan_id, first["id"])).status_code == 204
+
+    later = (await history(client, loan_id))[1]
+    entries = later["snapshot"]["paymentsHistory"]
+    reversed_entry = next(entry for entry in entries if entry["id"] == first["id"])
+    assert reversed_entry["amount"] == "100.00"
+    assert reversed_entry["reversedAt"] is not None
+    # The amounts frozen on the later row are untouched: a reversal moves no money.
+    assert later["snapshot"]["pendingBalance"] == "700.00"
+    assert later["snapshot"]["totalPaid"] == "300.00"
+    # And the annotation is what is stored, not only what was returned.
+    db.expire_all()
+    stored = (
+        await db.execute(select(Payment).where(Payment.id == second["id"]))
+    ).scalars().one()
+    assert stored_history(stored, first["id"])["reversedAt"] is not None
+    assert stored_history(stored, second["id"]) == {"id": second["id"], "amount": "200.00"}
+
+
+@pytest.mark.asyncio
+async def test_reversing_twice_is_rejected(client: AsyncClient) -> None:
+    """REVERSE_TWICE: an operator error, not a no-op — nothing moves."""
+    loan_id = await make_loan(client, amount="1000.00")
+    payment = await register(client, loan_id, "400.00")
+    assert (await reverse(client, loan_id, payment["id"])).status_code == 204
+    stamped = (await history(client, loan_id))[0]["reversedAt"]
+
+    response = await reverse(client, loan_id, payment["id"])
+
+    assert response.status_code == 400, response.text
+    assert error(response)["code"] == "BAD_USER_INPUT"
+    assert error(response)["message"] == "Este pago ya está revertido."
+    assert await balance(client, loan_id) == "1000.00"
+    # The date the receipt may already quote did not move.
+    assert (await history(client, loan_id))[0]["reversedAt"] == stamped
+
+
+@pytest.mark.asyncio
+async def test_undoing_a_reversal_puts_the_payment_back(client: AsyncClient) -> None:
+    """REVERSE_UNREVERSE: a mistaken reversal costs nothing."""
+    loan_id = await make_loan(client, amount="1000.00")
+    first = await register(client, loan_id, "100.00")
+    second = await register(client, loan_id, "200.00")
+    assert (await reverse(client, loan_id, first["id"])).status_code == 204
+    assert await balance(client, loan_id) == "800.00"
+
+    response = await undo_reversal(client, loan_id, first["id"])
+
+    assert response.status_code == 204
+    assert await balance(client, loan_id) == "700.00"
+    listed = await history(client, loan_id)
+    assert [item["reversedAt"] for item in listed] == [None, None]
+    # The later snapshot stops showing the reversal, back to the bytes it froze.
+    assert listed[1]["snapshot"]["paymentsHistory"] == [
+        {"id": first["id"], "amount": "100.00"},
+        {"id": second["id"], "amount": "200.00"},
+    ]
+
+
+@pytest.mark.asyncio
+async def test_undoing_a_reversal_that_never_happened_is_rejected(client: AsyncClient) -> None:
+    loan_id = await make_loan(client, amount="1000.00")
+    payment = await register(client, loan_id, "100.00")
+
+    response = await undo_reversal(client, loan_id, payment["id"])
+
+    assert response.status_code == 400, response.text
+    assert error(response)["code"] == "BAD_USER_INPUT"
+
+
+@pytest.mark.asyncio
+async def test_reversal_unknown_is_not_found(client: AsyncClient) -> None:
+    """REVERSE_UNKNOWN: an id that is absent, or belongs to another loan."""
     loan_id = await make_loan(client)
     other_loan_id = await make_loan(client)
     elsewhere = await register(client, other_loan_id, "10.00")
 
-    missing = await client.delete(f"/api/v1/loans/{loan_id}/payments/9999")
+    missing = await reverse(client, loan_id, 9999)
     assert missing.status_code == 404
     assert error(missing)["code"] == "ENTITY_NOT_FOUND"
     assert error(missing)["message"] == "No encontramos ese pago."
 
     # A payment id that belongs to another loan is not reachable through this one.
-    foreign = await client.delete(f"/api/v1/loans/{loan_id}/payments/{elsewhere['id']}")
+    foreign = await reverse(client, loan_id, elsewhere["id"])
     assert foreign.status_code == 404
     assert error(foreign)["code"] == "ENTITY_NOT_FOUND"
 
+    # And undoing a reversal is scoped to the loan the same way.
+    undone = await undo_reversal(client, loan_id, elsewhere["id"])
+    assert undone.status_code == 404
+    assert error(undone)["code"] == "ENTITY_NOT_FOUND"
+
 
 @pytest.mark.asyncio
-async def test_deleting_a_loan_deletes_its_payments(client: AsyncClient, db: AsyncSession) -> None:
-    loan_id = await make_loan(client)
-    await register(client, loan_id, "10.00")
-    await register(client, loan_id, "20.00")
+async def test_deleting_a_loan_deletes_its_active_and_reversed_payments(
+    client: AsyncClient, db: AsyncSession
+) -> None:
+    """LOAN_DELETE_STILL_CASCADES: the loan takes every row, reversed included."""
+    loan_id = await make_loan(client, amount="1000.00")
+    active = await register(client, loan_id, "10.00")
+    reversed_payment = await register(client, loan_id, "20.00")
+    assert (await reverse(client, loan_id, reversed_payment["id"])).status_code == 204
 
     response = await client.delete(f"/api/v1/loans/{loan_id}")
 
     assert response.status_code == 204
     remaining = await db.execute(select(Payment).where(Payment.loan_id == loan_id))
     assert list(remaining.scalars().all()) == []
+    assert active["reversedAt"] is None
 
 
 @pytest.mark.asyncio
@@ -298,6 +450,47 @@ async def test_amount_equal_to_what_was_collected_is_accepted(client: AsyncClien
 
     assert response.status_code == 200, response.text
     assert response.json()["loan"]["pendingBalance"] == "0.00"
+
+
+@pytest.mark.asyncio
+async def test_the_collected_guard_still_counts_reversed_payments(client: AsyncClient) -> None:
+    """GUARD_AUDITS_EVER_COLLECTED: a reversal takes money out of the balance,
+    not out of the record of what was handed over.
+
+    The amount may not drop below the audit total: otherwise the reversal could
+    be undone afterwards and drive the derived balance below zero, where every
+    later payment is refused and nothing can pay it back.
+    """
+    loan_id = await make_loan(client, amount="1000.00")
+    payment = await register(client, loan_id, "900.00")
+    assert (await reverse(client, loan_id, payment["id"])).status_code == 204
+    # Reversed, so the balance is whole again...
+    assert await balance(client, loan_id) == "1000.00"
+
+    cut = await client.put(f"/api/v1/loans/{loan_id}", json={"amount": "100.00"})
+    assert cut.status_code == 400, cut.text
+    assert "cobrado" in str(error(cut)["data"])
+
+    # ...and at the audit total the undo still lands on zero, never below it.
+    allowed = await client.put(f"/api/v1/loans/{loan_id}", json={"amount": "900.00"})
+    assert allowed.status_code == 200, allowed.text
+    assert (await undo_reversal(client, loan_id, payment["id"])).status_code == 204
+    assert await balance(client, loan_id) == "0.00"
+
+
+@pytest.mark.asyncio
+async def test_currency_stays_locked_once_every_payment_is_reversed(
+    client: AsyncClient,
+) -> None:
+    """The currency lock follows money that was received, reversals included."""
+    loan_id = await make_loan(client, amount="1000.00", currency="USD")
+    payment = await register(client, loan_id, "100.00")
+    assert (await reverse(client, loan_id, payment["id"])).status_code == 204
+
+    response = await client.put(f"/api/v1/loans/{loan_id}", json={"currency": "ARS"})
+
+    assert response.status_code == 400, response.text
+    assert "moneda" in str(error(response)["data"])
 
 
 @pytest.mark.asyncio

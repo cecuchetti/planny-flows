@@ -25,6 +25,7 @@ import {
 } from '../money';
 import {
   CardTitle,
+  Chip,
   EmptyState,
   ErrorText,
   FieldErrorText,
@@ -136,6 +137,54 @@ function PaymentAmountField({ value, onChange }) {
 PaymentAmountField.propTypes = {
   value: PropTypes.string.isRequired,
   onChange: PropTypes.func.isRequired,
+};
+
+/**
+ * One row of the payment history.
+ *
+ * A reversed payment keeps its row and is labelled in words — a struck-through
+ * amount would say "gone", and the whole point is that it is still there to be
+ * named. The row's action follows its own state: an in-force payment offers the
+ * reversal, a reversed one offers to undo it.
+ */
+function PaymentRow({ payment, currency, onReverse, onUndoReversal }) {
+  const isReversed = Boolean(payment.reversedAt);
+  const title = isReversed ? paymentsCopy.undoTitle : paymentsCopy.reverseTitle;
+  const message = isReversed ? paymentsCopy.undoMessage : paymentsCopy.reverseMessage;
+  const confirmText = isReversed ? paymentsCopy.undoReversal : paymentsCopy.reverse;
+  const action = isReversed ? onUndoReversal : onReverse;
+
+  return (
+    <ListRow>
+      <Muted>{formatDate(payment.date)}</Muted>
+      <span>{amountWithCurrency(payment.amount, currency)}</span>
+      {isReversed && <Chip>{paymentsCopy.reversedTag}</Chip>}
+      <ConfirmModal
+        variant={isReversed ? 'primary' : 'danger'}
+        title={title}
+        message={message}
+        confirmText={confirmText}
+        renderLink={({ open }) => (
+          <Button type="button" onClick={open}>
+            {confirmText}
+          </Button>
+        )}
+        onConfirm={({ close }) => action(payment.id).finally(close)}
+      />
+    </ListRow>
+  );
+}
+
+PaymentRow.propTypes = {
+  payment: PropTypes.shape({
+    id: PropTypes.number.isRequired,
+    date: PropTypes.string,
+    amount: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    reversedAt: PropTypes.string,
+  }).isRequired,
+  currency: PropTypes.string.isRequired,
+  onReverse: PropTypes.func.isRequired,
+  onUndoReversal: PropTypes.func.isRequired,
 };
 
 function LoanForm({ loanId = undefined }) {
@@ -289,15 +338,28 @@ function LoanForm({ loanId = undefined }) {
       .finally(() => setPaying(false));
   };
 
-  const removePayment = (paymentId) =>
+  /*
+   * A payment is reversed, not deleted: `DELETE` on the payment itself marks it
+   * and the balance recomputes through the server. The reversal is undoable, so
+   * a misclick costs nothing.
+   */
+  const reversePayment = (paymentId) =>
     api
       .delete(`/api/v1/loans/${id}/payments/${paymentId}`)
       .then(() => {
-        toast.success(paymentsCopy.removed);
+        toast.success(paymentsCopy.reversed);
         return refresh();
       })
       .catch((error) => toast.error(error));
 
+  const undoPaymentReversal = (paymentId) =>
+    api
+      .delete(`/api/v1/loans/${id}/payments/${paymentId}/reversal`)
+      .then(() => {
+        toast.success(paymentsCopy.restored);
+        return refresh();
+      })
+      .catch((error) => toast.error(error));
   /*
    * The person is deliberately outside `values`: `Form.Field` binds a control,
    * and the picker is a search with its own request. The loan itself is then
@@ -339,6 +401,8 @@ function LoanForm({ loanId = undefined }) {
   } else if (payments.length === 0) {
     paymentsContent = <EmptyState>{paymentsCopy.empty}</EmptyState>;
   } else {
+    // Only what is still in force is collected: a reversed row stays visible but
+    // does not count, exactly as the server leaves it out of `pendingBalance`.
     const paid = paymentsTotal(payments);
     paymentsContent = (
       <Fragment>
@@ -348,22 +412,13 @@ function LoanForm({ loanId = undefined }) {
         <CardTitle as="h3">{paymentsCopy.history}</CardTitle>
         <List>
           {payments.map((payment) => (
-            <ListRow key={payment.id}>
-              <Muted>{formatDate(payment.date)}</Muted>
-              <span>{amountWithCurrency(payment.amount, initialForm.currency)}</span>
-              <ConfirmModal
-                variant="danger"
-                title={paymentsCopy.removeTitle}
-                message={paymentsCopy.removeMessage}
-                confirmText={paymentsCopy.remove}
-                renderLink={({ open }) => (
-                  <Button type="button" onClick={open}>
-                    {paymentsCopy.remove}
-                  </Button>
-                )}
-                onConfirm={({ close }) => removePayment(payment.id).finally(close)}
-              />
-            </ListRow>
+            <PaymentRow
+              key={payment.id}
+              payment={payment}
+              currency={initialForm.currency}
+              onReverse={reversePayment}
+              onUndoReversal={undoPaymentReversal}
+            />
           ))}
         </List>
       </Fragment>

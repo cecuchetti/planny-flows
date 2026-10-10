@@ -77,7 +77,8 @@ export const paymentsCopy = {
   register: 'Registrar pago',
   registering: 'Registrando…',
   registered: 'Pago registrado.',
-  removed: 'Pago eliminado.',
+  reversed: 'Pago revertido.',
+  restored: 'Reversión deshecha: el pago vuelve a contar.',
   loading: 'Cargando pagos…',
   loadError: 'No pudimos cargar los pagos. Intentá de nuevo.',
   retry: 'Reintentar',
@@ -85,9 +86,18 @@ export const paymentsCopy = {
   total: 'Total cobrado',
   history: 'Historial de pagos',
   date: 'Fecha',
-  remove: 'Eliminar',
-  removeTitle: '¿Eliminar pago?',
-  removeMessage: 'Se elimina el pago y el saldo pendiente se recalcula. No se puede deshacer.',
+  /*
+   * A reversed payment is never deleted: the row stays and carries this label
+   * next to its amount, because a receipt issued later has to be able to name it.
+   */
+  reversedTag: 'Revertido',
+  reverse: 'Revertir',
+  reverseTitle: '¿Revertir el pago?',
+  reverseMessage:
+    'El pago queda registrado como revertido y deja de contar para el saldo. Podés deshacer la reversión.',
+  undoReversal: 'Deshacer',
+  undoTitle: '¿Deshacer la reversión?',
+  undoMessage: 'El pago vuelve a contar para el saldo. Podés revertirlo otra vez.',
   currencyLocked:
     'No podés cambiar la moneda: el préstamo ya tiene pago adelantado o pagos registrados.',
 };

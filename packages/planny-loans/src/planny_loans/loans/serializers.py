@@ -40,11 +40,16 @@ def loan_to_dict(loan: Loan, pending_balance: Decimal) -> dict[str, object]:
 
 
 def payment_to_dict(payment: Payment) -> dict[str, object]:
-    """One payment and the snapshot it was frozen with.
+    """One payment, its reversal state and the snapshot it was frozen with.
+
+    ``reversedAt`` is the row's own mark: an ISO timestamp once reversed, ``null``
+    while the payment is in force.
 
     ``paymentsHistory`` is passed through as stored — the service froze it with
-    the single ``history_entry`` builder, so re-deriving it here would be a
-    second builder and would silently drop whatever it did not think to copy.
+    the single ``history_entry`` builder, and the reversal annotation is applied
+    to that stored list, so re-deriving it here would be a second builder and
+    would silently drop whatever it did not think to copy (the reversal mark
+    included).
 
     The one normalisation is the amount's type. Rows written by this build store
     the two-decimal string ``history_entry`` produces, but a row written earlier
@@ -57,6 +62,7 @@ def payment_to_dict(payment: Payment) -> dict[str, object]:
         "amount": money(payment.amount),
         "date": payment.date.isoformat(),
         "createdAt": payment.createdAt.isoformat(),
+        "reversedAt": payment.reversedAt.isoformat() if payment.reversedAt else None,
         "snapshot": {
             "pendingBalance": money(payment.pendingBalanceAtPayment),
             "totalPaid": money(payment.totalPaidAtPayment),

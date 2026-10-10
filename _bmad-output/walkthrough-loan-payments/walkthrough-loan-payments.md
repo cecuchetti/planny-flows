@@ -2,6 +2,8 @@
 
 Target: `0a6d9c1250cab98f200155e67f7a2909c2cc6e39` — "feat: register, snapshot and delete loan payments" (17 files, +1493/−151), baseline `cd3b64a43f520f70be10f061aba996642e6a405a`.
 
+_Closed after block 4: the review produced a design decision that is being built as its own change; blocks 5–8 were left unreviewed._
+
 - [x] ## 1. Intent
 
 _state: done_
@@ -14,46 +16,58 @@ _Accepted by the reviewer without changes._
 
 _Quoted verbatim from the `## Intent` section inside `<frozen-after-approval>` in [plan-loan-payments.md](../../_bmad-output/plan-loan-payments.md)._
 
-- [ ] ## 2. Broad strokes
+- [x] ## 2. Broad strokes
 
-_state: paused_
+_state: done_
 
-The change has one mechanism: a payment row is inserted with its snapshot already computed, and every balance is recomputed by summing the payments of the loan at read time. Nothing stores a balance. Open these in order and the whole shape is visible.
+_Re-anchored on the resumed review: `3a7e22d` rewrote the Loans client after this walkthrough paused, so the entry points below are the current ones._
 
-- [packages/planny-loans/src/planny_loans/loans/router.py:91](../../packages/planny-loans/src/planny_loans/loans/router.py#L91) — the nested `POST /loans/{loan_id}/payments` route; its siblings at [router.py:81](../../packages/planny-loans/src/planny_loans/loans/router.py#L81) and [router.py:99](../../packages/planny-loans/src/planny_loans/loans/router.py#L99) are the history and the delete.
-- [packages/planny-loans/src/planny_loans/loans/service.py:302](../../packages/planny-loans/src/planny_loans/loans/service.py#L302) — `create_payment`, which validates against the true outstanding balance and freezes the snapshot on the new row.
+The mechanism is one insert and one derivation. A payment is inserted with its snapshot already computed on the row, and every balance is recomputed at read time by summing that loan's payments. Nothing ever stores a balance.
+
+- [packages/planny-loans/src/planny_loans/loans/router.py:91](../../packages/planny-loans/src/planny_loans/loans/router.py#L91) — the nested `POST /loans/{loan_id}/payments`; its siblings are the history at [router.py:81](../../packages/planny-loans/src/planny_loans/loans/router.py#L81) and the delete at [router.py:99](../../packages/planny-loans/src/planny_loans/loans/router.py#L99).
+- [packages/planny-loans/src/planny_loans/loans/service.py:302](../../packages/planny-loans/src/planny_loans/loans/service.py#L302) — `create_payment`: validates against the true outstanding balance and freezes the snapshot on the new row.
 - [packages/planny-loans/src/planny_loans/loans/service.py:93](../../packages/planny-loans/src/planny_loans/loans/service.py#L93) — `pending_balance`, the single place a balance is derived: `amount − advancePaid − Σ payments`.
-- [packages/planny-core/src/planny_core/models/payment.py:28](../../packages/planny-core/src/planny_core/models/payment.py#L28) — the `payment` table and the four snapshot columns that make a payment row self-describing.
-- [client/src/Loans/LoanForm/index.jsx:273](../../client/src/Loans/LoanForm/index.jsx#L273) — the edit view's payment section: register, history, and per-row delete behind the existing confirmation dialog.
+- [packages/planny-core/src/planny_core/models/payment.py:28](../../packages/planny-core/src/planny_core/models/payment.py#L28) — the `payment` table with the four snapshot columns that make a row self-describing.
+- [client/src/Loans/LoanForm/index.jsx:373](../../client/src/Loans/LoanForm/index.jsx#L373) — the edit view's payment section: register at [:279](../../client/src/Loans/LoanForm/index.jsx#L279) and delete at [:292](../../client/src/Loans/LoanForm/index.jsx#L292).
 
-### Paused: reviewer raised visual integration
+- [x] ## 3. Slice: the payment table and its migration
 
-The reviewer stopped the walkthrough here. Their constraint, verbatim: *"No solo falta el enlace, el estilo visual de la aplicación es completamente diferente a la aplicacion original de manejo de proyectos. Debe ser una sola aplicacion integrada, con el mismo estilo y mismos componentes visuales"* — Loans must be one application with the project-management views, sharing the same visual language and components.
+_state: done_
 
-What is already true (verified in this session, not assumed): the "Préstamos" sidebar entry exists below Kanban Board, gated by the build flag, at [client/src/Project/Sidebar/index.jsx:65](../../client/src/Project/Sidebar/index.jsx#L65), and the route is registered at [client/src/App/Routes.jsx:48](../../client/src/App/Routes.jsx#L48). The gap is styling: the Loans views carry their own palette and raw form controls in [client/src/Loans/Styles.js:1](../../client/src/Loans/Styles.js#L1) instead of the shared components under [client/src/shared/components/index.js:1](../../client/src/shared/components/index.js#L1) and the design tokens in [client/src/shared/utils/styles.js:1](../../client/src/shared/utils/styles.js#L1).
+One row per payment, and each row carries its own frozen copy of the loan's state at that moment: the balance after the payment, the total collected, the advance in effect, and the history up to and including it. That is the decision that shapes everything else — a receipt re-rendered later cannot change, even if a later payment is deleted.
 
-The reviewer asked for that as a separate change; it is being planned as its own build, not as part of this walkthrough. This block and blocks 3–8 remain unreviewed.
+Read in this order:
 
-- [ ] ## 3. Slice: the payment table and its migration
+1. [payment.py:28](../../packages/planny-core/src/planny_core/models/payment.py#L28) — the table. `amount` and the snapshot amounts are `Numeric(14,2)`; [payment.py:42](../../packages/planny-core/src/planny_core/models/payment.py#L42) is the JSON history.
+2. [payment.py:27](../../packages/planny-core/src/planny_core/models/payment.py#L27) and the file's docstring — why the snapshot is stored rather than reconstructed from sibling rows.
+3. [alembic/versions/7d1f4b2c9a30_add_payment.py:14](../../alembic/versions/7d1f4b2c9a30_add_payment.py#L14) — the revision, one step off `9c3e5a7b1d20`, with the index and the `ON DELETE CASCADE` foreign key.
+4. [loan.py:58](../../packages/planny-core/src/planny_core/models/loan.py#L58) — the other side of the relationship, left lazy so the loan list stays one query.
+5. [test_migrations.py:166](../../packages/planny-core/tests/test_migrations.py#L166) — what the suite pins about the table.
 
-_state: unvisited_
+- [x] ## 4. Slice: derived balance, snapshot and the guards
 
-- [ ] ## 4. Slice: derived balance, snapshot and the guards
+_state: done_
 
-_state: unvisited_
+The reviewer settled the design question this slice raised: a reversed collection must stay visible on the receipts of later payments, and the balance must recompute on its own.
+
+- The balance already recomputes by construction, not by repair: there is no stored balance, and `pending_balance` sums the payments on every read ([service.py:93](../../packages/planny-loans/src/planny_loans/loans/service.py#L93), [repository.py:45](../../packages/planny-loans/src/planny_loans/loans/repository.py#L45)).
+- What the decision changes is deletion: a reversed payment cannot be a `DELETE`, because a later receipt has to be able to name it. `create_payment`'s snapshot history stores each entry's id ([service.py:83](../../packages/planny-loans/src/planny_loans/loans/service.py#L83)), so the row has to survive.
+- Measured behaviour today, for the record: loan of 1000 with payments 200 then 300 leaves the balance at 500.00 and the second payment's snapshot at `totalPaid: 500.00` with history `[{id 1, 200.00}, {id 2, 300.00}]`. Deleting the **earlier** payment recomputes the balance to 700.00 but leaves that snapshot byte-identical — it still names payment 1, which no longer exists.
+
+The change that follows from this decision — reversing instead of deleting, excluding reversed payments from the balance and from the collection guards, a reversal marker with its migration, and the history showing the reversed row — is being built as its own change. The "esta cobranza fue revertida" wording belongs to the receipt itself, which is Epic 4.
 
 - [ ] ## 5. Slice: the nested payment routes
 
-_state: unvisited_
+_state: unreviewed (deferred)_
 
 - [ ] ## 6. Slice: the loan edit view's payment section
 
-_state: unvisited_
+_state: unreviewed (deferred)_
 
 - [ ] ## 7. Slice: tests and the Cypress flows
 
-_state: unvisited_
+_state: unreviewed (deferred)_
 
 - [ ] ## 8. Periphery
 
-_state: unvisited_
+_state: unreviewed (deferred)_
