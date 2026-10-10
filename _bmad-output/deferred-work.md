@@ -19,6 +19,3 @@
 - source_plan: none
   summary: Run the migration spike validating data extraction and the borrower name-split/dedup heuristic against real legacy production data.
   evidence: Epic 2 Story 2.8 has a hard data dependency — no read-only copy of the legacy MongoDB source, its connection string, or the legacy application checkout is present in this workspace.
-- source_plan: `_bmad-output/plan-loans-optional-plugin.md`
-  summary: Gate the Loans client behind a build-time flag so a build can leave the feature out of the bundle, and add the missing navigation entry behind that same flag.
-  evidence: Split from the loans-as-an-optional-module change on human confirmation because the client half is independently shippable; the backend package makes the API optional while a client build without `REACT_APP_ENABLED_LOANS` still emits the Loans chunk and routes `/loans`. The approved nav placement is a flag-gated entry in `client/src/Project/Sidebar/index.jsx` reusing the existing unused `common.loans` key, which supersedes the earlier "never couple loans routes to Jira project loading" boundary.
