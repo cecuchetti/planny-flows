@@ -111,7 +111,10 @@ async def create_payment(
     loan_id: int, body: PaymentRequest, db: AsyncSession = Depends(get_db)
 ) -> dict[str, object]:
     payment = await service.create_payment(db, loan_id, {"amount": body.amount})
-    return {"payment": payment_to_dict(payment)}
+    # The receipt flow has to say whether this payment closed the loan, so the
+    # resulting status rides back with the payment rather than forcing a second
+    # request for the loan.
+    return {"payment": payment_to_dict(payment), "status": payment.loan.status}
 
 
 @router.delete("/{loan_id}/payments/{payment_id}", status_code=204)

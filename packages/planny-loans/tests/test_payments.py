@@ -559,3 +559,17 @@ async def test_payment_date_is_the_server_time_not_the_payload(client: AsyncClie
 
     assert response.status_code == 201, response.text
     assert response.json()["payment"]["date"].startswith("20")
+
+
+@pytest.mark.asyncio
+async def test_create_payment_reports_the_resulting_loan_status(client: AsyncClient) -> None:
+    """The receipt flow reads `status` off the payment response to toast a close."""
+    loan_id = await make_loan(client, amount="1000.00")
+
+    partial = await client.post(f"/api/v1/loans/{loan_id}/payments", json={"amount": "400.00"})
+    assert partial.status_code == 201, partial.text
+    assert partial.json()["status"] == "active"
+
+    closing = await client.post(f"/api/v1/loans/{loan_id}/payments", json={"amount": "600.00"})
+    assert closing.status_code == 201, closing.text
+    assert closing.json()["status"] == "closed"

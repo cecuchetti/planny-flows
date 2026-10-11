@@ -185,7 +185,7 @@ describe('Loans registry', () => {
       const outstanding =
         Number(createdLoan.amount) -
         Number(createdLoan.advancePaid || 0) -
-        payments.reduce((total, item) => total + Number(item.amount), 0);
+        payments.reduce((total, item) => total + (item.reversedAt ? 0 : Number(item.amount)), 0);
       if (!(amount > 0) || amount > outstanding) {
         return req.reply({
           statusCode: 400,
@@ -199,6 +199,13 @@ describe('Loans registry', () => {
           },
         });
       }
+      const pendingAfter = (outstanding - amount).toFixed(2);
+      const status = pendingAfter === '0.00' ? 'closed' : 'active';
+      const activeBefore = payments.filter((item) => !item.reversedAt);
+      const history = [
+        ...activeBefore.map((item) => ({ id: item.id, amount: item.amount })),
+        { id: payments.length + 1, amount: amount.toFixed(2) },
+      ];
       const payment = {
         id: payments.length + 1,
         loanId: createdLoan.id,
@@ -206,15 +213,19 @@ describe('Loans registry', () => {
         date: '2026-10-08T12:00:00',
         createdAt: '2026-10-08T12:00:00',
         reversedAt: null,
-        snapshot: {},
+        snapshot: {
+          pendingBalance: pendingAfter,
+          totalPaid: (
+            activeBefore.reduce((total, item) => total + Number(item.amount), 0) + amount
+          ).toFixed(2),
+          advancePaid: Number(createdLoan.advancePaid || 0).toFixed(2),
+          paymentsHistory: history,
+        },
       };
       payments = [...payments, payment];
-      createdLoan = {
-        ...createdLoan,
-        pendingBalance: (outstanding - amount).toFixed(2),
-      };
+      createdLoan = { ...createdLoan, pendingBalance: pendingAfter, status };
       loans = [createdLoan];
-      return req.reply({ statusCode: 201, body: { payment } });
+      return req.reply({ statusCode: 201, body: { payment, status } });
     }).as('createPayment');
     /*
      * Reversal is not deletion: the payment keeps its row and gains a
@@ -629,5 +640,80 @@ describe('Loans registry', () => {
     cy.wait('@listLoans');
     cy.contains('Activos (1)').should('be.visible');
     cy.contains('Cerrados (0)').should('be.visible');
+  });
+
+  it('prefills the amount from the installment rule and renders a receipt', () => {
+    // The installment is 400.00 but only 250.00 is outstanding, so the prefill is
+    // min(cuota, saldo) — the balance, not the installment.
+    loans = [
+      loan({ id: 1, amount: '1000.00', installmentAmount: '400.00', pendingBalance: '250.00' }),
+    ];
+    [createdLoan] = loans;
+    showLoans();
+    cy.get('[data-testid="loans:receipt"]').click();
+    cy.location('pathname').should('eq', '/project/loans/receipt');
+    cy.wait('@listLoans');
+
+    cy.get('[data-testid="select:receipt-loan"]').click();
+    cy.get('[data-select-option-value="1"]').click();
+    cy.get('input[name="receiptAmount"]').should('have.value', '250.00');
+
+    cy.contains('button', 'Registrar pago y generar recibo').click();
+    cy.wait('@createPayment');
+
+    cy.contains('Recibo de pago').should('be.visible');
+    cy.contains('doscientos cincuenta dólares con 00/100').should('be.visible');
+    cy.contains('Pago registrado.').should('be.visible');
+  });
+
+  it('toasts explicitly when a payment closes the loan', () => {
+    loans = [loan({ id: 1, amount: '1000.00', pendingBalance: '1000.00' })];
+    [createdLoan] = loans;
+    showLoans();
+    cy.get('[data-testid="loans:receipt"]').click();
+    cy.wait('@listLoans');
+
+    cy.get('[data-testid="select:receipt-loan"]').click();
+    cy.get('[data-select-option-value="1"]').click();
+    cy.get('input[name="receiptAmount"]').should('have.value', '1000.00');
+
+    cy.contains('button', 'Registrar pago y generar recibo').click();
+    cy.wait('@createPayment');
+
+    cy.contains('Pago registrado: el préstamo quedó cerrado.').should('be.visible');
+    cy.contains('mil dólares con 00/100').should('be.visible');
+  });
+
+  it('reopens a historical receipt from its snapshot with the advance line', () => {
+    loans = [loan({ id: 1, amount: '1000.00', advancePaid: '200.00', pendingBalance: '500.00' })];
+    [createdLoan] = loans;
+    payments = [
+      {
+        id: 1,
+        loanId: 1,
+        amount: '300.00',
+        date: '2026-10-08T12:00:00',
+        createdAt: '2026-10-08T12:00:00',
+        reversedAt: null,
+        snapshot: {
+          pendingBalance: '500.00',
+          totalPaid: '300.00',
+          advancePaid: '200.00',
+          paymentsHistory: [{ id: 1, amount: '300.00' }],
+        },
+      },
+    ];
+    showLoans();
+    cy.contains('button', 'Editar').click();
+    cy.wait('@getLoan');
+    cy.wait('@listPayments');
+
+    cy.contains('button', 'Ver Recibo').click();
+    cy.get('[data-testid="modal:receipt"]')
+      .should('be.visible')
+      .and('contain', 'Recibo de pago')
+      .and('contain', 'Pago cuotas anteriores')
+      .and('contain', 'trescientos dólares con 00/100')
+      .and('contain', '500.00 USD');
   });
 });

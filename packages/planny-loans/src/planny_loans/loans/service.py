@@ -453,6 +453,7 @@ async def create_payment(db: AsyncSession, loan_id: int, values: dict[str, Any])
 
     payment = Payment(
         loan_id=loan_id,
+        loan=loan,
         amount=amount,
         date=datetime.utcnow(),
         pendingBalanceAtPayment=_money(outstanding - amount),

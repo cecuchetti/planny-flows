@@ -94,6 +94,7 @@ export const paymentsCopy = {
   loadError: 'No pudimos cargar los pagos. Intentá de nuevo.',
   retry: 'Reintentar',
   empty: 'Todavía no hay pagos registrados.',
+  viewReceipt: 'Ver Recibo',
   total: 'Total cobrado',
   history: 'Historial de pagos',
   date: 'Fecha',
@@ -113,6 +114,52 @@ export const paymentsCopy = {
     'No podés cambiar la moneda: el préstamo ya tiene pago adelantado o pagos registrados.',
 };
 
+/*
+ * The formal legal register of the receipt (UX-DR9). The app talks in casual
+ * voseo; the receipt is the one surface that reads like a legal document, so its
+ * labels are deliberately stiffer than the copy around them.
+ */
+export const receiptCopy = {
+  title: 'Recibo de pago',
+  number: 'Nº',
+  receivedAmount: 'Recibí la suma de',
+  paidTo: 'Pagado a',
+  concept: 'Concepto',
+  amountInWords: 'Son',
+  paidBy: 'Pagado por',
+  approved: 'Aprobado',
+  signature: 'Firma de recibido',
+  resultingBalance: 'Saldo resultante',
+  history: 'Historial de pagos',
+  advanceLine: 'Pago cuotas anteriores',
+  reversedTag: 'Revertido',
+  reversedBanner: 'Esta cobranza fue revertida. Este recibo no constituye un comprobante de pago.',
+  print: 'Imprimir',
+  exportPng: 'Descargar PNG',
+  exporting: 'Generando…',
+};
+
+/*
+ * The "Generar Recibo" view: casual voseo like the rest of the app, because the
+ * operator is working, not reading a document. Only the receipt itself is formal.
+ */
+export const receiptFlowCopy = {
+  title: 'Generar Recibo',
+  selectLabel: 'Préstamo',
+  selectPlaceholder: 'Elegí un préstamo activo',
+  amount: 'Monto a cobrar',
+  confirm: 'Registrar pago y generar recibo',
+  confirming: 'Registrando…',
+  loading: 'Cargando préstamos…',
+  loadError: 'No pudimos cargar los préstamos. Intentá de nuevo.',
+  retry: 'Reintentar',
+  empty: 'No hay préstamos activos para cobrar.',
+  noLoan: 'Elegí un préstamo para continuar.',
+  invalidAmount: 'Ingresá un monto válido.',
+  paymentToast: 'Pago registrado.',
+  closedToast: 'Pago registrado: el préstamo quedó cerrado.',
+};
+
 export const loansListCopy = {
   title: 'Préstamos',
   empty: 'Todavía no hay préstamos. Cargá el primero.',
@@ -120,6 +167,7 @@ export const loansListCopy = {
   loadError: 'No pudimos cargar los préstamos. Intentá de nuevo.',
   retry: 'Reintentar',
   newLoan: 'Nuevo préstamo',
+  generateReceipt: 'Generar Recibo',
   edit: 'Editar',
   remove: 'Eliminar',
   removeTitle: '¿Eliminar préstamo?',

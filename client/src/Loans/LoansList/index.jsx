@@ -263,6 +263,13 @@ function LoansList() {
         >
           {loansListCopy.newLoan}
         </Button>
+        <Button
+          type="button"
+          data-testid="loans:receipt"
+          onClick={() => navigate('/project/loans/receipt')}
+        >
+          {loansListCopy.generateReceipt}
+        </Button>
       </RowSpaced>
 
       {!hasLoans ? (

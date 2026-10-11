@@ -1,4 +1,12 @@
-import { borrowerCopy, loanCopy, loanFormCopy, loansListCopy, paymentsCopy } from './copy';
+import {
+  borrowerCopy,
+  loanCopy,
+  loanFormCopy,
+  loansListCopy,
+  paymentsCopy,
+  receiptCopy,
+  receiptFlowCopy,
+} from './copy';
 
 /*
  * Préstamos is a view of the project now, so there is no `loanNavigation` to
@@ -62,5 +70,16 @@ describe('loan copy', () => {
   it('explains why a closed loan locks its balance fields', () => {
     expect(loanFormCopy.closedNotice).toContain('Reabrilo');
     expect(loanFormCopy.closedNotice).toContain('monto');
+  });
+
+  it('carries the formal receipt register and the voseo receipt-flow copy', () => {
+    expect(receiptCopy.title).toBe('Recibo de pago');
+    expect(receiptCopy.advanceLine).toBe('Pago cuotas anteriores');
+    expect(receiptCopy.approved).toBe('Aprobado');
+    expect(receiptCopy.signature).toBe('Firma de recibido');
+    expect(receiptFlowCopy.title).toBe('Generar Recibo');
+    expect(receiptFlowCopy.closedToast).toContain('quedó cerrado');
+    expect(loansListCopy.generateReceipt).toBe('Generar Recibo');
+    expect(paymentsCopy.viewReceipt).toBe('Ver Recibo');
   });
 });

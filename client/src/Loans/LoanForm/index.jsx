@@ -8,11 +8,13 @@ import Button from 'shared/components/Button';
 import ConfirmModal from 'shared/components/ConfirmModal';
 import Form from 'shared/components/Form';
 import Input from 'shared/components/Input';
+import Modal from 'shared/components/Modal';
 import PageLoader from 'shared/components/PageLoader';
 import api from 'shared/utils/api';
 import toast from 'shared/utils/toast';
 
 import BorrowerPicker from '../BorrowerPicker';
+import Receipt from '../Receipt';
 import { loanFormCopy, paymentsCopy } from '../copy';
 import {
   CURRENCIES,
@@ -154,7 +156,7 @@ PaymentAmountField.propTypes = {
  * named. The row's action follows its own state: an in-force payment offers the
  * reversal, a reversed one offers to undo it.
  */
-function PaymentRow({ payment, currency, onReverse, onUndoReversal }) {
+function PaymentRow({ payment, currency, onReverse, onUndoReversal, onViewReceipt }) {
   const isReversed = Boolean(payment.reversedAt);
   const title = isReversed ? paymentsCopy.undoTitle : paymentsCopy.reverseTitle;
   const message = isReversed ? paymentsCopy.undoMessage : paymentsCopy.reverseMessage;
@@ -166,6 +168,9 @@ function PaymentRow({ payment, currency, onReverse, onUndoReversal }) {
       <Muted>{formatDate(payment.date)}</Muted>
       <span>{amountWithCurrency(payment.amount, currency)}</span>
       {isReversed && <Chip>{paymentsCopy.reversedTag}</Chip>}
+      <Button type="button" onClick={() => onViewReceipt(payment)}>
+        {paymentsCopy.viewReceipt}
+      </Button>
       <ConfirmModal
         variant={isReversed ? 'primary' : 'danger'}
         title={title}
@@ -192,6 +197,7 @@ PaymentRow.propTypes = {
   currency: PropTypes.string.isRequired,
   onReverse: PropTypes.func.isRequired,
   onUndoReversal: PropTypes.func.isRequired,
+  onViewReceipt: PropTypes.func.isRequired,
 };
 
 function LoanForm({ loanId = undefined }) {
@@ -208,6 +214,10 @@ function LoanForm({ loanId = undefined }) {
   const [isSaving, setSaving] = useState(false);
   const [isClosed, setIsClosed] = useState(false);
   const [writtenOffAmount, setWrittenOffAmount] = useState(null);
+  // The full saved loan, kept for the receipt: the descriptive fields (number,
+  // city, lender, concept, borrower) come from it, not from the payment.
+  const [loan, setLoan] = useState(null);
+  const [receiptPayment, setReceiptPayment] = useState(null);
 
   // Everything already collected on this loan, recovered from the API's own
   // figures. It is deliberately not summed from the history: the history has its
@@ -225,6 +235,7 @@ function LoanForm({ loanId = undefined }) {
       if (!data.loan) return;
       setInitialForm(formFromLoan(data.loan));
       setBorrower(data.loan.borrower || null);
+      setLoan(data.loan);
       setCollected(collectedFromLoan(data.loan));
       setIsClosed(data.loan.status === 'closed');
       setWrittenOffAmount(
@@ -446,6 +457,7 @@ function LoanForm({ loanId = undefined }) {
               currency={initialForm.currency}
               onReverse={reversePayment}
               onUndoReversal={undoPaymentReversal}
+              onViewReceipt={setReceiptPayment}
             />
           ))}
         </List>
@@ -571,6 +583,20 @@ function LoanForm({ loanId = undefined }) {
         </Form>
       </Section>
       {id && paymentSection}
+      {/*
+       * The historical receipt, rendered from the chosen payment's snapshot and
+       * the saved loan's descriptive fields. It opens over the edit view rather
+       * than navigating away, so the operator's unsaved edits are not disturbed.
+       */}
+      {receiptPayment && loan && (
+        <Modal
+          isOpen
+          width={720}
+          testid="modal:receipt"
+          onClose={() => setReceiptPayment(null)}
+          renderContent={() => <Receipt payment={receiptPayment} loan={loan} withActions />}
+        />
+      )}
     </Fragment>
   );
 }

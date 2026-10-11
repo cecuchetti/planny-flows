@@ -15,6 +15,7 @@ import { Page, PageHeader, PageSubtitle, PageTitle } from './Styles';
 const LoansList = lazy(() => import('./LoansList'));
 const Borrowers = lazy(() => import('./Borrowers'));
 const LoanForm = lazy(() => import('./LoanForm'));
+const ReceiptFlow = lazy(() => import('./ReceiptFlow'));
 
 function Loans() {
   return (
@@ -35,6 +36,7 @@ function Loans() {
           <Route path="borrowers" element={<Borrowers />} />
           <Route path="new-loan" element={<LoanForm />} />
           <Route path="new-loan/:loanId" element={<LoanForm />} />
+          <Route path="receipt" element={<ReceiptFlow />} />
           <Route path="*" element={<Navigate to="/project/loans" replace />} />
         </Routes>
       </Suspense>
