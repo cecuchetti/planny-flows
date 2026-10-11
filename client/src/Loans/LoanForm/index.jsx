@@ -33,6 +33,7 @@ import {
   FieldShell,
   List,
   ListRow,
+  MetaLabel,
   Muted,
   Row,
   Section,
@@ -93,20 +94,26 @@ const validateLoan = (values) => validateRequired(values, ['amount', 'date', 'co
  * `Select` in its disabled state, with the reason underneath — not a second
  * control next to it.
  */
-function CurrencyField({ isLocked }) {
+function CurrencyField({ isLocked, isClosed }) {
+  // A closed loan is locked for its own reason (the notice beside the form);
+  // otherwise the currency-lock explanation is the payments/advance reason.
+  const tip = isClosed || !isLocked ? undefined : paymentsCopy.currencyLocked;
   return (
     <Form.Field.Select
       name="currency"
       label={loanFormCopy.currency}
       options={CURRENCIES.map((item) => ({ value: item, label: item }))}
-      disabled={isLocked}
+      disabled={isLocked || isClosed}
       withClearValue={false}
-      tip={isLocked ? paymentsCopy.currencyLocked : undefined}
+      tip={tip}
     />
   );
 }
 
-CurrencyField.propTypes = { isLocked: PropTypes.bool.isRequired };
+CurrencyField.propTypes = {
+  isLocked: PropTypes.bool.isRequired,
+  isClosed: PropTypes.bool.isRequired,
+};
 
 /**
  * The payment capture, outside the loan's Formik form.
@@ -199,6 +206,8 @@ function LoanForm({ loanId = undefined }) {
   const [isLoading, setLoading] = useState(Boolean(id));
   const [loadError, setLoadError] = useState(null);
   const [isSaving, setSaving] = useState(false);
+  const [isClosed, setIsClosed] = useState(false);
+  const [writtenOffAmount, setWrittenOffAmount] = useState(null);
 
   // Everything already collected on this loan, recovered from the API's own
   // figures. It is deliberately not summed from the history: the history has its
@@ -217,6 +226,12 @@ function LoanForm({ loanId = undefined }) {
       setInitialForm(formFromLoan(data.loan));
       setBorrower(data.loan.borrower || null);
       setCollected(collectedFromLoan(data.loan));
+      setIsClosed(data.loan.status === 'closed');
+      setWrittenOffAmount(
+        data.loan.writtenOffAmount === null || data.loan.writtenOffAmount === undefined
+          ? null
+          : data.loan.writtenOffAmount,
+      );
     });
   }, [id]);
 
@@ -239,6 +254,8 @@ function LoanForm({ loanId = undefined }) {
       setLoadError(null);
       setPaymentsLoading(false);
       setPaymentsError(null);
+      setIsClosed(false);
+      setWrittenOffAmount(null);
       return undefined;
     }
     let cancelled = false;
@@ -373,6 +390,17 @@ function LoanForm({ loanId = undefined }) {
     }
     setSaving(true);
     const payload = { ...values, borrowerId: borrower.id };
+    /*
+     * A closed loan keeps only its descriptive fields editable: the amount, the
+     * advance-paid and the currency are disabled in the form, and they must not
+     * reach the payload either — sending them would trip the API's own guard and
+     * turn a harmless concept edit into a 400.
+     */
+    if (isClosed) {
+      delete payload.amount;
+      delete payload.advancePaid;
+      delete payload.currency;
+    }
     const request = id
       ? api.put(`/api/v1/loans/${id}`, payload)
       : api.post('/api/v1/loans', payload);
@@ -431,14 +459,17 @@ function LoanForm({ loanId = undefined }) {
       {/*
        * Nested form-shaped markup would be invalid HTML, so the payment capture
        * is a plain row: the button handles the write itself and the loan form
-       * around it owns the only submit.
+       * around it owns the only submit. A closed loan accepts no new payments
+       * (FR18), so the capture is hidden and the history is read-only.
        */}
-      <Row>
-        <PaymentAmountField value={paymentAmount} onChange={setPaymentAmount} />
-        <Button type="button" variant="primary" isWorking={isPaying} onClick={registerPayment}>
-          {isPaying ? paymentsCopy.registering : paymentsCopy.register}
-        </Button>
-      </Row>
+      {!isClosed && (
+        <Row>
+          <PaymentAmountField value={paymentAmount} onChange={setPaymentAmount} />
+          <Button type="button" variant="primary" isWorking={isPaying} onClick={registerPayment}>
+            {isPaying ? paymentsCopy.registering : paymentsCopy.register}
+          </Button>
+        </Row>
+      )}
       {paymentsContent}
     </Section>
   );
@@ -462,6 +493,21 @@ function LoanForm({ loanId = undefined }) {
     <Fragment>
       <Section>
         <CardTitle>{id ? loanFormCopy.editTitle : loanFormCopy.createTitle}</CardTitle>
+        {id && (
+          <Row>
+            <span>
+              <MetaLabel>{loanFormCopy.statusLabel}: </MetaLabel>
+              {isClosed ? loanFormCopy.statusClosed : loanFormCopy.statusActive}
+            </span>
+            {isClosed && writtenOffAmount !== null && (
+              <span>
+                <MetaLabel>{loanFormCopy.writtenOffLabel}: </MetaLabel>
+                {amountWithCurrency(writtenOffAmount, initialForm.currency)}
+              </span>
+            )}
+          </Row>
+        )}
+        {isClosed && <Muted>{loanFormCopy.closedNotice}</Muted>}
         <Form
           initialValues={initialForm}
           validate={validateLoan}
@@ -489,8 +535,9 @@ function LoanForm({ loanId = undefined }) {
                 type="number"
                 step="0.01"
                 min="0"
+                disabled={isClosed}
               />
-              <CurrencyFieldState hasPayments={payments.length > 0} />
+              <CurrencyFieldState hasPayments={payments.length > 0} isClosed={isClosed} />
               <Form.Field.DatePicker name="date" label={loanFormCopy.date} withTime={false} />
             </Row>
 
@@ -507,6 +554,7 @@ function LoanForm({ loanId = undefined }) {
                 type="number"
                 step="0.01"
                 min="0"
+                disabled={isClosed}
               />
               <Form.Field.Input
                 name="installmentAmount"
@@ -535,12 +583,17 @@ function LoanForm({ loanId = undefined }) {
  * the operator types. The other half of the lock — registered payments — is
  * owned by the page and passed in.
  */
-function CurrencyFieldState({ hasPayments }) {
+function CurrencyFieldState({ hasPayments, isClosed }) {
   const { values } = useFormikContext();
-  return <CurrencyField isLocked={hasPayments || toAmount(values.advancePaid) > 0} />;
+  return (
+    <CurrencyField isLocked={hasPayments || toAmount(values.advancePaid) > 0} isClosed={isClosed} />
+  );
 }
 
-CurrencyFieldState.propTypes = { hasPayments: PropTypes.bool.isRequired };
+CurrencyFieldState.propTypes = {
+  hasPayments: PropTypes.bool.isRequired,
+  isClosed: PropTypes.bool.isRequired,
+};
 
 /**
  * The derived balance and the submit, inside the provider for the same reason as

@@ -2,8 +2,15 @@
 
 Money is normalised through a single :func:`_money` helper so rounding is one
 decision, not one per field. ``pendingBalance`` is never stored: it is derived
-as ``amount - advancePaid - Σ active payments`` by :func:`pending_balance`, which
-is the one place every balance-affecting path goes through.
+as ``amount - advancePaid - Σ active payments - writtenOffAmount`` by
+:func:`pending_balance`, which is the one place every balance-affecting path goes
+through. The write-off is a term of that balance, not a parallel status: closing
+a loan manually condones the outstanding amount into ``writtenOffAmount``, and
+reopening clears it so the balance returns.
+
+Status follows the balance through the single :func:`_apply_status` evaluation —
+balance ≤ 0 closes, above 0 reopens — invoked at the end of every mutation that
+moves the balance. Only the current state is kept; there is no status history.
 
 The API never accepts or edits ``number``; the service assigns it from
 ``max(number) + 1`` so a backfilled legacy maximum continues the sequence.
@@ -33,6 +40,11 @@ from planny_loans.loans import repository
 CURRENCIES = ("USD", "ARS")
 DEFAULT_CITY = "Córdoba"
 DEFAULT_CURRENCY = "USD"
+
+# Loan lifecycle states. Kept as constants so the service, the router and the
+# tests name them in one place instead of scattering string literals.
+ACTIVE = "active"
+CLOSED = "closed"
 
 _CENT = Decimal("0.01")
 _ZERO = Decimal("0.00")
@@ -130,21 +142,48 @@ def _annotate_history(
 
 def _balance_of(loan: Loan, collected: Decimal) -> Decimal:
     advance = loan.advancePaid or _ZERO
-    return _money((loan.amount or _ZERO) - advance - collected)
+    written_off = loan.writtenOffAmount or _ZERO
+    return _money((loan.amount or _ZERO) - advance - collected - written_off)
 
 
 async def pending_balance(db: AsyncSession, loan: Loan) -> Decimal:
-    """The derived balance: ``amount - advancePaid - Σ payments``.
+    """The derived balance: ``amount - advancePaid - Σ payments - writtenOffAmount``.
 
     **This is the single recalculation point.** Every path that can move a
-    balance — loan create, loan update, payment create, payment delete — ends
-    here, and no path stores the result. Epic 3's status evaluation (``closed``
-    with ``closedAt`` when the balance reaches zero, auto-reopen when it rises
-    again) attaches here, so it sees each of those events exactly once.
+    balance — loan create, loan update, payment create, payment reversal and its
+    undo, manual close, manual reopen — ends here, and no path stores the result.
+    Status follows the balance through :func:`_apply_status`, which each of those
+    mutations calls once the balance has settled, so the evaluation sees every
+    event exactly once.
     """
     # A loan being created has no id yet, and therefore no payments.
     collected = await repository.sum_payments(db, loan.id) if loan.id is not None else _ZERO
     return _balance_of(loan, collected)
+
+
+def _apply_status(loan: Loan, balance: Decimal) -> None:
+    """The single status evaluation, driven by transitions, not by state.
+
+    It only acts when the balance moves a loan across zero: ``active`` → ``closed``
+    when the balance reaches zero, and ``closed`` → ``active`` when it rises above
+    zero. Because it is transition-based, a descriptive edit on an already-closed
+    loan does not restamp ``closedAt``, and a loan that was *manually* reopened at
+    a zero balance stays active instead of being re-closed on the next evaluation.
+
+    On the way back to ``active`` the write-off is cleared: a condoned amount only
+    means anything while the loan is closed. This is what keeps a payment reversal
+    on a written-off loan from leaving a dangling ``writtenOffAmount`` that no
+    other path can clear.
+    """
+    if balance <= _ZERO:
+        if loan.status == ACTIVE:
+            loan.status = CLOSED
+            loan.closedAt = datetime.utcnow()
+    else:
+        if loan.status == CLOSED:
+            loan.status = ACTIVE
+            loan.closedAt = None
+            loan.writtenOffAmount = None
 
 
 def _required(value: object, field: str, label: str, errors: dict[str, str]) -> str | None:
@@ -197,6 +236,24 @@ def _common_rules(
         errors["currency"] = "Elegí una moneda válida (USD o ARS)."
 
     supplied = set(values)
+
+    # FR18 / Story 3.4: a closed loan keeps only its descriptive fields editable.
+    # The three balance-affecting fields require reopening first, so any attempt
+    # to move one is refused before the rest of the validation runs.
+    if current is not None and current.status == CLOSED:
+        locked = [field for field in ("amount", "advancePaid", "currency") if field in supplied]
+        if locked:
+            raise BadUserInputError(
+                {
+                    "fields": {
+                        field: "Este préstamo está cerrado: reabrilo para editar el monto, "
+                        "el pago adelantado o la moneda."
+                        for field in locked
+                    }
+                },
+                message="Revisá los datos del préstamo.",
+            )
+
     resolved_advance = advance if advance is not None else _ZERO
     if "advancePaid" not in errors:
         if resolved_advance < 0:
@@ -308,6 +365,7 @@ async def create(db: AsyncSession, values: dict[str, Any]) -> Loan:
     # ``lazy="joined"`` covers a select(), not a newly added instance, and the
     # serializer needs the borrower on the response.
     await db.refresh(loan, ["borrower"])
+    _apply_status(loan, await pending_balance(db, loan))
     return loan
 
 
@@ -325,6 +383,12 @@ async def update(db: AsyncSession, loan_id: int, values: dict[str, Any]) -> Loan
     _apply(loan, resolved)
     await db.flush()
     await db.refresh(loan, ["borrower"])
+    # Only re-evaluate status when the edit could move the balance. A descriptive
+    # change (concept/lender/city/date/installment) cannot, and re-running the
+    # evaluation then would re-close a loan that the operator had just reopened
+    # at a zero balance.
+    if "amount" in values or "advancePaid" in values:
+        _apply_status(loan, await pending_balance(db, loan))
     return loan
 
 
@@ -353,6 +417,15 @@ async def create_payment(db: AsyncSession, loan_id: int, values: dict[str, Any])
     insert time, never a client-supplied one (FR10).
     """
     loan = await _require_loan(db, loan_id)
+
+    # FR18: a closed loan accepts no new payments. Reversing an existing payment
+    # is a different path and must stay allowed, or the operator could not reopen
+    # a mistakenly-closed loan by undoing the payment that closed it.
+    if loan.status == CLOSED:
+        raise BadUserInputError(
+            {"fields": {"loanId": "Este préstamo está cerrado: no acepta pagos nuevos."}},
+            message="Este préstamo está cerrado: no acepta pagos nuevos.",
+        )
 
     # Only what is still in force counts: a reversed payment is not money the
     # loan holds any more, and it must not cap what can be collected now.
@@ -399,6 +472,7 @@ async def create_payment(db: AsyncSession, loan_id: int, values: dict[str, Any])
         entry["id"] = payment.id
         flag_modified(payment, "paymentsHistoryAtPayment")
         await db.flush()
+    _apply_status(loan, await pending_balance(db, loan))
     return payment
 
 
@@ -437,6 +511,8 @@ async def reverse_payment(db: AsyncSession, loan_id: int, payment_id: int) -> No
     # reversed. ``list_payments`` returns the row already stamped above.
     _annotate_history(await repository.list_payments(db, loan_id), payment_id, reversed_at)
     await db.flush()
+    # Reversing raises the balance, so a loan closed by that payment reopens.
+    _apply_status(payment.loan, await pending_balance(db, payment.loan))
 
 
 async def unreverse_payment(db: AsyncSession, loan_id: int, payment_id: int) -> None:
@@ -457,4 +533,57 @@ async def unreverse_payment(db: AsyncSession, loan_id: int, payment_id: int) -> 
     payment.reversedAt = None
     _annotate_history(await repository.list_payments(db, loan_id), payment_id, None)
     await db.flush()
+    # Undoing the reversal lowers the balance again, which can re-close the loan.
+    _apply_status(payment.loan, await pending_balance(db, payment.loan))
+
+
+async def close_loan(db: AsyncSession, loan_id: int) -> Loan:
+    """Manually close a loan, condoning whatever is still outstanding.
+
+    The write-off is a balance term, not a second status: setting
+    ``writtenOffAmount`` to the pending balance drives the derived balance to
+    zero, and :func:`_apply_status` closes the loan through the same evaluation
+    as an automatic close. A loan that is already closed has nothing left to
+    condone and is refused — accepting it would overwrite a recorded write-off
+    (or re-open a fully paid one) rather than being the no-op it looks like.
+    """
+    loan = await _require_loan(db, loan_id)
+    if loan.status == CLOSED:
+        raise BadUserInputError(
+            {"fields": {"loanId": "Este préstamo ya está cerrado."}},
+            message="Este préstamo ya está cerrado.",
+        )
+
+    pending = await pending_balance(db, loan)
+    if pending > _ZERO:
+        # A fully-paid loan has nothing to write off, so the field stays null and
+        # the closed card shows no write-off line.
+        loan.writtenOffAmount = pending
+        await db.flush()
+    _apply_status(loan, _ZERO)
+    return loan
+
+
+async def reopen_loan(db: AsyncSession, loan_id: int) -> Loan:
+    """Reopen a closed loan, clearing the close date and any write-off.
+
+    Clearing ``writtenOffAmount`` returns the condoned amount to the derived
+    balance. This is the one manual transition that does not route through
+    :func:`_apply_status`: a loan that was fully paid (no write-off) still has a
+    balance of zero after clearing, and the automatic evaluation would re-close
+    it on the spot. Reopening is an explicit operator decision, so the state is
+    forced to ``active`` regardless.
+    """
+    loan = await _require_loan(db, loan_id)
+    if loan.status != CLOSED:
+        raise BadUserInputError(
+            {"fields": {"loanId": "Este préstamo ya está activo."}},
+            message="Este préstamo ya está activo.",
+        )
+
+    loan.writtenOffAmount = None
+    loan.closedAt = None
+    loan.status = ACTIVE
+    await db.flush()
+    return loan
 

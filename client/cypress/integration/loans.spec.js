@@ -13,6 +13,9 @@ const loan = (overrides = {}) => ({
   lender: 'Ecuche',
   city: 'Córdoba',
   createdAt: '2026-10-07T12:00:00',
+  status: 'active',
+  closedAt: null,
+  writtenOffAmount: null,
   ...overrides,
 });
 
@@ -88,7 +91,12 @@ describe('Loans registry', () => {
     cy.intercept('POST', '**/api/v1/borrowers', {
       borrower: { id: 7, firstName: 'Lola', lastName: 'Paz' },
     }).as('createBorrower');
-    cy.intercept('GET', '**/api/v1/loans', (req) => req.reply({ loans })).as('listLoans');
+    cy.intercept('GET', '**/api/v1/loans', (req) => {
+      // The list is split into Activos/Cerrados, so the stub mirrors that shape.
+      const active = loans.filter((item) => item.status !== 'closed');
+      const closed = loans.filter((item) => item.status === 'closed');
+      return req.reply({ loans: { active, closed } });
+    }).as('listLoans');
     // Registered before the loan GET on purpose: that glob also matches
     // `/loans/{id}/payments`, so the more specific route has to come first.
     cy.intercept('GET', '**/api/v1/loans/*/payments', (req) => req.reply({ payments })).as(
@@ -132,6 +140,42 @@ describe('Loans registry', () => {
       payments = [];
       req.reply({ statusCode: 204 });
     }).as('deleteLoan');
+    /*
+     * Close condones the outstanding balance: the write-off is whatever was
+     * still pending, the balance settles to zero and the loan moves to closed.
+     * Reopen clears the close date and the write-off and returns the condoned
+     * amount to the balance.
+     */
+    cy.intercept('POST', '**/api/v1/loans/*/close', (req) => {
+      const id = Number(req.url.split('/').slice(-2)[0]);
+      const current = loans.find((item) => item.id === id) || createdLoan;
+      const closed = {
+        ...current,
+        status: 'closed',
+        closedAt: '2026-10-10T12:00:00',
+        // The backend only records a write-off when there is something pending
+        // to condone; a fully-paid close leaves the field null.
+        writtenOffAmount: Number(current.pendingBalance) > 0 ? current.pendingBalance : null,
+        pendingBalance: '0.00',
+      };
+      loans = loans.map((item) => (item.id === id ? closed : item));
+      if (createdLoan && createdLoan.id === id) createdLoan = closed;
+      return req.reply({ body: { loan: closed } });
+    }).as('closeLoan');
+    cy.intercept('POST', '**/api/v1/loans/*/reopen', (req) => {
+      const id = Number(req.url.split('/').slice(-2)[0]);
+      const current = loans.find((item) => item.id === id) || createdLoan;
+      const reopened = {
+        ...current,
+        status: 'active',
+        closedAt: null,
+        writtenOffAmount: null,
+        pendingBalance: current.writtenOffAmount || '0.00',
+      };
+      loans = loans.map((item) => (item.id === id ? reopened : item));
+      if (createdLoan && createdLoan.id === id) createdLoan = reopened;
+      return req.reply({ body: { loan: reopened } });
+    }).as('reopenLoan');
     // Registered after the loan GET so the more specific history route wins.
     cy.intercept('GET', '**/api/v1/loans/*/payments', (req) => req.reply({ payments })).as(
       'listPayments',
@@ -547,5 +591,43 @@ describe('Loans registry', () => {
     cy.contains('Revertido').should('not.exist');
     cy.contains('Saldo pendiente').should('contain', '800.50 USD');
     cy.contains('Total cobrado').should('contain', '200.00 USD');
+  });
+
+  it('closes a loan with a write-off and reopens it', () => {
+    loans = [loan({ id: 1, amount: '1000.50', pendingBalance: '400.50' })];
+    [createdLoan] = loans;
+    showLoans();
+
+    // The active section shows the card, and Cerrar states the exact write-off.
+    cy.contains('Activos (1)').should('be.visible');
+    cy.contains('button', 'Cerrar').click();
+    cy.get('[data-testid="modal:confirm"]')
+      .should('contain', 'Se condonará el saldo pendiente de 400.50 USD')
+      .find('button')
+      .contains('Cerrar')
+      .click();
+    cy.wait('@closeLoan');
+    cy.wait('@listLoans');
+
+    // It left Activos; Cerrados is collapsed by default, so no card is rendered.
+    cy.contains('Activos (0)').should('be.visible');
+    cy.contains('Cerrados (1)').should('be.visible');
+    cy.get('article').should('have.length', 0);
+
+    // Expanding shows the closed card: close date, zero balance, the write-off.
+    cy.contains('button', 'Mostrar').click();
+    cy.get('article').should('have.length', 1);
+    cy.contains('Cerrado el').should('be.visible');
+    cy.contains('Condonación').should('be.visible');
+    cy.contains('400.50 USD').should('be.visible');
+    cy.contains('0.00 USD').should('be.visible');
+
+    // Reopening returns it to Activos and clears the write-off.
+    cy.contains('button', 'Reabrir').click();
+    cy.get('[data-testid="modal:confirm"]').find('button').contains('Reabrir').click();
+    cy.wait('@reopenLoan');
+    cy.wait('@listLoans');
+    cy.contains('Activos (1)').should('be.visible');
+    cy.contains('Cerrados (0)').should('be.visible');
   });
 });

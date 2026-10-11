@@ -49,4 +49,18 @@ describe('loan copy', () => {
     expect(loansListCopy.loadError).toContain('No pudimos cargar');
     expect(borrowerCopy.loadError).toContain('No pudimos cargar');
   });
+
+  it('labels the Activos/Cerrados split and the lifecycle actions', () => {
+    expect(loansListCopy.activeTitle).toBe('Activos');
+    expect(loansListCopy.closedTitle).toBe('Cerrados');
+    expect(loansListCopy.close).toBe('Cerrar');
+    expect(loansListCopy.reopen).toBe('Reabrir');
+    expect(loansListCopy.closeMessage('700.00 USD')).toContain('Se condonará el saldo pendiente');
+    expect(loansListCopy.closePaidMessage).toContain('No hay saldo pendiente');
+  });
+
+  it('explains why a closed loan locks its balance fields', () => {
+    expect(loanFormCopy.closedNotice).toContain('Reabrilo');
+    expect(loanFormCopy.closedNotice).toContain('monto');
+  });
 });

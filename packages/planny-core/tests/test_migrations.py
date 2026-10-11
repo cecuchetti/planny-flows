@@ -162,6 +162,19 @@ class TestSchemaFollowsTheMigrations:
         assert columns["amount"].type.precision == 14
         assert columns["amount"].type.scale == 2
 
+    def test_loan_table_has_its_lifecycle_columns(self) -> None:
+        """The lifecycle is three columns: one status, one date, one amount."""
+        import planny_core.models  # noqa: F401 - registers every table
+        from planny_core.db.base import Base
+
+        columns = Base.metadata.tables["loan"].columns
+        assert {"status", "closedAt", "writtenOffAmount"} <= {column.name for column in columns}
+        assert not columns["status"].nullable
+        assert columns["closedAt"].nullable
+        assert columns["writtenOffAmount"].nullable
+        assert columns["writtenOffAmount"].type.precision == 14
+        assert columns["writtenOffAmount"].type.scale == 2
+
     def test_payment_table_has_its_snapshot_columns(self) -> None:
         import planny_core.models  # noqa: F401 - registers every table
         from planny_core.db.base import Base
@@ -201,6 +214,19 @@ class TestSchemaFollowsTheMigrations:
             )
         ]
         assert added, "no migration adds payment.reversedAt"
+
+    def test_a_migration_adds_the_loan_lifecycle_columns(self) -> None:
+        """The three lifecycle columns ship with a revision, not just the model."""
+        sources = "\n".join(path.read_text(encoding="utf-8") for path in _migration_files())
+        assert re.search(r'add_column\(\s*"loan"\s*,\s*sa\.Column\(\s*"status"', sources), (
+            "no migration adds loan.status"
+        )
+        assert re.search(r'add_column\(\s*"loan"\s*,\s*sa\.Column\(\s*"closedAt"', sources), (
+            "no migration adds loan.closedAt"
+        )
+        assert re.search(
+            r'add_column\(\s*"loan"\s*,\s*sa\.Column\(\s*"writtenOffAmount"', sources
+        ), "no migration adds loan.writtenOffAmount"
 
     def test_some_migration_mentions_each_new_object(self) -> None:
         """Guards against adding a model and forgetting the migration."""

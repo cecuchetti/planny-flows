@@ -7,9 +7,28 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
-async def list_loans(db: AsyncSession) -> list[Loan]:
-    """Every loan, newest first. The borrower is eagerly loaded by the model."""
-    query = select(Loan).order_by(Loan.createdAt.desc(), Loan.id.desc())
+async def list_loans(
+    db: AsyncSession, *, status: str | None = None
+) -> list[Loan]:
+    """Loans, optionally scoped to one lifecycle status.
+
+    Without a ``status`` every loan is returned, newest first. With one, the
+    ordering follows the section it feeds: active loans newest first, closed
+    loans most-recently-closed first. The borrower is eagerly loaded by the
+    model, and the router asks for the two sections rather than building either
+    query itself.
+    """
+    query = select(Loan)
+    if status == "closed":
+        query = query.where(Loan.status == "closed").order_by(
+            Loan.closedAt.desc(), Loan.id.desc()
+        )
+    elif status == "active":
+        query = query.where(Loan.status == "active").order_by(
+            Loan.createdAt.desc(), Loan.id.desc()
+        )
+    else:
+        query = query.order_by(Loan.createdAt.desc(), Loan.id.desc())
     return list((await db.execute(query)).scalars().all())
 
 

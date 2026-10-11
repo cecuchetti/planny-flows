@@ -126,7 +126,7 @@ async def test_create_next_number_increments(client: AsyncClient) -> None:
     assert second.json()["loan"]["number"] == "00002"
 
     listed = await client.get("/api/v1/loans")
-    assert [item["number"] for item in listed.json()["loans"]] == ["00002", "00001"]
+    assert [item["number"] for item in listed.json()["loans"]["active"]] == ["00002", "00001"]
 
 
 @pytest.mark.asyncio

@@ -68,6 +68,17 @@ export const loanFormCopy = {
   removed: 'Préstamo eliminado.',
   emptyPicker: 'Elegí una persona para continuar.',
   required: 'Este campo es obligatorio.',
+  /*
+   * A closed loan keeps only its descriptive fields editable: the amount, the
+   * advance-paid and the currency require reopening first, and the form says so
+   * instead of leaving a greyed-out field with no reason.
+   */
+  statusLabel: 'Estado',
+  statusActive: 'Activo',
+  statusClosed: 'Cerrado',
+  writtenOffLabel: 'Condonación',
+  closedNotice:
+    'Este préstamo está cerrado. Reabrilo para editar el monto, el pago adelantado o la moneda.',
 };
 
 export const paymentsCopy = {
@@ -121,4 +132,27 @@ export const loansListCopy = {
   city: 'Ciudad',
   date: 'Fecha',
   number: 'Nº',
+  /*
+   * The Activos/Cerrados split: active loans expanded, closed ones collapsed by
+   * default and ordered most-recently-closed first, each section with its own
+   * count and empty state.
+   */
+  activeTitle: 'Activos',
+  closedTitle: 'Cerrados',
+  activeEmpty: 'No hay préstamos activos.',
+  closedEmpty: 'No hay préstamos cerrados.',
+  expand: 'Mostrar',
+  collapse: 'Ocultar',
+  close: 'Cerrar',
+  closeTitle: '¿Cerrar préstamo?',
+  closeMessage: (amount) =>
+    `Se condonará el saldo pendiente de ${amount}. El préstamo quedará cerrado.`,
+  closePaidMessage: 'No hay saldo pendiente por condonar. El préstamo quedará cerrado.',
+  reopen: 'Reabrir',
+  reopenTitle: '¿Reabrir préstamo?',
+  reopenMessage: 'El préstamo volverá a estar activo y se limpiará la condonación.',
+  closedToast: 'Préstamo cerrado.',
+  reopenedToast: 'Préstamo reabierto.',
+  closedAt: 'Cerrado el',
+  writtenOff: 'Condonación',
 };

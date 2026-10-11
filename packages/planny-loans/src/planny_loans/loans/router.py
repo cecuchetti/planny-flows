@@ -47,8 +47,14 @@ async def _loan_dict(db: AsyncSession, loan: Loan) -> dict[str, object]:
 
 @router.get("")
 async def list_loans(db: AsyncSession = Depends(get_db)) -> dict[str, object]:
-    loans = await repository.list_loans(db)
-    return {"loans": [await _loan_dict(db, loan) for loan in loans]}
+    active = await repository.list_loans(db, status=service.ACTIVE)
+    closed = await repository.list_loans(db, status=service.CLOSED)
+    return {
+        "loans": {
+            "active": [await _loan_dict(db, loan) for loan in active],
+            "closed": [await _loan_dict(db, loan) for loan in closed],
+        }
+    }
 
 
 @router.post("", status_code=201)
@@ -76,6 +82,18 @@ async def update_loan(
 @router.delete("/{loan_id}", status_code=204)
 async def delete_loan(loan_id: int, db: AsyncSession = Depends(get_db)) -> None:
     await service.delete(db, loan_id)
+
+
+@router.post("/{loan_id}/close")
+async def close_loan(loan_id: int, db: AsyncSession = Depends(get_db)) -> dict[str, object]:
+    loan = await service.close_loan(db, loan_id)
+    return {"loan": await _loan_dict(db, loan)}
+
+
+@router.post("/{loan_id}/reopen")
+async def reopen_loan(loan_id: int, db: AsyncSession = Depends(get_db)) -> dict[str, object]:
+    loan = await service.reopen_loan(db, loan_id)
+    return {"loan": await _loan_dict(db, loan)}
 
 
 @router.get("/{loan_id}/payments")

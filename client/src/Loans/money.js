@@ -59,12 +59,15 @@ export const paymentsTotal = (payments) => {
 };
 
 /**
- * Everything collected on a loan, recovered from the server's own figures.
+ * Everything the derived balance nets out beyond the advance, recovered from the
+ * server's own figures: the payments plus any written-off amount.
  *
- * The API's `pendingBalance` is `amount - advancePaid - payments`, so solving
- * for the payments term gives the collected total even when the operator has
- * unsaved edits in the amount field — which is why it must not be recomputed
- * from the stored amount.
+ * The API's `pendingBalance` is `amount - advancePaid - payments - writtenOff`,
+ * so solving for the deducted term gives `payments + writtenOff` even when the
+ * operator has unsaved edits in the amount field — which is why it must not be
+ * recomputed from the stored amount. The write-off is folded in on purpose: for
+ * a closed loan the balance is zero and the write-off is exactly what was
+ * condoned, so the preview still reads `0.00` without a separate write-off term.
  */
 export const collectedFromLoan = (loan) => {
   if (!loan) return 0;

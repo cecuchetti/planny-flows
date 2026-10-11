@@ -50,6 +50,17 @@ class Loan(Base):
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
 
+    # Lifecycle. ``status`` is always one of the service's ``ACTIVE``/``CLOSED``
+    # constants; ``closedAt`` and ``writtenOffAmount`` are the only record of a
+    # close — there is deliberately no status history. The write-off is a term of
+    # the derived balance, not a second status: ``amount - advancePaid - payments
+    # - writtenOffAmount``.
+    status: Mapped[str] = mapped_column(String(16), default="active", server_default="active")
+    closedAt: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)  # noqa: N815
+    writtenOffAmount: Mapped[Decimal | None] = mapped_column(  # noqa: N815
+        Numeric(14, 2), nullable=True
+    )
+
     # ``joined`` so listing loans with their borrower stays a single query.
     borrower: Mapped[Borrower] = relationship(
         "Borrower", back_populates="loans", lazy="joined"
