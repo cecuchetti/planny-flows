@@ -418,7 +418,8 @@ function LoanForm({ loanId = undefined }) {
     request
       .then(() => {
         toast.success(id ? loanFormCopy.updated : loanFormCopy.created);
-        navigate('/project/loans');
+        // The list is where the saved loan is visible; the index is the dashboard.
+        navigate('/project/loans/loans');
       })
       .catch((error) => toast.error(error))
       .finally(() => setSaving(false));

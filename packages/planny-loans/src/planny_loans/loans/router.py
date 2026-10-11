@@ -63,6 +63,16 @@ async def create_loan(body: LoanRequest, db: AsyncSession = Depends(get_db)) -> 
     return {"loan": await _loan_dict(db, loan)}
 
 
+@router.get("/summary")
+async def summary(db: AsyncSession = Depends(get_db)) -> dict[str, object]:
+    """The aggregated portfolio summary (FR36).
+
+    Declared before ``/{loan_id}`` so ``/loans/summary`` is not swallowed by the
+    int path parameter and rejected as a bad id.
+    """
+    return await service.summary(db)
+
+
 @router.get("/{loan_id}")
 async def get_loan(loan_id: int, db: AsyncSession = Depends(get_db)) -> dict[str, object]:
     loan = await repository.get(db, loan_id)

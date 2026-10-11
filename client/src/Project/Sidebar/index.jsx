@@ -49,8 +49,9 @@ const NAV_ITEMS = [
  *
  * Loans is a child of `/project` like every other item here, so it takes the
  * host's own active highlight instead of being an `absolute` route of its own.
- * It carries two entries because Préstamos has two top-level views and no
- * navigation of its own: `exact` keeps the list from claiming its siblings.
+ * The Resumen dashboard is the index (`/loans`), and the list lives at
+ * `/loans/loans`, so "Préstamos" points there; `exact` keeps Resumen from
+ * claiming the list.
  */
 const MORE_ITEMS = [
   {
@@ -63,12 +64,19 @@ const MORE_ITEMS = [
   ...(LOANS_ENABLED
     ? [
         {
-          key: 'loans',
-          labelKey: 'common.loans',
+          key: 'summary',
+          labelKey: 'sidebar.summary',
           path: '/loans',
-          icon: '💸',
+          icon: '📊',
           bg: '#7c3aed',
           exact: true,
+        },
+        {
+          key: 'loans',
+          labelKey: 'common.loans',
+          path: '/loans/loans',
+          icon: '💸',
+          bg: '#7c3aed',
         },
         {
           key: 'borrowers',

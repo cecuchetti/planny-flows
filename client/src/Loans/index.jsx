@@ -12,6 +12,7 @@ import { Page, PageHeader, PageSubtitle, PageTitle } from './Styles';
  * has no second one of its own, so reaching Personas or a new loan is done the
  * same way the project reaches its other views, or from the list itself.
  */
+const Dashboard = lazy(() => import('./Dashboard'));
 const LoansList = lazy(() => import('./LoansList'));
 const Borrowers = lazy(() => import('./Borrowers'));
 const LoanForm = lazy(() => import('./LoanForm'));
@@ -28,11 +29,12 @@ function Loans() {
       <Suspense fallback={<PageLoader />}>
         <Routes>
           {/*
-           * `/project/loans` and every unknown child fall back to the list: an
-           * unknown path inside a hosted view is not a new page, and this keeps
-           * the removed dashboard/receipt placeholders from 404-ing.
+           * `/project/loans` is the Resumen dashboard — the default landing —
+           * and the list now lives at `/project/loans/loans`. Every unknown child
+           * falls back to the dashboard, keeping stale links from 404-ing.
            */}
-          <Route index element={<LoansList />} />
+          <Route index element={<Dashboard />} />
+          <Route path="loans" element={<LoansList />} />
           <Route path="borrowers" element={<Borrowers />} />
           <Route path="new-loan" element={<LoanForm />} />
           <Route path="new-loan/:loanId" element={<LoanForm />} />

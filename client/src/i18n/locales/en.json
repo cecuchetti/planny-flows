@@ -24,7 +24,8 @@
     "kanbanBoard": "Kanban Board",
     "projectSettings": "Settings",
     "quickActions": "Quick actions",
-    "borrowers": "People"
+    "borrowers": "People",
+    "summary": "Summary"
   },
   "quickActions": {
     "pageTitle": "Quick actions",

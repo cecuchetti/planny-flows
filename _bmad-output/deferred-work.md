@@ -19,3 +19,6 @@
 - source_plan: none
   summary: Run the migration spike validating data extraction and the borrower name-split/dedup heuristic against real legacy production data.
   evidence: Epic 2 Story 2.8 has a hard data dependency — no read-only copy of the legacy MongoDB source, its connection string, or the legacy application checkout is present in this workspace.
+- source_plan: `_bmad-output/plan-portfolio-dashboard.md`
+  summary: Move the whole app to timezone-aware timestamps so "cobrado del mes" (and every date) follows the operator's local calendar month instead of UTC.
+  evidence: The dashboard's `collected_this_month` windows on `datetime.utcnow()`, matching the repo-wide naive-UTC convention, but an operator in a UTC-offset locale can see a payment near a month boundary counted in the adjacent UTC month. This is pre-existing, not introduced by the dashboard.

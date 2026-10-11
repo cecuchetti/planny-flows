@@ -35,7 +35,7 @@ from planny_core.models import Loan, Payment
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import flag_modified
 
-from planny_loans.loans import repository
+from planny_loans.loans import repository, serializers
 
 CURRENCIES = ("USD", "ARS")
 DEFAULT_CITY = "Córdoba"
@@ -45,6 +45,12 @@ DEFAULT_CURRENCY = "USD"
 # tests name them in one place instead of scattering string literals.
 ACTIVE = "active"
 CLOSED = "closed"
+
+# A loan is "near completion" once it has recovered this share of its principal
+# (FR32). The repository returns every active loan with its recovered amount; the
+# service applies the threshold in exact Decimal arithmetic, because SQLite would
+# compute the sum as a float and misjudge an exact 80% hit.
+NEAR_COMPLETION_RATIO = Decimal("0.8")
 
 _CENT = Decimal("0.01")
 _ZERO = Decimal("0.00")
@@ -587,4 +593,56 @@ async def reopen_loan(db: AsyncSession, loan_id: int) -> Loan:
     loan.status = ACTIVE
     await db.flush()
     return loan
+
+
+async def summary(db: AsyncSession) -> dict[str, object]:
+    """The aggregated portfolio summary, per currency and never combined (FR35/36).
+
+    Everything is computed in the repository and only assembled and rounded here:
+    no client-side aggregation, no currency mixed into another. The near-completion
+    remaining balance is the same formula :func:`pending_balance` reduces to for
+    an active loan (no write-off), so the dashboard quotes the same figure every
+    other surface does — computed inline rather than with one more query per loan.
+    """
+    totals = await repository.portfolio_totals(db)
+    this_month = await repository.collected_this_month(db)
+    recent = await repository.recent_payments(db)
+
+    currencies = [
+        serializers.summary_currency(
+            currency=row.currency,
+            principal=row.principal,
+            collected=_money(row.advance_paid + row.payments),
+            outstanding=_money(row.outstanding),
+            written_off=row.written_off,
+            active_count=row.active_count,
+            closed_count=row.closed_count,
+            collected_this_month=this_month.get(row.currency, _ZERO),
+        )
+        for row in totals
+    ]
+
+    near_completion: list[dict[str, object]] = []
+    for loan, recovered_raw in await repository.near_completion(db):
+        recovered = _money(recovered_raw)
+        # Exact Decimal comparison, with the threshold itself unrounded: rounding
+        # ``0.8 * amount`` down would let a loan at 79.9992% (e.g. 800.03 of
+        # 1000.04) pass the "≥ 80%" gate.
+        if recovered >= NEAR_COMPLETION_RATIO * (loan.amount or _ZERO):
+            # Active loans have no write-off, so the remaining balance is the
+            # principal minus everything recovered — the same formula
+            # ``pending_balance`` reduces to for a loan that is still open. It is
+            # computed here rather than by an extra ``pending_balance`` query per
+            # loan, which would be one more round-trip for a figure we already
+            # have.
+            remaining = _money((loan.amount or _ZERO) - recovered)
+            near_completion.append(serializers.near_completion_entry(loan, remaining))
+
+    return {
+        "currencies": currencies,
+        "nearCompletion": near_completion,
+        "recentPayments": [
+            serializers.recent_payment_entry(payment) for payment in recent
+        ],
+    }
 

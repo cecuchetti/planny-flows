@@ -24,7 +24,8 @@
     "kanbanBoard": "Tablero Kanban",
     "projectSettings": "Configuración",
     "quickActions": "Atajos",
-    "borrowers": "Personas"
+    "borrowers": "Personas",
+    "summary": "Resumen"
   },
   "quickActions": {
     "pageTitle": "Atajos",

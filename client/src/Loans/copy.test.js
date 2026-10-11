@@ -1,5 +1,6 @@
 import {
   borrowerCopy,
+  dashboardCopy,
   loanCopy,
   loanFormCopy,
   loansListCopy,
@@ -56,6 +57,20 @@ describe('loan copy', () => {
     expect(paymentsCopy.loadError).toContain('No pudimos cargar');
     expect(loansListCopy.loadError).toContain('No pudimos cargar');
     expect(borrowerCopy.loadError).toContain('No pudimos cargar');
+    expect(dashboardCopy.loadError).toContain('No pudimos cargar');
+  });
+
+  it('labels the Resumen dashboard and its metric rows', () => {
+    expect(dashboardCopy.title).toBe('Resumen');
+    expect(dashboardCopy.empty).toContain('Todavía no hay datos');
+    expect(dashboardCopy.principal).toBe('Prestado');
+    expect(dashboardCopy.collected).toBe('Cobrado');
+    expect(dashboardCopy.outstanding).toBe('Pendiente');
+    expect(dashboardCopy.writtenOff).toBe('Condonado');
+    expect(dashboardCopy.recoveryRate).toContain('recuperación');
+    expect(dashboardCopy.collectedThisMonth).toBe('Cobrado del mes');
+    expect(dashboardCopy.nearCompletionTitle).toContain('completarse');
+    expect(dashboardCopy.recentActivityTitle).toContain('Actividad');
   });
 
   it('labels the Activos/Cerrados split and the lifecycle actions', () => {

@@ -160,6 +160,32 @@ export const receiptFlowCopy = {
   closedToast: 'Pago registrado: el préstamo quedó cerrado.',
 };
 
+/*
+ * The Resumen (dashboard) view: the default landing of Préstamos. It is
+ * read-only — the cards and lists are metric displays, never edits — and it
+ * refetches on every entry so the figures match the ledger.
+ */
+export const dashboardCopy = {
+  title: 'Resumen',
+  empty: 'Todavía no hay datos. Cargá el primer préstamo.',
+  loadError: 'No pudimos cargar el resumen. Intentá de nuevo.',
+  retry: 'Reintentar',
+  principal: 'Prestado',
+  collected: 'Cobrado',
+  outstanding: 'Pendiente',
+  writtenOff: 'Condonado',
+  recoveryRate: 'Tasa de recuperación',
+  activeCount: 'Activos',
+  closedCount: 'Cerrados',
+  averageOutstanding: 'Promedio pendiente',
+  collectedThisMonth: 'Cobrado del mes',
+  nearCompletionTitle: 'A punto de completarse',
+  nearCompletionEmpty: 'No hay préstamos cerca de completarse.',
+  remaining: 'Quedan',
+  recentActivityTitle: 'Actividad reciente',
+  recentActivityEmpty: 'Todavía no hay pagos registrados.',
+};
+
 export const loansListCopy = {
   title: 'Préstamos',
   empty: 'Todavía no hay préstamos. Cargá el primero.',

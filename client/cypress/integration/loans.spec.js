@@ -248,25 +248,67 @@ describe('Loans registry', () => {
       loans = [createdLoan];
       return req.reply({ statusCode: 204 });
     }).as('reversePayment');
+    /*
+     * The aggregated summary the dashboard reads. Registered last so it wins over
+     * the single-segment `GET /loans/{id}` loan handler, whose glob would
+     * otherwise swallow `/loans/summary` and hand the dashboard a loan object.
+     */
+    cy.intercept('GET', '**/api/v1/loans/summary', {
+      currencies: [
+        {
+          currency: 'USD',
+          principal: '1500.50',
+          collected: '500.25',
+          outstanding: '1000.25',
+          writtenOff: '0.00',
+          recoveryRate: '0.33',
+          activeCount: 1,
+          closedCount: 0,
+          averageOutstanding: '1000.25',
+          collectedThisMonth: '500.25',
+        },
+      ],
+      nearCompletion: [
+        {
+          loanId: 1,
+          number: '00001',
+          borrower: 'Lola Paz',
+          remainingBalance: '1000.25',
+          currency: 'USD',
+        },
+      ],
+      recentPayments: [
+        {
+          paymentId: 1,
+          loanId: 1,
+          date: '2026-10-08T12:00:00',
+          borrower: 'Lola Paz',
+          loanNumber: '00001',
+          amount: '500.25',
+          currency: 'USD',
+        },
+      ],
+    }).as('summary');
   };
 
   /**
-   * Enter Préstamos the way the operator does: from the project sidebar.
+   * Enter the loan list the way the operator does: from the project sidebar.
    *
    * This is the shell assertion as much as a navigation helper — the entry has
    * to be reachable from the host's sidebar, in the host's own URL space. The
    * label comes from `common.loans`; the module's own copy is Spanish, the
-   * shell's chrome is translated.
+   * shell's chrome is translated. The list lives at `/loans/loans` now that the
+   * index is the Resumen dashboard.
    */
   const showLoans = () => {
     cy.get('[data-testid="project:sidebar"]').contains('Loans').click();
-    cy.location('pathname').should('eq', '/project/loans');
+    cy.location('pathname').should('eq', '/project/loans/loans');
     cy.wait('@listLoans');
   };
 
   const showLoanViews = () => {
     cy.get('[data-testid="project:sidebar"]').contains('Loans').click();
-    cy.location('pathname').should('eq', '/project/loans');
+    cy.location('pathname').should('eq', '/project/loans/loans');
     // The list owns the "Nuevo Préstamo" action, so the view has to have
     // rendered before a flow that starts from that button clicks it.
     cy.wait('@listLoans');
@@ -296,7 +338,7 @@ describe('Loans registry', () => {
     cy.get('[data-testid="project:sidebar"]').contains('People').click();
     cy.location('pathname').should('eq', '/project/loans/borrowers');
     cy.get('[data-testid="project:sidebar"]').contains('Loans').click();
-    cy.location('pathname').should('eq', '/project/loans');
+    cy.location('pathname').should('eq', '/project/loans/loans');
     // Returning to the list refetches it, so the action has to have rendered
     // before this flow starts from it.
     cy.wait('@listLoans');
@@ -345,8 +387,8 @@ describe('Loans registry', () => {
     cy.contains('button', 'Guardar préstamo').click();
     cy.wait('@createLoan');
 
-    // The save lands on Préstamos, where the new card is visible.
-    cy.location('pathname').should('eq', '/project/loans');
+    // The save lands on the list, where the new card is visible.
+    cy.location('pathname').should('eq', '/project/loans/loans');
     cy.wait('@listLoans');
     cy.contains('Nº 00009').should('be.visible');
     cy.contains('1500.50 USD').should('be.visible');
@@ -715,5 +757,121 @@ describe('Loans registry', () => {
       .and('contain', 'Pago cuotas anteriores')
       .and('contain', 'trescientos dólares con 00/100')
       .and('contain', '500.00 USD');
+  });
+
+  it('lands on the Resumen dashboard and shows the per-currency summary', () => {
+    // The index is the Resumen dashboard, reached from its own sidebar entry.
+    cy.get('[data-testid="project:sidebar"]').contains('Summary').click();
+    cy.location('pathname').should('eq', '/project/loans');
+    cy.wait('@summary');
+
+    // The cards render the per-currency metrics, never combined.
+    cy.contains('Resumen').should('be.visible');
+    cy.contains('Prestado').should('be.visible');
+    cy.contains('Cobrado').should('be.visible');
+    cy.contains('1500.50 USD').should('be.visible');
+    cy.contains('A punto de completarse').should('be.visible');
+    cy.contains('Actividad reciente').should('be.visible');
+
+    // A read-only view: no mutation, and it never reaches for Jira.
+    cy.get('@jiraRequest.all').should('have.length', 0);
+  });
+
+  it('drills through from a dashboard reference to its loan', () => {
+    // The loan the near-completion reference points at, so the edit form loads.
+    loans = [loan({ id: 1 })];
+    [createdLoan] = loans;
+
+    cy.get('[data-testid="project:sidebar"]').contains('Summary').click();
+    cy.location('pathname').should('eq', '/project/loans');
+    cy.wait('@summary');
+
+    // "Quedan" appears only in the near-completion row, so it is unambiguous.
+    cy.contains('Quedan').click();
+    cy.location('pathname').should('eq', '/project/loans/new-loan/1');
+    cy.wait('@getLoan');
+    cy.contains('Editar Préstamo').should('be.visible');
+  });
+
+  it('shows each currency on its own card, never combined', () => {
+    cy.intercept('GET', '**/api/v1/loans/summary', {
+      currencies: [
+        {
+          currency: 'USD',
+          principal: '1000.00',
+          collected: '500.00',
+          outstanding: '500.00',
+          writtenOff: '0.00',
+          recoveryRate: '0.50',
+          activeCount: 1,
+          closedCount: 0,
+          averageOutstanding: '500.00',
+          collectedThisMonth: '500.00',
+        },
+        {
+          currency: 'ARS',
+          principal: '2000.00',
+          collected: '0.00',
+          outstanding: '2000.00',
+          writtenOff: '0.00',
+          recoveryRate: '0.00',
+          activeCount: 1,
+          closedCount: 0,
+          averageOutstanding: '2000.00',
+          collectedThisMonth: '0.00',
+        },
+      ],
+      nearCompletion: [],
+      recentPayments: [],
+    }).as('summaryTwo');
+
+    cy.get('[data-testid="project:sidebar"]').contains('Summary').click();
+    cy.location('pathname').should('eq', '/project/loans');
+    cy.wait('@summaryTwo');
+
+    // Two cards, each labelled and never summed into a combined figure.
+    cy.contains('1000.00 USD').should('be.visible');
+    cy.contains('2000.00 ARS').should('be.visible');
+    cy.contains('3000.00').should('not.exist');
+  });
+
+  it('reports a failed summary load and retries it', () => {
+    let attempts = 0;
+    cy.intercept('GET', '**/api/v1/loans/summary', (req) => {
+      attempts += 1;
+      if (attempts === 1) {
+        req.reply({ statusCode: 500, body: { error: { message: 'boom' } } });
+        return;
+      }
+      req.reply({
+        currencies: [
+          {
+            currency: 'USD',
+            principal: '1000.00',
+            collected: '0.00',
+            outstanding: '1000.00',
+            writtenOff: '0.00',
+            recoveryRate: '0.00',
+            activeCount: 1,
+            closedCount: 0,
+            averageOutstanding: '1000.00',
+            collectedThisMonth: '0.00',
+          },
+        ],
+        nearCompletion: [],
+        recentPayments: [],
+      });
+    }).as('summaryRetry');
+
+    cy.get('[data-testid="project:sidebar"]').contains('Summary').click();
+    cy.location('pathname').should('eq', '/project/loans');
+    cy.wait('@summaryRetry');
+
+    cy.contains('No pudimos cargar el resumen').should('be.visible');
+    cy.contains('button', 'Reintentar').click();
+    cy.wait('@summaryRetry');
+
+    cy.contains('Prestado').should('be.visible');
+    cy.contains('1000.00 USD').should('be.visible');
   });
 });
