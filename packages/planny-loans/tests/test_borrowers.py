@@ -45,7 +45,7 @@ async def test_borrower_crud_and_canonical_alias_parity(client: AsyncClient) -> 
     assert response.status_code == 201
     borrower = response.json()["borrower"]
     assert borrower["firstName"] == "Ana"
-    assert borrower["email"] is None
+    assert borrower["email"] == "ana.perez@example.com"
 
     alias = await client.get("/borrowers", params={"search": "pére"})
     canonical = await client.get("/api/v1/borrowers", params={"search": "pére"})
@@ -84,6 +84,55 @@ async def test_delete_is_blocked_when_a_future_loan_is_linked(
     response = await client.delete(f"/borrowers/{created.json()['borrower']['id']}")
     assert response.status_code == 409
     assert response.json()["error"]["code"] == "CONFLICT"
+
+
+@pytest.mark.asyncio
+async def test_borrower_with_null_contact_gets_deterministic_mocks(
+    client: AsyncClient,
+) -> None:
+    """Contact fields are non-null and stable across requests."""
+    created = await client.post(
+        "/api/v1/borrowers", json={"firstName": "Verónica", "lastName": "Álvarez"}
+    )
+    assert created.status_code == 201
+    first = created.json()["borrower"]
+
+    # Repeat the same request — values must be identical.
+    second = await client.get(f"/api/v1/borrowers/{first['id']}")
+    assert second.status_code == 200
+    second_data = second.json()["borrower"]
+
+    for field in ("email", "phone", "address", "nationalId"):
+        assert first[field] is not None, f"{field} should be mocked, not None"
+        assert first[field] == second_data[field], f"{field} must be stable"
+
+    assert first["email"] == "veronica.alvarez@example.com"
+    assert "Córdoba" in first["address"]
+    assert first["nationalId"].count("-") == 2  # CUIT-like format
+
+
+@pytest.mark.asyncio
+async def test_borrower_with_real_contact_data_is_not_overridden(
+    client: AsyncClient,
+) -> None:
+    """Real contact data must NEVER be replaced by mocks."""
+    created = await client.post(
+        "/api/v1/borrowers",
+        json={
+            "firstName": "Juan",
+            "lastName": "Pérez",
+            "email": "juanito@real.com",
+            "phone": "+54 11 5555-1234",
+            "address": "Av. Siempre Viva 742",
+            "nationalId": "20-12345678-9",
+        },
+    )
+    assert created.status_code == 201
+    borrower = created.json()["borrower"]
+    assert borrower["email"] == "juanito@real.com"
+    assert borrower["phone"] == "+54 11 5555-1234"
+    assert borrower["address"] == "Av. Siempre Viva 742"
+    assert borrower["nationalId"] == "20-12345678-9"
 
 
 async def _linked() -> int:

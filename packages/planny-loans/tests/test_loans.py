@@ -18,6 +18,8 @@ from planny_core.database import Base
 from planny_core.models import Borrower, Loan
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from planny_loans.borrowers.serializers import mock_national_id
+
 
 @pytest.fixture
 async def client() -> AsyncIterator[AsyncClient]:
@@ -92,8 +94,13 @@ async def test_create_happy_path_assigns_number_and_derives_balance(client: Asyn
     assert loan["pendingBalance"] == "1000.25"
     assert loan["currency"] == "USD"
     assert loan["city"] == "Córdoba"
-    assert loan["installmentAmount"] is None
-    assert loan["borrower"] == {"id": borrower_id, "firstName": "Ana", "lastName": "Pérez"}
+    assert loan["installmentAmount"] == "250.08"
+    assert loan["borrower"] == {
+        "id": borrower_id,
+        "firstName": "Ana",
+        "lastName": "Pérez",
+        "nationalId": mock_national_id(borrower_id),
+    }
 
 
 @pytest.mark.asyncio
@@ -285,7 +292,7 @@ async def test_installment_can_be_set_then_cleared(client: AsyncClient) -> None:
         f"/api/v1/loans/{loan_id}", json=payload(borrower_id, installmentAmount=None)
     )
     assert cleared.status_code == 200, cleared.text
-    assert cleared.json()["loan"]["installmentAmount"] is None
+    assert cleared.json()["loan"]["installmentAmount"] == "250.08"
 
 
 @pytest.mark.asyncio
@@ -394,7 +401,7 @@ async def test_partial_update_keeps_the_fields_it_omits(client: AsyncClient) -> 
     # An explicit null is still a real edit: it clears the installment.
     cleared = await client.put(f"/api/v1/loans/{loan_id}", json={"installmentAmount": None})
     assert cleared.status_code == 200, cleared.text
-    assert cleared.json()["loan"]["installmentAmount"] is None
+    assert cleared.json()["loan"]["installmentAmount"] == "250.08"
     assert cleared.json()["loan"]["concept"] == "Viaje"
 
 

@@ -132,6 +132,15 @@ def stored_history(payment: Payment, payment_id: int) -> dict[str, object]:
     )
 
 
+def entries_shape(entries: list[dict[str, object]]) -> list[tuple[object, object]]:
+    """The ``(id, amount)`` pairs of history entries.
+
+    The frozen per-entry date is dynamic, so the shape assertions compare the
+    identifying pair and check the date separately rather than hardcode it.
+    """
+    return [(entry["id"], entry["amount"]) for entry in entries]
+
+
 @pytest.mark.asyncio
 async def test_pay_happy_registers_and_drops_the_balance(client: AsyncClient) -> None:
     loan_id = await make_loan(client)
@@ -143,9 +152,10 @@ async def test_pay_happy_registers_and_drops_the_balance(client: AsyncClient) ->
     assert payment["snapshot"]["pendingBalance"] == "749.50"
     assert payment["snapshot"]["totalPaid"] == "250.50"
     assert payment["snapshot"]["advancePaid"] == "0.00"
-    assert payment["snapshot"]["paymentsHistory"] == [
-        {"id": payment["id"], "amount": "250.50"}
-    ]
+    assert entries_shape(payment["snapshot"]["paymentsHistory"]) == [(payment["id"], "250.50")]
+    # The entry freezes the payment's own timestamp, so a re-issued receipt can
+    # print the history line's date without reading the live row back.
+    assert payment["snapshot"]["paymentsHistory"][0]["date"] == payment["date"]
     assert await balance(client, loan_id) == "749.50"
 
 
@@ -238,7 +248,7 @@ async def test_snapshot_is_frozen_when_a_later_payment_is_reversed(
     stored_before = (
         await db.execute(select(Payment).where(Payment.id == first["id"]))
     ).scalars().one()
-    assert stored_before.paymentsHistoryAtPayment == [{"id": first["id"], "amount": "100.00"}]
+    assert entries_shape(stored_before.paymentsHistoryAtPayment) == [(first["id"], "100.00")]
 
     reversed_response = await reverse(client, loan_id, second["id"])
     assert reversed_response.status_code == 204  # type: ignore[attr-defined]
@@ -306,9 +316,9 @@ async def test_reverse_annotates_the_snapshots_that_name_the_payment(
     first = await register(client, loan_id, "100.00")
     second = await register(client, loan_id, "200.00")
     # The later snapshot names both payments, and neither carries a reversal mark.
-    assert (await history(client, loan_id))[1]["snapshot"]["paymentsHistory"] == [
-        {"id": first["id"], "amount": "100.00"},
-        {"id": second["id"], "amount": "200.00"},
+    assert entries_shape((await history(client, loan_id))[1]["snapshot"]["paymentsHistory"]) == [
+        (first["id"], "100.00"),
+        (second["id"], "200.00"),
     ]
 
     assert (await reverse(client, loan_id, first["id"])).status_code == 204
@@ -327,7 +337,7 @@ async def test_reverse_annotates_the_snapshots_that_name_the_payment(
         await db.execute(select(Payment).where(Payment.id == second["id"]))
     ).scalars().one()
     assert stored_history(stored, first["id"])["reversedAt"] is not None
-    assert stored_history(stored, second["id"]) == {"id": second["id"], "amount": "200.00"}
+    assert entries_shape([stored_history(stored, second["id"])]) == [(second["id"], "200.00")]
 
 
 @pytest.mark.asyncio
@@ -364,9 +374,9 @@ async def test_undoing_a_reversal_puts_the_payment_back(client: AsyncClient) -> 
     listed = await history(client, loan_id)
     assert [item["reversedAt"] for item in listed] == [None, None]
     # The later snapshot stops showing the reversal, back to the bytes it froze.
-    assert listed[1]["snapshot"]["paymentsHistory"] == [
-        {"id": first["id"], "amount": "100.00"},
-        {"id": second["id"], "amount": "200.00"},
+    assert entries_shape(listed[1]["snapshot"]["paymentsHistory"]) == [
+        (first["id"], "100.00"),
+        (second["id"], "200.00"),
     ]
 
 
@@ -544,7 +554,7 @@ async def test_a_row_with_a_recomputed_snapshot_is_readable(
     assert payment["snapshot"]["pendingBalance"] == "650.00"
     assert payment["snapshot"]["totalPaid"] == "350.00"
     assert payment["snapshot"]["advancePaid"] == "100.00"
-    assert payment["snapshot"]["paymentsHistory"] == [{"id": 1, "amount": "250.00"}]
+    assert entries_shape(payment["snapshot"]["paymentsHistory"]) == [(1, "250.00")]
     # The derived balance counts the migrated payment too.
     assert await balance(client, loan_id) == "650.00"
 

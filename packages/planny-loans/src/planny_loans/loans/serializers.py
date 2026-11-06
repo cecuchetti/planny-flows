@@ -4,7 +4,16 @@ from decimal import Decimal
 
 from planny_core.models import Loan, Payment
 
+from planny_loans.borrowers.serializers import mock_national_id
+
 _ZERO = Decimal("0.00")
+_SIX = Decimal("6")
+_CENT = Decimal("0.01")
+
+
+def _money(value: Decimal) -> Decimal:
+    """Round a money value to two decimals."""
+    return value.quantize(_CENT)
 
 
 def padded_number(number: int) -> str:
@@ -83,8 +92,46 @@ def recent_payment_entry(payment: Payment) -> dict[str, object]:
     }
 
 
+def _total_collected(loan: Loan, pending_balance: Decimal) -> Decimal:
+    """Derive the total collected (advance + payments) from the loan and the pending balance.
+
+    ``pending_balance = amount - advancePaid - payments - writtenOffAmount``,
+    so the sum of what was collected (advance + payments) is
+    ``amount - pending_balance - writtenOffAmount``.
+    """
+    return _money((loan.amount or _ZERO) - pending_balance - (loan.writtenOffAmount or _ZERO))
+
+
+def _mock_installments_count(loan: Loan) -> int:
+    """A mock installment count — not stored in the database yet."""
+    return 6
+
+
+def _mock_installment_amount(loan: Loan) -> Decimal:
+    """Compute a mock installment amount from amount and default installments count.
+
+    Used when the database value is ``None``.
+    """
+    return _money((loan.amount or _ZERO) / _SIX)
+
+
 def loan_to_dict(loan: Loan, pending_balance: Decimal) -> dict[str, object]:
     borrower = loan.borrower
+    collected = _total_collected(loan, pending_balance)
+    installments_count = _mock_installments_count(loan)
+    inst_amount = (  # noqa: E501
+        _mock_installment_amount(loan) if loan.installmentAmount is None else loan.installmentAmount
+    )
+    installments_paid = (
+        int(collected / inst_amount)
+        if inst_amount > _ZERO
+        else 0
+    )
+    progress_pct = (
+        float(collected / (loan.amount or _ZERO) * 100)
+        if loan.amount and loan.amount > _ZERO
+        else 0.0
+    )
     return {
         "id": loan.id,
         "number": padded_number(loan.number),
@@ -93,11 +140,19 @@ def loan_to_dict(loan: Loan, pending_balance: Decimal) -> dict[str, object]:
             "id": borrower.id,
             "firstName": borrower.firstName,
             "lastName": borrower.lastName,
+            "nationalId": (
+                borrower.nationalId
+                if borrower.nationalId is not None and borrower.nationalId != ""
+                else mock_national_id(borrower.id)
+            ),
         },
         "amount": money(loan.amount),
         "advancePaid": money(loan.advancePaid),
-        "installmentAmount": money(loan.installmentAmount),
+        "installmentAmount": money(inst_amount),
+        "installmentsCount": installments_count,
+        "installmentsPaid": installments_paid,
         "pendingBalance": money(pending_balance),
+        "progressPercent": progress_pct,
         "status": loan.status,
         "closedAt": loan.closedAt.isoformat() if loan.closedAt else None,
         "writtenOffAmount": money(loan.writtenOffAmount),

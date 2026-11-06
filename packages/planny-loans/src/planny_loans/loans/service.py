@@ -91,7 +91,10 @@ def _date(value: object, field: str, errors: dict[str, str]) -> date | None:
 
 
 def history_entry(
-    amount: Decimal, payment_id: int | None = None, reversed_at: datetime | None = None
+    amount: Decimal,
+    payment_id: int | None = None,
+    reversed_at: datetime | None = None,
+    date: datetime | None = None,
 ) -> dict[str, object]:
     """The canonical payment-history entry.
 
@@ -101,12 +104,17 @@ def history_entry(
     two-decimal string: it is what the API returns and what the JSON column
     stores, so the frozen snapshot round-trips without a precision question.
 
+    ``date`` is the payment's own timestamp, frozen so a re-issued receipt can
+    print the history line's date without reading it back from a live row.
+
     ``reversedAt`` is present only on an entry that was reversed. An entry that
     never carried the key is not an entry without a reversal — it is the exact
     shape the snapshot was frozen with, and undoing a reversal has to restore it,
     so the key is added and removed rather than set to ``None``.
     """
     entry: dict[str, object] = {"id": payment_id, "amount": f"{_money(amount):.2f}"}
+    if date is not None:
+        entry["date"] = date.isoformat()
     if reversed_at is not None:
         entry["reversedAt"] = reversed_at.isoformat()
     return entry
@@ -115,7 +123,7 @@ def history_entry(
 def payments_history(payments: list[Payment]) -> list[dict[str, object]]:
     """The canonical history of a list of active payments, oldest first."""
     return [
-        history_entry(payment.amount, payment.id, payment.reversedAt)
+        history_entry(payment.amount, payment.id, payment.reversedAt, payment.date)
         for payment in payments
         if payment.reversedAt is None
     ]
@@ -453,15 +461,18 @@ async def create_payment(db: AsyncSession, loan_id: int, values: dict[str, Any])
     if errors or amount is None:
         raise BadUserInputError({"fields": errors}, message="Revisá los datos del pago.")
 
+    # One timestamp for the row and for its own history entry: the receipt prints
+    # both, and reading the clock twice could disagree across a second boundary.
+    payment_date = datetime.utcnow()
     history = payments_history(payments)
-    entry = history_entry(amount)
+    entry = history_entry(amount, date=payment_date)
     history.append(entry)
 
     payment = Payment(
         loan_id=loan_id,
         loan=loan,
         amount=amount,
-        date=datetime.utcnow(),
+        date=payment_date,
         pendingBalanceAtPayment=_money(outstanding - amount),
         totalPaidAtPayment=_money(collected + amount),
         advancePaidAtPayment=loan.advancePaid if loan.advancePaid is not None else _ZERO,
