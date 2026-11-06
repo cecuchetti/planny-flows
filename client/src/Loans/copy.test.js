@@ -36,6 +36,15 @@ describe('loan copy', () => {
     expect(loansListCopy.balance).toBe('Saldo pendiente');
   });
 
+  it('carries the person directory copy changes', () => {
+    expect(borrowerCopy.nationalId).toBe('DNI / CUIT');
+    expect(borrowerCopy.noMatches).toBe('No encontramos personas con ese criterio');
+    expect(borrowerCopy.noMatchesHint).toBe(
+      'Revisá si el DNI o el nombre están bien escritos, o probá limpiando los filtros seleccionados.',
+    );
+    expect(borrowerCopy.clearFilters).toBe('Limpiar filtros y búsqueda');
+  });
+
   it('explains the currency lock in Spanish', () => {
     expect(paymentsCopy.currencyLocked).toContain('No podés cambiar la moneda');
   });

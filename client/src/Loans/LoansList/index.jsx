@@ -3,34 +3,40 @@ import PropTypes from 'prop-types';
 import { useNavigate } from 'react-router-dom';
 
 import Button from 'shared/components/Button';
-import ConfirmModal from 'shared/components/ConfirmModal';
+import TailwindConfirmModal from 'shared/components/ConfirmModal/TailwindConfirmModal';
+import CloseLoanModal from 'Loans/CloseLoanModal';
 import PageLoader from 'shared/components/PageLoader';
 import api from 'shared/utils/api';
 import toast from 'shared/utils/toast';
 
 import { loanFormCopy, loansListCopy } from '../copy';
-import { amountWithCurrency, formatDate, formatLoanNumber, toAmount } from '../money';
 import {
-  CardAmount,
-  CardGrid,
-  CardHeader,
-  CardKey,
-  CardTitle,
-  Chip,
-  EmptyState,
-  ErrorText,
-  ListCard,
-  MetaLabel,
-  MetaRow,
-  Row,
-  RowSpaced,
-  Section,
-} from '../Styles';
+  amountWithCurrency,
+  formatDate,
+  formatLoanNumber,
+  toAmount,
+  collectedFromLoan,
+} from '../money';
 
 const borrowerName = (loan) => {
   const { borrower } = loan;
   if (!borrower) return '—';
   return `${borrower.firstName} ${borrower.lastName}`;
+};
+
+/** Two-letter initials for the avatar circle. */
+const borrowerInitials = (loan) => {
+  const { borrower } = loan;
+  if (!borrower) return '—';
+  return `${(borrower.firstName || '')[0] || ''}${(borrower.lastName || '')[0] || ''}`.toUpperCase();
+};
+
+/** Recovery percentage, 0–100. */
+const recoveryPercent = (loan) => {
+  const collected = collectedFromLoan(loan);
+  const amount = toAmount(loan.amount) || 0;
+  if (amount <= 0) return 0;
+  return Math.round(Math.min((collected / amount) * 100, 100));
 };
 
 /**
@@ -42,123 +48,215 @@ const borrowerName = (loan) => {
  * payment capture. The shared fields stay identical so the two sections read as
  * one list split in two.
  */
-function LoanCard({ loan, closed, onEdit, onRemove, onClose, onReopen }) {
+function LoanCard({ loan, closed, onEdit, onRemove, onClose, onReopen, onReceipt }) {
   const balance = amountWithCurrency(loan.pendingBalance, loan.currency);
-  const closeMessage =
-    toAmount(loan.pendingBalance) > 0
-      ? loansListCopy.closeMessage(balance)
-      : loansListCopy.closePaidMessage;
+
+  const pct = recoveryPercent(loan);
+  const [closeModalOpen, setCloseModalOpen] = useState(false);
+  const [removeModalOpen, setRemoveModalOpen] = useState(false);
+  const [reopenModalOpen, setReopenModalOpen] = useState(false);
 
   return (
-    <ListCard>
-      <CardHeader>
-        <CardKey>
-          {loansListCopy.number} {formatLoanNumber(loan.number)}
-        </CardKey>
-        <CardAmount>{amountWithCurrency(loan.amount, loan.currency)}</CardAmount>
-        <Chip>{loan.currency}</Chip>
-      </CardHeader>
-
-      <MetaRow>
-        <span>
-          <MetaLabel>{loansListCopy.borrower}: </MetaLabel>
-          {borrowerName(loan)}
-        </span>
-        <span>
-          <MetaLabel>{loansListCopy.date}: </MetaLabel>
-          {formatDate(loan.date)}
-        </span>
-        <span>
-          <MetaLabel>{loansListCopy.balance}: </MetaLabel>
-          <strong>{balance}</strong>
-        </span>
-      </MetaRow>
-
-      <MetaRow>
-        <span>
-          <MetaLabel>{loansListCopy.concept}: </MetaLabel>
-          {loan.concept}
-        </span>
-        <span>
-          <MetaLabel>{loansListCopy.lender}: </MetaLabel>
-          {loan.lender}
-        </span>
-        {loan.city && (
-          <span>
-            <MetaLabel>{loansListCopy.city}: </MetaLabel>
-            {loan.city}
-          </span>
-        )}
-        {loan.installmentAmount !== null && loan.installmentAmount !== undefined && (
-          <span>
-            <MetaLabel>{loansListCopy.installment}: </MetaLabel>
-            {amountWithCurrency(loan.installmentAmount, loan.currency)}
-          </span>
-        )}
-      </MetaRow>
-
-      {closed && (
-        <MetaRow>
-          {loan.closedAt && (
-            <span>
-              <MetaLabel>{loansListCopy.closedAt}: </MetaLabel>
-              {formatDate(loan.closedAt)}
+    <article className="bg-surface-container-lowest rounded-xl p-space-md shadow-sm hover:shadow-md transition-all flex flex-col justify-between gap-space-md">
+      <div className="space-y-3">
+        {/* Card Header: Nº + Chip + Amount */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="font-code-key text-code-key text-outline font-semibold">
+              {loansListCopy.number} {formatLoanNumber(loan.number)}
             </span>
-          )}
-          {loan.writtenOffAmount !== null && loan.writtenOffAmount !== undefined && (
-            <span>
-              <MetaLabel>{loansListCopy.writtenOff}: </MetaLabel>
-              {amountWithCurrency(loan.writtenOffAmount, loan.currency)}
+            <span className="px-2 py-0.5 rounded bg-secondary-fixed text-secondary font-code-key text-[10px] font-bold">
+              {loan.currency}
             </span>
-          )}
-        </MetaRow>
-      )}
+          </div>
+          <div className="font-code-key text-headline-md text-on-surface font-bold">
+            {amountWithCurrency(loan.amount, loan.currency)}
+          </div>
+        </div>
 
-      <Row>
-        <Button type="button" onClick={onEdit}>
+        {/* Metadata Grid */}
+        <div className="grid grid-cols-2 gap-y-2 gap-x-3 text-body-sm pt-1">
+          {/* Persona */}
+          <div>
+            <span className="font-overline text-[10px] text-outline uppercase block">
+              {loansListCopy.borrower}
+            </span>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <div className="w-6 h-6 rounded-full bg-secondary text-on-secondary font-code-key text-[11px] font-bold flex items-center justify-center">
+                {borrowerInitials(loan)}
+              </div>
+              <span className="font-label-md text-label-md text-on-surface font-semibold">
+                {borrowerName(loan)}
+              </span>
+            </div>
+          </div>
+          {/* Fecha inicio */}
+          <div>
+            <span className="font-overline text-[10px] text-outline uppercase block">
+              {loansListCopy.date}
+            </span>
+            <span className="font-code-key text-body-sm text-on-surface">
+              {formatDate(loan.date)}
+            </span>
+          </div>
+          {/* Saldo pendiente */}
+          <div>
+            <span className="font-overline text-[10px] text-outline uppercase block">
+              {loansListCopy.balance}
+            </span>
+            <span className="font-code-key text-body-md text-secondary font-bold">{balance}</span>
+          </div>
+          {/* Cuota mensual */}
+          {loan.installmentAmount !== null && loan.installmentAmount !== undefined && (
+            <div>
+              <span className="font-overline text-[10px] text-outline uppercase block">
+                {loansListCopy.installment}
+              </span>
+              <span className="font-code-key text-body-sm text-on-surface font-medium">
+                {amountWithCurrency(loan.installmentAmount, loan.currency)}
+              </span>
+            </div>
+          )}
+          {!loan.installmentAmount && <div />}
+
+          {/* Concept row - full width */}
+          <div className="col-span-2 bg-surface-container-low/70 p-2 rounded flex items-center justify-between text-body-sm">
+            <span className="text-outline">
+              {loansListCopy.concept}:{' '}
+              <strong className="text-on-surface font-medium">{loan.concept}</strong>
+            </span>
+            <span className="text-outline text-[11px]">
+              {[loan.city, loan.lender ? `Prestamista: ${loan.lender}` : '']
+                .filter(Boolean)
+                .join(' · ')}
+            </span>
+          </div>
+
+          {/* Closed loan extra info */}
+          {closed && (
+            <>
+              {loan.closedAt && (
+                <div>
+                  <span className="font-overline text-[10px] text-outline uppercase block">
+                    {loansListCopy.closedAt}
+                  </span>
+                  <span className="font-code-key text-body-sm text-on-surface">
+                    {formatDate(loan.closedAt)}
+                  </span>
+                </div>
+              )}
+              {loan.writtenOffAmount !== null && loan.writtenOffAmount !== undefined && (
+                <div>
+                  <span className="font-overline text-[10px] text-outline uppercase block">
+                    {loansListCopy.writtenOff}
+                  </span>
+                  <span className="font-code-key text-body-sm text-on-surface font-medium">
+                    {amountWithCurrency(loan.writtenOffAmount, loan.currency)}
+                  </span>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Progress Bar */}
+        <div className="space-y-1">
+          <div className="flex justify-between font-label-md text-[11px]">
+            <span className="text-outline">Recuperado</span>
+            <span className="font-code-key font-bold text-tertiary">{pct}%</span>
+          </div>
+          <div className="w-full h-2 rounded-full bg-surface-container overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-primary to-tertiary rounded-full"
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Action Row */}
+      <div className="flex items-center justify-between pt-2">
+        <button
+          type="button"
+          className="h-7 px-2.5 rounded bg-surface-container hover:bg-surface-container-high text-on-surface text-body-sm font-label-md transition-colors"
+          onClick={onEdit}
+        >
           {loansListCopy.edit}
-        </Button>
-        {closed ? (
-          <ConfirmModal
-            variant="primary"
-            title={loansListCopy.reopenTitle}
-            message={loansListCopy.reopenMessage}
-            confirmText={loansListCopy.reopen}
-            renderLink={({ open }) => (
-              <Button type="button" onClick={open}>
+        </button>
+        <div className="flex items-center gap-2">
+          {closed ? (
+            <React.Fragment>
+              <button
+                type="button"
+                className="text-primary hover:text-primary-container font-label-md text-body-sm flex items-center gap-1 transition-colors"
+                onClick={() => setReopenModalOpen(true)}
+              >
                 {loansListCopy.reopen}
-              </Button>
-            )}
-            onConfirm={({ close }) => onReopen().finally(close)}
-          />
-        ) : (
-          <ConfirmModal
-            variant="primary"
-            title={loansListCopy.closeTitle}
-            message={closeMessage}
-            confirmText={loansListCopy.close}
-            renderLink={({ open }) => (
-              <Button type="button" onClick={open}>
+              </button>
+              <TailwindConfirmModal
+                isOpen={reopenModalOpen}
+                onClose={() => setReopenModalOpen(false)}
+                variant="primary"
+                title={loansListCopy.reopenTitle}
+                message={loansListCopy.reopenMessage}
+                confirmText={loansListCopy.reopen}
+                cancelText="Cancelar"
+                onConfirm={({ close }) => onReopen().finally(close)}
+              />
+            </React.Fragment>
+          ) : (
+            <React.Fragment>
+              <button
+                type="button"
+                data-testid="loans:card-receipt"
+                className="text-primary hover:text-primary-container font-label-md text-body-sm flex items-center gap-1 transition-colors"
+                onClick={onReceipt}
+              >
+                <span className="material-symbols-outlined text-[16px]">receipt_long</span>
+                {loansListCopy.generateReceipt}
+              </button>
+              <span className="text-outline text-xs">·</span>
+              <button
+                type="button"
+                className="text-outline hover:text-on-surface font-label-md text-body-sm transition-colors"
+                onClick={() => setCloseModalOpen(true)}
+              >
                 {loansListCopy.close}
-              </Button>
-            )}
-            onConfirm={({ close }) => onClose().finally(close)}
-          />
-        )}
-        <ConfirmModal
-          variant="danger"
-          title={loansListCopy.removeTitle}
-          message={loansListCopy.removeMessage}
-          confirmText={loansListCopy.remove}
-          renderLink={({ open }) => (
-            <Button type="button" onClick={open}>
-              {loansListCopy.remove}
-            </Button>
+              </button>
+              <CloseLoanModal
+                isOpen={closeModalOpen}
+                onClose={() => setCloseModalOpen(false)}
+                loan={loan}
+                onConfirm={({ close, mode }) => {
+                  // For 'close': call the existing close action (balance $0 / fully paid)
+                  // For 'condone': could call a condone endpoint; for now close the loan
+                  onClose().finally(close);
+                }}
+              />
+            </React.Fragment>
           )}
-          onConfirm={({ close }) => onRemove().finally(close)}
-        />
-      </Row>
-    </ListCard>
+          <React.Fragment>
+            <button
+              type="button"
+              className="text-outline hover:text-error font-label-md text-body-sm transition-colors"
+              onClick={() => setRemoveModalOpen(true)}
+            >
+              {loansListCopy.remove}
+            </button>
+            <TailwindConfirmModal
+              isOpen={removeModalOpen}
+              onClose={() => setRemoveModalOpen(false)}
+              variant="danger"
+              title={loansListCopy.removeTitle}
+              message={loansListCopy.removeMessage}
+              confirmText={loansListCopy.remove}
+              cancelText="Cancelar"
+              onConfirm={({ close }) => onRemove().finally(close)}
+            />
+          </React.Fragment>
+        </div>
+      </div>
+    </article>
   );
 }
 
@@ -169,6 +267,7 @@ LoanCard.propTypes = {
   onRemove: PropTypes.func.isRequired,
   onClose: PropTypes.func.isRequired,
   onReopen: PropTypes.func.isRequired,
+  onReceipt: PropTypes.func,
 };
 
 function LoansList() {
@@ -235,14 +334,14 @@ function LoansList() {
 
   if (loadError) {
     return (
-      <Section>
+      <section data-testid="loans:list" className="space-y-space-md">
         <div role="alert">
-          <ErrorText>{loadError}</ErrorText>
+          <p className="text-error text-body-sm font-body-sm m-2">{loadError}</p>
           <Button type="button" onClick={retry}>
             {loansListCopy.retry}
           </Button>
         </div>
-      </Section>
+      </section>
     );
   }
 
@@ -251,10 +350,12 @@ function LoansList() {
   const hasLoans = activeLoans.length > 0 || closedLoans.length > 0;
 
   return (
-    <Section>
-      <CardTitle>{loansListCopy.title}</CardTitle>
+    <section data-testid="loans:list" className="space-y-space-md">
+      <h2 className="font-headline-md text-headline-md text-on-surface mb-4">
+        {loansListCopy.title}
+      </h2>
 
-      <RowSpaced>
+      <div className="flex items-center gap-space-sm">
         <Button
           type="button"
           variant="primary"
@@ -270,62 +371,96 @@ function LoansList() {
         >
           {loansListCopy.generateReceipt}
         </Button>
-      </RowSpaced>
+      </div>
 
       {!hasLoans ? (
-        <EmptyState>{loansListCopy.empty}</EmptyState>
+        <p className="text-on-surface-variant text-body-sm font-body-sm mt-3">
+          {loansListCopy.empty}
+        </p>
       ) : (
         <Fragment>
-          <Row>
-            <CardTitle as="h3">
-              {loansListCopy.activeTitle} ({activeLoans.length})
-            </CardTitle>
-          </Row>
-          {activeLoans.length === 0 ? (
-            <EmptyState>{loansListCopy.activeEmpty}</EmptyState>
-          ) : (
-            <CardGrid>
-              {activeLoans.map((loan) => (
-                <LoanCard
-                  key={loan.id}
-                  loan={loan}
-                  closed={false}
-                  onEdit={() => edit(loan.id)}
-                  onRemove={() => remove(loan.id)}
-                  onClose={() => closeLoan(loan.id)}
-                />
-              ))}
-            </CardGrid>
-          )}
-
-          <Row>
-            <CardTitle as="h3">
-              {loansListCopy.closedTitle} ({closedLoans.length})
-            </CardTitle>
-            <Button type="button" onClick={() => setClosedExpanded((value) => !value)}>
-              {closedExpanded ? loansListCopy.collapse : loansListCopy.expand}
-            </Button>
-          </Row>
-          {closedExpanded &&
-            (closedLoans.length === 0 ? (
-              <EmptyState>{loansListCopy.closedEmpty}</EmptyState>
+          {/* Active Loans Section */}
+          <div className="space-y-space-md mt-space-md">
+            <div className="flex items-center gap-space-sm">
+              <h3 className="font-headline-md text-headline-md text-on-surface">
+                {loansListCopy.activeTitle}
+              </h3>
+              <span className="px-2 py-0.5 rounded-full bg-secondary-fixed text-secondary font-label-md text-label-md font-semibold">
+                {activeLoans.length}
+              </span>
+            </div>
+            {activeLoans.length === 0 ? (
+              <p className="text-on-surface-variant text-body-sm font-body-sm">
+                {loansListCopy.activeEmpty}
+              </p>
             ) : (
-              <CardGrid>
-                {closedLoans.map((loan) => (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-space-md">
+                {activeLoans.map((loan) => (
                   <LoanCard
                     key={loan.id}
                     loan={loan}
-                    closed
+                    closed={false}
                     onEdit={() => edit(loan.id)}
                     onRemove={() => remove(loan.id)}
-                    onReopen={() => reopenLoan(loan.id)}
+                    onClose={() => closeLoan(loan.id)}
+                    onReceipt={() => navigate(`/project/loans/receipt?loan=${loan.id}`)}
                   />
                 ))}
-              </CardGrid>
-            ))}
+              </div>
+            )}
+          </div>
+
+          {/* Closed Loans Section */}
+          <div className="space-y-space-md mt-space-md">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-space-sm">
+                <h3 className="font-headline-md text-headline-md text-on-surface">
+                  {loansListCopy.closedTitle}
+                </h3>
+                <span className="px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant font-label-md text-label-md">
+                  {closedLoans.length} {loansListCopy.expand.toLowerCase()}
+                </span>
+              </div>
+              <button
+                type="button"
+                className="h-8 px-3 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface font-label-md text-label-md flex items-center gap-1 transition-colors"
+                onClick={() => setClosedExpanded((value) => !value)}
+              >
+                <span>
+                  {closedExpanded
+                    ? loansListCopy.collapse
+                    : `${loansListCopy.expand} (${closedLoans.length})`}
+                </span>
+                <span
+                  className={`material-symbols-outlined text-[18px] transition-transform ${closedExpanded ? 'rotate-180' : ''}`}
+                >
+                  expand_more
+                </span>
+              </button>
+            </div>
+            {closedExpanded &&
+              (closedLoans.length === 0 ? (
+                <p className="text-on-surface-variant text-body-sm font-body-sm">
+                  {loansListCopy.closedEmpty}
+                </p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-space-md">
+                  {closedLoans.map((loan) => (
+                    <LoanCard
+                      key={loan.id}
+                      loan={loan}
+                      closed
+                      onEdit={() => edit(loan.id)}
+                      onRemove={() => remove(loan.id)}
+                      onReopen={() => reopenLoan(loan.id)}
+                    />
+                  ))}
+                </div>
+              ))}
+          </div>
         </Fragment>
       )}
-    </Section>
+    </section>
   );
 }
 

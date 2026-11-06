@@ -20,7 +20,10 @@ export const borrowerCopy = {
   add: 'Agregar persona',
   edit: 'Editar',
   empty: 'Todavía no hay personas cargadas.',
-  noMatches: 'No encontramos coincidencias.',
+  noMatches: 'No encontramos personas con ese criterio',
+  noMatchesHint:
+    'Revisá si el DNI o el nombre están bien escritos, o probá limpiando los filtros seleccionados.',
+  clearFilters: 'Limpiar filtros y búsqueda',
   loadError: 'No pudimos cargar las personas. Intentá de nuevo.',
   retry: 'Reintentar',
   loading: 'Cargando personas…',
@@ -37,9 +40,24 @@ export const borrowerCopy = {
   email: 'Email',
   phone: 'Teléfono',
   address: 'Domicilio',
-  nationalId: 'DNI / documento',
+  nationalId: 'DNI / CUIT',
   notes: 'Notas',
   loanCount: 'Préstamos',
+  active: 'Activo',
+  activeLoan: 'Préstamo Activo',
+  settled: 'Sin deuda',
+  noLoans: 'Sin préstamos',
+  totalHistorical: 'Total histórico',
+  remainingToCollect: 'Resta cobrar',
+  recoveryPercent: 'Saldo recuperado',
+  verified: 'Verificado',
+  viewFile: 'Ver legajo',
+  whatsapp: 'WhatsApp',
+  copyEmail: 'Copiar email',
+  formSubtitle: 'Formulario de legajo y registro de persona deudora',
+  formBadge: 'Formulario de legajo',
+  clearForm: 'Limpiar formulario',
+  requiredFields: 'Los campos con * son obligatorios para la emisión formal de recibos y pagarés.',
 };
 
 export const loanFormCopy = {
@@ -79,6 +97,13 @@ export const loanFormCopy = {
   writtenOffLabel: 'Condonación',
   closedNotice:
     'Este préstamo está cerrado. Reabrilo para editar el monto, el pago adelantado o la moneda.',
+  amortization: 'Amortización',
+  installmentCount: 'Cantidad de cuotas',
+  installmentsLabel: 'cuotas',
+  editMode: 'Editar',
+  newMode: 'Nuevo',
+  backToLoans: 'Volver a Préstamos',
+  manageDescription: 'Gestioná el capital prestado, condiciones pactadas y registrá pagos.',
 };
 
 export const paymentsCopy = {
@@ -121,15 +146,19 @@ export const paymentsCopy = {
  */
 export const receiptCopy = {
   title: 'Recibo de pago',
-  number: 'Nº',
-  receivedAmount: 'Recibí la suma de',
+  city: 'Ciudad',
+  day: 'Día',
+  month: 'Mes',
+  year: 'Año',
+  number: 'No.',
   paidTo: 'Pagado a',
   concept: 'Concepto',
-  amountInWords: 'Son',
+  valueInWords: 'Valor: (en letras)',
   paidBy: 'Pagado por',
   approved: 'Aprobado',
   signature: 'Firma de recibido',
-  resultingBalance: 'Saldo resultante',
+  loanAmount: 'Monto total prestado',
+  resultingBalance: 'Saldo pendiente',
   history: 'Historial de pagos',
   advanceLine: 'Pago cuotas anteriores',
   reversedTag: 'Revertido',
@@ -184,6 +213,13 @@ export const dashboardCopy = {
   remaining: 'Quedan',
   recentActivityTitle: 'Actividad reciente',
   recentActivityEmpty: 'Todavía no hay pagos registrados.',
+  recovery: 'Recuperación',
+  average: 'Promedio pendiente',
+  collectedMonth: 'Cobrado del mes',
+  portfolio: 'Cartera',
+  active: 'activos',
+  closed: 'cerrados',
+  alDia: 'al día',
 };
 
 export const loansListCopy = {
@@ -200,7 +236,7 @@ export const loansListCopy = {
   removeMessage: 'Se elimina el préstamo y sus pagos asociados. No se puede deshacer.',
   borrower: 'Persona',
   balance: 'Saldo pendiente',
-  installment: 'Cuota',
+  installment: 'Cuota mensual',
   concept: 'Concepto',
   lender: 'Prestamista',
   city: 'Ciudad',
@@ -229,4 +265,7 @@ export const loansListCopy = {
   reopenedToast: 'Préstamo reabierto.',
   closedAt: 'Cerrado el',
   writtenOff: 'Condonación',
+  progress: 'Recuperado',
+  registerPayment: 'Registrar Pago',
+  condone: 'Condonar',
 };

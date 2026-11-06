@@ -21,25 +21,11 @@ import {
   amountWithCurrency,
   collectedFromLoan,
   formatDate,
+  formatLoanNumber,
   paymentsTotal,
   pendingBalancePreview,
   toAmount,
 } from '../money';
-import {
-  CardTitle,
-  Chip,
-  EmptyState,
-  ErrorText,
-  FieldErrorText,
-  FieldLabelText,
-  FieldShell,
-  List,
-  ListRow,
-  MetaLabel,
-  Muted,
-  Row,
-  Section,
-} from '../Styles';
 
 /** Today in the operator's own timezone, not UTC (`toISOString` can shift a day). */
 const today = () => {
@@ -127,8 +113,13 @@ CurrencyField.propTypes = {
  */
 function PaymentAmountField({ value, onChange }) {
   return (
-    <FieldShell data-testid="form-field:paymentAmount">
-      <FieldLabelText htmlFor="loan-payment-amount">{paymentsCopy.amount}</FieldLabelText>
+    <div className="flex flex-col gap-1.5" data-testid="form-field:paymentAmount">
+      <label
+        htmlFor="loan-payment-amount"
+        className="font-label-md text-label-md font-medium text-on-surface"
+      >
+        {paymentsCopy.amount}
+      </label>
       <Input
         id="loan-payment-amount"
         name="paymentAmount"
@@ -139,7 +130,7 @@ function PaymentAmountField({ value, onChange }) {
         value={value}
         onChange={onChange}
       />
-    </FieldShell>
+    </div>
   );
 }
 
@@ -164,26 +155,70 @@ function PaymentRow({ payment, currency, onReverse, onUndoReversal, onViewReceip
   const action = isReversed ? onUndoReversal : onReverse;
 
   return (
-    <ListRow>
-      <Muted>{formatDate(payment.date)}</Muted>
-      <span>{amountWithCurrency(payment.amount, currency)}</span>
-      {isReversed && <Chip>{paymentsCopy.reversedTag}</Chip>}
-      <Button type="button" onClick={() => onViewReceipt(payment)}>
-        {paymentsCopy.viewReceipt}
-      </Button>
-      <ConfirmModal
-        variant={isReversed ? 'primary' : 'danger'}
-        title={title}
-        message={message}
-        confirmText={confirmText}
-        renderLink={({ open }) => (
-          <Button type="button" onClick={open}>
-            {confirmText}
-          </Button>
-        )}
-        onConfirm={({ close }) => action(payment.id).finally(close)}
-      />
-    </ListRow>
+    <div
+      className={`flex items-center justify-between p-3 rounded-xl ${
+        isReversed ? 'bg-error-container/40' : 'bg-surface-container-low hover:bg-surface-container'
+      } transition-colors`}
+    >
+      <div className="flex flex-col">
+        <div className="flex items-center gap-2">
+          <span
+            className={`font-label-md text-label-md font-semibold text-on-surface ${
+              isReversed ? 'line-through opacity-70' : ''
+            }`}
+          >
+            {payment.description || `#${payment.id}`}
+          </span>
+          <span className="font-code-key text-[11px] text-outline">{formatDate(payment.date)}</span>
+        </div>
+        <div className="flex items-center gap-2 mt-0.5">
+          <button
+            type="button"
+            className="font-body-sm text-[11px] text-primary hover:underline flex items-center gap-0.5"
+            onClick={() => onViewReceipt(payment)}
+          >
+            <span className="material-symbols-outlined text-[13px]">visibility</span>
+            {paymentsCopy.viewReceipt}
+          </button>
+          <span className="text-outline text-[10px]">·</span>
+          <ConfirmModal
+            variant={isReversed ? 'primary' : 'danger'}
+            title={title}
+            message={message}
+            confirmText={confirmText}
+            renderLink={({ open }) => (
+              <button
+                type="button"
+                className={`font-body-sm text-[11px] ${
+                  isReversed ? 'text-primary font-semibold' : 'text-error'
+                } hover:underline`}
+                onClick={open}
+              >
+                {confirmText}
+              </button>
+            )}
+            onConfirm={({ close }) => action(payment.id).finally(close)}
+          />
+        </div>
+      </div>
+      <div className="flex flex-col items-end">
+        <span
+          className={`font-code-key text-label-md font-bold ${
+            isReversed ? 'text-error line-through' : 'text-tertiary'
+          }`}
+        >
+          +{amountWithCurrency(payment.amount, currency)}
+        </span>
+        <span className="font-body-sm text-[10px] text-outline uppercase font-semibold">
+          {currency}
+        </span>
+      </div>
+      {isReversed && (
+        <span className="px-1.5 py-0.5 rounded bg-error text-on-error font-body-sm text-[10px] font-bold uppercase ml-2">
+          {paymentsCopy.reversedTag}
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -193,6 +228,7 @@ PaymentRow.propTypes = {
     date: PropTypes.string,
     amount: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
     reversedAt: PropTypes.string,
+    description: PropTypes.string,
   }).isRequired,
   currency: PropTypes.string.isRequired,
   onReverse: PropTypes.func.isRequired,
@@ -418,39 +454,60 @@ function LoanForm({ loanId = undefined }) {
     request
       .then(() => {
         toast.success(id ? loanFormCopy.updated : loanFormCopy.created);
-        // The list is where the saved loan is visible; the index is the dashboard.
-        navigate('/project/loans/loans');
+        // The list is where the saved loan is visible, and it now shares its page
+        // with the summary.
+        navigate('/project/loans');
       })
       .catch((error) => toast.error(error))
       .finally(() => setSaving(false));
   };
 
+  const amortizationPercent =
+    loan && loan.amount ? Math.round((collected / parseFloat(loan.amount)) * 100) : 0;
+
   let paymentsContent;
   if (paymentsLoading) {
-    paymentsContent = <EmptyState>{paymentsCopy.loading}</EmptyState>;
+    paymentsContent = (
+      <p className="text-on-surface-variant font-body-md text-body-md my-3">
+        {paymentsCopy.loading}
+      </p>
+    );
   } else if (paymentsError) {
     paymentsContent = (
       <div role="alert">
-        <ErrorText>{paymentsError}</ErrorText>
-        {/* Not a submit: the register form above must not be fired by the retry. */}
+        <p className="text-error font-label-md text-label-md my-2">{paymentsError}</p>
         <Button type="button" onClick={retryPayments}>
           {paymentsCopy.retry}
         </Button>
       </div>
     );
   } else if (payments.length === 0) {
-    paymentsContent = <EmptyState>{paymentsCopy.empty}</EmptyState>;
+    paymentsContent = (
+      <p className="text-on-surface-variant font-body-md text-body-md my-3">{paymentsCopy.empty}</p>
+    );
   } else {
     // Only what is still in force is collected: a reversed row stays visible but
     // does not count, exactly as the server leaves it out of `pendingBalance`.
     const paid = paymentsTotal(payments);
     paymentsContent = (
       <Fragment>
-        <EmptyState>
-          {paymentsCopy.total}: <strong>{amountWithCurrency(paid, initialForm.currency)}</strong>
-        </EmptyState>
-        <CardTitle as="h3">{paymentsCopy.history}</CardTitle>
-        <List>
+        <div className="p-3 rounded-xl bg-surface-container-low flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-outline text-[18px]">
+              history_toggle_off
+            </span>
+            <span className="font-body-sm text-body-sm text-on-surface-variant">
+              {paymentsCopy.total}:
+            </span>
+          </div>
+          <span className="font-code-key text-label-md font-bold text-on-surface">
+            {amountWithCurrency(paid, initialForm.currency)}
+          </span>
+        </div>
+        <h3 className="font-headline-md text-headline-md font-semibold text-on-surface mb-3">
+          {paymentsCopy.history}
+        </h3>
+        <div className="flex flex-col gap-2.5">
           {payments.map((payment) => (
             <PaymentRow
               key={payment.id}
@@ -461,14 +518,26 @@ function LoanForm({ loanId = undefined }) {
               onViewReceipt={setReceiptPayment}
             />
           ))}
-        </List>
+        </div>
       </Fragment>
     );
   }
 
   const paymentSection = (
-    <Section>
-      <CardTitle>{paymentsCopy.title}</CardTitle>
+    <div className="p-space-lg rounded-2xl bg-surface-container-lowest shadow-sm flex flex-col gap-space-md">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-tertiary-container/15 text-tertiary flex items-center justify-center">
+            <span className="material-symbols-outlined text-[20px]">payments</span>
+          </div>
+          <h3 className="font-headline-md text-headline-md font-semibold text-on-surface">
+            {paymentsCopy.title}
+          </h3>
+        </div>
+        <span className="px-2 py-0.5 rounded-full bg-tertiary/10 text-tertiary font-label-md text-[11px] font-bold">
+          {isClosed ? 'Cerrado' : 'En curso'}
+        </span>
+      </div>
       {/*
        * Nested form-shaped markup would be invalid HTML, so the payment capture
        * is a plain row: the button handles the write itself and the loan form
@@ -476,114 +545,276 @@ function LoanForm({ loanId = undefined }) {
        * (FR18), so the capture is hidden and the history is read-only.
        */}
       {!isClosed && (
-        <Row>
-          <PaymentAmountField value={paymentAmount} onChange={setPaymentAmount} />
-          <Button type="button" variant="primary" isWorking={isPaying} onClick={registerPayment}>
-            {isPaying ? paymentsCopy.registering : paymentsCopy.register}
-          </Button>
-        </Row>
+        <div className="flex flex-col gap-2">
+          <label htmlFor="loan-payment-amount" className="font-label-md text-label-md font-medium text-on-surface">
+            {paymentsCopy.amount}
+          </label>
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Input
+                id="loan-payment-amount"
+                name="paymentAmount"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder={paymentsCopy.amountPlaceholder}
+                value={paymentAmount}
+                onChange={setPaymentAmount}
+              />
+            </div>
+            <Button type="button" variant="primary" isWorking={isPaying} onClick={registerPayment}>
+              {isPaying ? paymentsCopy.registering : paymentsCopy.register}
+            </Button>
+          </div>
+        </div>
       )}
       {paymentsContent}
-    </Section>
+      {/* Total cobrado acumulado */}
+      <div className="p-3 rounded-xl bg-surface-container-low flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="material-symbols-outlined text-outline text-[18px]">
+            history_toggle_off
+          </span>
+          <span className="font-body-sm text-body-sm text-on-surface-variant">
+            Total cobrado acumulado:
+          </span>
+        </div>
+        <span className="font-code-key text-label-md font-bold text-on-surface">
+          {amountWithCurrency(collected, initialForm.currency)}
+        </span>
+      </div>
+    </div>
   );
 
   if (isLoading) return <PageLoader />;
 
   if (loadError) {
     return (
-      <Section>
+      <div className="p-space-lg rounded-2xl bg-surface-container-lowest shadow-sm">
         <div role="alert">
-          <ErrorText>{loadError}</ErrorText>
+          <p className="text-error font-label-md text-label-md">{loadError}</p>
           <Button type="button" onClick={retry}>
             {loanFormCopy.retry}
           </Button>
         </div>
-      </Section>
+      </div>
     );
   }
 
   return (
     <Fragment>
-      <Section>
-        <CardTitle>{id ? loanFormCopy.editTitle : loanFormCopy.createTitle}</CardTitle>
-        {id && (
-          <Row>
-            <span>
-              <MetaLabel>{loanFormCopy.statusLabel}: </MetaLabel>
-              {isClosed ? loanFormCopy.statusClosed : loanFormCopy.statusActive}
-            </span>
-            {isClosed && writtenOffAmount !== null && (
-              <span>
-                <MetaLabel>{loanFormCopy.writtenOffLabel}: </MetaLabel>
-                {amountWithCurrency(writtenOffAmount, initialForm.currency)}
+      {/* Header con modo toggle, estado, badge */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-space-md bg-surface-container-low p-space-lg rounded-2xl shadow-sm">
+        <div className="flex flex-col gap-1">
+          <div className="flex flex-wrap items-center gap-space-sm">
+            <h1 className="font-headline-lg text-headline-lg font-bold text-on-surface tracking-tight">
+              {id ? loanFormCopy.editTitle : loanFormCopy.createTitle}
+            </h1>
+            {/* Mode Toggle Pill */}
+            <div className="inline-flex p-0.5 rounded-lg bg-surface-container-highest">
+              <span className="px-2.5 py-1 rounded-md text-[11px] font-label-md uppercase tracking-wider font-bold bg-surface-container-lowest text-primary shadow-xs transition-all">
+                {loanFormCopy.editTitle}
+              </span>
+              <span className="px-2.5 py-1 rounded-md text-[11px] font-label-md uppercase tracking-wider font-bold text-on-surface-variant transition-all">
+                {loanFormCopy.createTitle}
+              </span>
+            </div>
+            {id && (
+              <Fragment>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-tertiary-container/15 text-tertiary font-label-md text-label-md font-semibold">
+                  <span className="w-1.5 h-1.5 rounded-full bg-tertiary animate-pulse" />
+                  {isClosed ? loanFormCopy.statusClosed : loanFormCopy.statusActive}
+                </span>
+                <span className="px-2 py-0.5 rounded-md bg-surface-container font-code-key text-code-key text-on-surface-variant font-semibold">
+                  Nº {formatLoanNumber(loan?.number)} · {initialForm.currency}
+                </span>
+                {isClosed && writtenOffAmount !== null && (
+                  <span className="px-2 py-0.5 rounded-md bg-surface-container font-code-key text-code-key text-on-surface-variant font-semibold">
+                    {loanFormCopy.writtenOffLabel}: {amountWithCurrency(writtenOffAmount, initialForm.currency)}
+                  </span>
+                )}
+              </Fragment>
+            )}
+          </div>
+          <p className="font-body-md text-body-md text-on-surface-variant">
+            Gestioná el capital prestado, condiciones pactadas y registrá pagos.
+          </p>
+        </div>
+        {/* Amortización snapshot */}
+        {id && loan && (
+          <div className="flex items-center gap-space-md self-start md:self-auto">
+            <div className="flex flex-col items-end">
+              <span className="font-overline text-overline uppercase tracking-wider text-outline">
+                Amortización
+              </span>
+              <span className="font-code-key text-headline-md text-primary font-bold">
+                {amortizationPercent}%
+              </span>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+              <span className="material-symbols-outlined text-[26px]">account_balance_wallet</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {isClosed && (
+        <p className="text-on-surface-variant font-body-md text-body-md mt-2">
+          {loanFormCopy.closedNotice}
+        </p>
+      )}
+
+      {/* Main two-column grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-space-lg items-start mt-space-lg">
+        {/* LEFT COLUMN: Loan Details */}
+        <div className="lg:col-span-7 flex flex-col gap-space-lg bg-surface-container-lowest p-space-lg rounded-2xl shadow-sm">
+          <div className="flex items-center justify-between pb-space-sm">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary text-[22px]">assignment</span>
+              <h2 className="font-headline-md text-headline-md font-semibold text-on-surface">
+                Datos del Préstamo
+              </h2>
+            </div>
+            {id && loan && (
+              <span className="font-overline text-overline uppercase tracking-wider text-outline">
+                ID #{formatLoanNumber(loan.number)}
               </span>
             )}
-          </Row>
-        )}
-        {isClosed && <Muted>{loanFormCopy.closedNotice}</Muted>}
-        <Form
-          initialValues={initialForm}
-          validate={validateLoan}
-          validateOnChange={false}
-          onSubmit={save}
-        >
-          {/*
-           * `Form.Element` is the actual <form>: `Form` only installs the
-           * Formik context. Without it the fields render but nothing submits.
-           */}
-          <Form.Element data-testid="loan-form">
-            {/* The picker is not a Formik value, so it gets the field chrome by hand. */}
-            <FieldShell data-testid="form-field:borrower">
-              <FieldLabelText htmlFor="loan-borrower-picker">{loanFormCopy.picker}</FieldLabelText>
-              <div id="loan-borrower-picker">
-                <BorrowerPicker value={borrower} onChange={selectBorrower} />
+          </div>
+
+          <Form
+            initialValues={initialForm}
+            validate={validateLoan}
+            validateOnChange={false}
+            onSubmit={save}
+          >
+            {/*
+             * `Form.Element` is the actual <form>: `Form` only installs the
+             * Formik context. Without it the fields render but nothing submits.
+             */}
+            <Form.Element data-testid="loan-form">
+              {/* The picker is not a Formik value, so it gets the field chrome by hand. */}
+              <div className="flex flex-col gap-1.5 relative" data-testid="form-field:borrower">
+                <label
+                  htmlFor="loan-borrower-picker"
+                  className="font-label-md text-label-md font-medium text-on-surface"
+                >
+                  {loanFormCopy.picker}
+                </label>
+                <div id="loan-borrower-picker">
+                  <BorrowerPicker value={borrower} onChange={selectBorrower} />
+                </div>
+                {borrowerError && (
+                  <p className="text-error font-label-md text-label-md mt-1.5" role="alert">
+                    {borrowerError}
+                  </p>
+                )}
               </div>
-              {borrowerError && <FieldErrorText role="alert">{borrowerError}</FieldErrorText>}
-            </FieldShell>
 
-            <Row>
-              <Form.Field.Input
-                name="amount"
-                label={loanFormCopy.amount}
-                type="number"
-                step="0.01"
-                min="0"
-                disabled={isClosed}
-              />
-              <CurrencyFieldState hasPayments={payments.length > 0} isClosed={isClosed} />
-              <Form.Field.DatePicker name="date" label={loanFormCopy.date} withTime={false} />
-            </Row>
+              {/* Monto, Fecha, Moneda — 2 columnas */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-space-md mt-4">
+                <Form.Field.Input
+                  name="amount"
+                  label={loanFormCopy.amount}
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  disabled={isClosed}
+                />
+                <Form.Field.DatePicker name="date" label={loanFormCopy.date} withTime={false} />
+              </div>
 
-            <Row>
-              <Form.Field.Input name="concept" label={loanFormCopy.concept} />
-              <Form.Field.Input name="lender" label={loanFormCopy.lender} />
-              <Form.Field.Input name="city" label={loanFormCopy.city} />
-            </Row>
+              {/* Concepto, Prestamista — 2 columnas */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-space-md mt-4">
+                <Form.Field.Input name="concept" label={loanFormCopy.concept} />
+                <Form.Field.Input name="lender" label={loanFormCopy.lender} />
+              </div>
 
-            <Row>
-              <Form.Field.Input
-                name="advancePaid"
-                label={loanFormCopy.advancePaid}
-                type="number"
-                step="0.01"
-                min="0"
-                disabled={isClosed}
-              />
-              <Form.Field.Input
-                name="installmentAmount"
-                label={loanFormCopy.installmentAmount}
-                tip={loanFormCopy.installmentOptional}
-                type="number"
-                step="0.01"
-                min="0"
-              />
-            </Row>
+              {/* Ciudad, Moneda */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-space-md mt-4">
+                <Form.Field.Input name="city" label={loanFormCopy.city} />
+                <CurrencyFieldState hasPayments={payments.length > 0} isClosed={isClosed} />
+              </div>
 
-            <LoanBalanceFooter isSaving={isSaving} isEdit={Boolean(id)} collected={collected} />
-          </Form.Element>
-        </Form>
-      </Section>
-      {id && paymentSection}
+              {/* Condiciones de Devolución */}
+              <div className="flex flex-col gap-space-sm pt-4">
+                <span className="font-overline text-overline uppercase tracking-wider text-outline">
+                  Condiciones de Devolución
+                </span>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-space-sm">
+                  <div className="p-3 rounded-xl bg-surface-container-low flex flex-col gap-1">
+                    <span className="font-body-sm text-[11px] text-on-surface-variant font-medium">
+                      {loanFormCopy.advancePaid}
+                    </span>
+                    <span className="font-code-key text-label-lg font-bold text-on-surface">
+                      {amountWithCurrency(initialForm.advancePaid, initialForm.currency)}
+                    </span>
+                    <span className="font-body-sm text-[10px] text-tertiary">
+                      Ingresado al inicio
+                    </span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-surface-container-low flex flex-col gap-1">
+                    <span className="font-body-sm text-[11px] text-on-surface-variant font-medium">
+                      {loanFormCopy.installmentAmount}
+                    </span>
+                    <span className="font-code-key text-label-lg font-bold text-on-surface">
+                      {initialForm.installmentAmount
+                        ? amountWithCurrency(initialForm.installmentAmount, initialForm.currency)
+                        : '—'}
+                    </span>
+                    <span className="font-body-sm text-[10px] text-on-surface-variant">
+                      Pactada mensual
+                    </span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-surface-container-low flex flex-col gap-1">
+                    <span className="font-body-sm text-[11px] text-on-surface-variant font-medium">
+                      Cuotas pactadas
+                    </span>
+                    <span className="font-code-key text-label-lg font-bold text-secondary">
+                      {loan?.installmentCount || '—'}
+                    </span>
+                    <span className="font-body-sm text-[10px] text-secondary font-semibold">
+                      {loan?.currentInstallment
+                        ? `Cuota ${loan.currentInstallment}/${loan.installmentCount} en curso`
+                        : ''}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Live Calculated Balance */}
+              <LoanBalanceFooter isEdit={Boolean(id)} collected={collected} />
+
+              {/* Action buttons */}
+              <div className="flex items-center justify-between pt-space-sm mt-4">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => navigate('/project/loans')}
+                  className="px-4 py-2 rounded-xl text-on-surface-variant hover:text-on-surface hover:bg-surface-container font-label-md text-label-md transition-colors"
+                >
+                  {loanFormCopy.backToList}
+                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    isWorking={isSaving}
+                    className="h-10 px-5 rounded-xl bg-primary hover:bg-primary-container text-on-primary font-label-md text-label-md font-semibold flex items-center gap-2 shadow-sm transition-all hover:shadow-md"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">save</span>
+                    <span>{id ? loanFormCopy.saveChanges : loanFormCopy.save}</span>
+                  </Button>
+                </div>
+              </div>
+            </Form.Element>
+          </Form>
+        </div>
+
+        {/* RIGHT COLUMN: Payments & Collections */}
+        <div className="lg:col-span-5 flex flex-col gap-space-lg">{id && paymentSection}</div>
+      </div>
+
       {/*
        * The historical receipt, rendered from the chosen payment's snapshot and
        * the saved loan's descriptive fields. It opens over the edit view rather
@@ -631,27 +862,59 @@ CurrencyFieldState.propTypes = {
  * (`collected`), applied exactly once — never also from the history, which would
  * subtract every payment twice.
  */
-function LoanBalanceFooter({ isSaving, isEdit, collected }) {
+function LoanBalanceFooter({ isEdit, collected }) {
   const { values } = useFormikContext();
   const balance = isEdit
     ? pendingBalancePreview(values.amount, values.advancePaid, collected)
     : pendingBalancePreview(values.amount, values.advancePaid);
 
   return (
-    <Row>
-      <span>
-        {loanFormCopy.balancePreview}:{' '}
-        <strong>{balance === null ? '—' : amountWithCurrency(balance, values.currency)}</strong>
-      </span>
-      <Button type="submit" variant="primary" isWorking={isSaving}>
-        {isEdit ? loanFormCopy.saveChanges : loanFormCopy.save}
-      </Button>
-    </Row>
+    <div className="p-space-md rounded-2xl bg-secondary-fixed/30 flex flex-col gap-space-sm shadow-xs mt-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="material-symbols-outlined text-secondary text-[22px]">query_stats</span>
+          <span className="font-label-lg text-label-lg font-bold text-on-surface">
+            {loanFormCopy.balancePreview}:
+          </span>
+        </div>
+        <span className="font-code-key text-headline-md font-bold text-secondary tracking-tight">
+          {balance === null ? '—' : amountWithCurrency(balance, values.currency)}
+        </span>
+      </div>
+      {/* Progress bar */}
+      {isEdit && (
+        <div className="flex flex-col gap-1.5 pt-1">
+          <div className="w-full h-2.5 rounded-full bg-surface-container overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-primary to-secondary rounded-full transition-all duration-500"
+              style={{
+                width: `${
+                  values.amount && collected
+                    ? Math.min(100, Math.round((collected / parseFloat(values.amount)) * 100))
+                    : 0
+                }%`,
+              }}
+            />
+          </div>
+          <div className="flex items-center justify-between font-body-sm text-[11px] text-on-surface-variant">
+            <span>
+              <strong>
+                {values.amount && collected
+                  ? Math.min(100, Math.round((collected / parseFloat(values.amount)) * 100))
+                  : 0}
+                %
+              </strong>{' '}
+              amortizado ({amountWithCurrency(collected, values.currency)} cobrados)
+            </span>
+            <span>Total pactado: {amountWithCurrency(values.amount, values.currency)}</span>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
 LoanBalanceFooter.propTypes = {
-  isSaving: PropTypes.bool.isRequired,
   isEdit: PropTypes.bool.isRequired,
   collected: PropTypes.number.isRequired,
 };

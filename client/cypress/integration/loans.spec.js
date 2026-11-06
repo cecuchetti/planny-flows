@@ -203,8 +203,8 @@ describe('Loans registry', () => {
       const status = pendingAfter === '0.00' ? 'closed' : 'active';
       const activeBefore = payments.filter((item) => !item.reversedAt);
       const history = [
-        ...activeBefore.map((item) => ({ id: item.id, amount: item.amount })),
-        { id: payments.length + 1, amount: amount.toFixed(2) },
+        ...activeBefore.map((item) => ({ id: item.id, amount: item.amount, date: item.date })),
+        { id: payments.length + 1, amount: amount.toFixed(2), date: '2026-10-08T12:00:00' },
       ];
       const payment = {
         id: payments.length + 1,
@@ -292,23 +292,23 @@ describe('Loans registry', () => {
   };
 
   /**
-   * Enter the loan list the way the operator does: from the project sidebar.
+   * Enter Préstamos the way the operator does: from the project sidebar.
    *
    * This is the shell assertion as much as a navigation helper — the entry has
    * to be reachable from the host's sidebar, in the host's own URL space. The
    * label comes from `common.loans`; the module's own copy is Spanish, the
-   * shell's chrome is translated. The list lives at `/loans/loans` now that the
-   * index is the Resumen dashboard.
+   * shell's chrome is translated. Préstamos is one page now: the summary on top
+   * and the list below it, both served from `/loans`.
    */
   const showLoans = () => {
     cy.get('[data-testid="project:sidebar"]').contains('Loans').click();
-    cy.location('pathname').should('eq', '/project/loans/loans');
+    cy.location('pathname').should('eq', '/project/loans');
     cy.wait('@listLoans');
   };
 
   const showLoanViews = () => {
     cy.get('[data-testid="project:sidebar"]').contains('Loans').click();
-    cy.location('pathname').should('eq', '/project/loans/loans');
+    cy.location('pathname').should('eq', '/project/loans');
     // The list owns the "Nuevo Préstamo" action, so the view has to have
     // rendered before a flow that starts from that button clicks it.
     cy.wait('@listLoans');
@@ -338,7 +338,7 @@ describe('Loans registry', () => {
     cy.get('[data-testid="project:sidebar"]').contains('People').click();
     cy.location('pathname').should('eq', '/project/loans/borrowers');
     cy.get('[data-testid="project:sidebar"]').contains('Loans').click();
-    cy.location('pathname').should('eq', '/project/loans/loans');
+    cy.location('pathname').should('eq', '/project/loans');
     // Returning to the list refetches it, so the action has to have rendered
     // before this flow starts from it.
     cy.wait('@listLoans');
@@ -387,8 +387,8 @@ describe('Loans registry', () => {
     cy.contains('button', 'Guardar préstamo').click();
     cy.wait('@createLoan');
 
-    // The save lands on the list, where the new card is visible.
-    cy.location('pathname').should('eq', '/project/loans/loans');
+    // The save lands on Préstamos, where the new card is visible.
+    cy.location('pathname').should('eq', '/project/loans');
     cy.wait('@listLoans');
     cy.contains('Nº 00009').should('be.visible');
     cy.contains('1500.50 USD').should('be.visible');
@@ -402,10 +402,10 @@ describe('Loans registry', () => {
       loan({ id: 1, number: '00001', concept: 'Préstamo personal' }),
     ];
     showLoans();
-    cy.get('article').should('have.length', 2);
-    cy.get('article').first().should('contain', 'Nº 00002');
-    cy.get('article').first().should('contain', '250.00 USD');
-    cy.get('article').first().should('contain', 'Viaje');
+    cy.get('[data-testid="loans:list"] article').should('have.length', 2);
+    cy.get('[data-testid="loans:list"] article').first().should('contain', 'Nº 00002');
+    cy.get('[data-testid="loans:list"] article').first().should('contain', '250.00 USD');
+    cy.get('[data-testid="loans:list"] article').first().should('contain', 'Viaje');
   });
 
   it('opens the edit form prefilled and saves the changes', () => {
@@ -665,11 +665,11 @@ describe('Loans registry', () => {
     // It left Activos; Cerrados is collapsed by default, so no card is rendered.
     cy.contains('Activos (0)').should('be.visible');
     cy.contains('Cerrados (1)').should('be.visible');
-    cy.get('article').should('have.length', 0);
+    cy.get('[data-testid="loans:list"] article').should('have.length', 0);
 
     // Expanding shows the closed card: close date, zero balance, the write-off.
     cy.contains('button', 'Mostrar').click();
-    cy.get('article').should('have.length', 1);
+    cy.get('[data-testid="loans:list"] article').should('have.length', 1);
     cy.contains('Cerrado el').should('be.visible');
     cy.contains('Condonación').should('be.visible');
     cy.contains('400.50 USD').should('be.visible');
@@ -741,7 +741,7 @@ describe('Loans registry', () => {
           pendingBalance: '500.00',
           totalPaid: '300.00',
           advancePaid: '200.00',
-          paymentsHistory: [{ id: 1, amount: '300.00' }],
+          paymentsHistory: [{ id: 1, amount: '300.00', date: '2026-10-08T12:00:00' }],
         },
       },
     ];
@@ -756,12 +756,47 @@ describe('Loans registry', () => {
       .and('contain', 'Recibo de pago')
       .and('contain', 'Pago cuotas anteriores')
       .and('contain', 'trescientos dólares con 00/100')
-      .and('contain', '500.00 USD');
+      // The receipt prints its amounts with the currency prefix, like the paper
+      // form it reproduces ("USD $ 500.00", not "500.00 USD").
+      .and('contain', 'USD $ 500.00')
+      .and('contain', 'Firma de recibido')
+      // The history line carries the date the snapshot froze.
+      .and('contain', 'Pago cuotas anteriores - USD $ 200.00')
+      .and('contain', '08/10/2026 - USD $ 300.00')
+      // The principal lent rides along as descriptive context.
+      .and('contain', 'Monto total prestado: USD $ 1000.00');
   });
 
-  it('lands on the Resumen dashboard and shows the per-currency summary', () => {
-    // The index is the Resumen dashboard, reached from its own sidebar entry.
-    cy.get('[data-testid="project:sidebar"]').contains('Summary').click();
+  it('exports the receipt as a PNG without UI', () => {
+    loans = [loan({ id: 1, amount: '1000.00', pendingBalance: '1000.00' })];
+    [createdLoan] = loans;
+    showLoans();
+    cy.get('[data-testid="loans:receipt"]').click();
+    cy.wait('@listLoans');
+    cy.get('[data-testid="select:receipt-loan"]').click();
+    cy.get('[data-select-option-value="1"]').click();
+    cy.contains('button', 'Registrar pago y generar recibo').click();
+    cy.wait('@createPayment');
+    cy.contains('Recibo de pago').should('be.visible');
+
+    // The export builds a data URL and clicks a download link. The click is
+    // stubbed so the test can assert the image was produced without leaving the
+    // browser, and without a real download in the runner.
+    let downloadedHref = '';
+    cy.window().then((win) => {
+      cy.stub(win.HTMLAnchorElement.prototype, 'click').callsFake(function stubClick() {
+        downloadedHref = this.href;
+      });
+    });
+    cy.contains('button', 'Descargar PNG').click();
+    cy.window().should(() => {
+      expect(downloadedHref).to.match(/^data:image\/png/);
+    });
+  });
+
+  it('shows the per-currency summary at the top of Préstamos', () => {
+    // Préstamos is the landing, and the summary now sits above the loan list.
+    cy.get('[data-testid="project:sidebar"]').contains('Loans').click();
     cy.location('pathname').should('eq', '/project/loans');
     cy.wait('@summary');
 
@@ -782,7 +817,7 @@ describe('Loans registry', () => {
     loans = [loan({ id: 1 })];
     [createdLoan] = loans;
 
-    cy.get('[data-testid="project:sidebar"]').contains('Summary').click();
+    cy.get('[data-testid="project:sidebar"]').contains('Loans').click();
     cy.location('pathname').should('eq', '/project/loans');
     cy.wait('@summary');
 
@@ -825,7 +860,7 @@ describe('Loans registry', () => {
       recentPayments: [],
     }).as('summaryTwo');
 
-    cy.get('[data-testid="project:sidebar"]').contains('Summary').click();
+    cy.get('[data-testid="project:sidebar"]').contains('Loans').click();
     cy.location('pathname').should('eq', '/project/loans');
     cy.wait('@summaryTwo');
 
@@ -863,7 +898,7 @@ describe('Loans registry', () => {
       });
     }).as('summaryRetry');
 
-    cy.get('[data-testid="project:sidebar"]').contains('Summary').click();
+    cy.get('[data-testid="project:sidebar"]').contains('Loans').click();
     cy.location('pathname').should('eq', '/project/loans');
     cy.wait('@summaryRetry');
 

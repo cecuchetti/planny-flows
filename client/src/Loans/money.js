@@ -84,6 +84,13 @@ export const formatLoanNumber = (number) => {
   return String(number).trim().padStart(5, '0');
 };
 
+/** Format a numeric value as es-AR locale with thousands separators and decimals. */
+export const formatEsAr = (value) => {
+  const parsed = toAmount(value);
+  if (parsed === null) return '';
+  return parsed.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
 export const formatDate = (value) => {
   if (!value) return '';
   const [year, month, day] = String(value).slice(0, 10).split('-');
