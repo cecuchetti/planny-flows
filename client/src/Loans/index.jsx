@@ -1,9 +1,10 @@
-import React, { Fragment, Suspense, lazy } from 'react';
+import React, { Fragment, Suspense, lazy, useContext } from 'react';
 import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 
 import { PageLoader } from 'shared/components';
 
 import { loanCopy } from './copy';
+import BreadcrumbContext, { BreadcrumbLeafProvider } from './BreadcrumbLeaf';
 
 /*
  * Préstamos renders inside the project shell — the host sidebar, the page header
@@ -16,6 +17,7 @@ const LoansList = lazy(() => import('./LoansList'));
 const Borrowers = lazy(() => import('./Borrowers'));
 const LoanForm = lazy(() => import('./LoanForm'));
 const ReceiptFlow = lazy(() => import('./ReceiptFlow'));
+const PersonDetail = lazy(() => import('./PersonDetail'));
 
 /*
  * The Préstamos landing: the portfolio summary on top, the loan list below it.
@@ -39,15 +41,30 @@ const CHILD_TITLES = {
   receipt: 'Generar recibo',
 };
 
-function Loans() {
+function LoansInner() {
   const location = useLocation();
   const pathParts = location.pathname.replace(/^\/project\/loans\/?/, '').split('/');
   const isIndex = pathParts[0] === '';
-  const childTitle = !isIndex ? CHILD_TITLES[pathParts[0]] || null : null;
+  const { leaf } = useContext(BreadcrumbContext);
+
+  /* Determine the last breadcrumb segment */
+  let leafLabel;
+  if (pathParts[0] === 'borrowers') {
+    if (pathParts[1] === 'new') {
+      leafLabel = 'Nueva persona';
+    } else if (pathParts[1]) {
+      /* borrower detail — leaf comes from context (the person's name) or fallback */
+      leafLabel = leaf || 'Persona';
+    } else {
+      leafLabel = CHILD_TITLES.borrowers;
+    }
+  } else {
+    leafLabel = !isIndex ? CHILD_TITLES[pathParts[0]] || null : null;
+  }
 
   return (
     <div className="flex flex-col gap-space-lg">
-      {/* Breadcrumb — 4 levels for child routes */}
+      {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-outline text-body-sm font-body-sm">
         <Link to="/project" className="hover:text-primary transition-colors">
           Proyectos
@@ -57,13 +74,23 @@ function Loans() {
           VIS — Internal Platform
         </Link>
         <span className="text-[10px]">/</span>
-        {childTitle ? (
+        {leafLabel ? (
           <Fragment>
             <Link to="/project/loans" className="hover:text-primary transition-colors">
               Préstamos
             </Link>
             <span className="text-[10px]">/</span>
-            <span className="text-on-surface font-label-md">{childTitle}</span>
+            {pathParts[0] === 'borrowers' && !isIndex && !pathParts[1] ? (
+              <span className="text-on-surface font-label-md">{leafLabel}</span>
+            ) : (
+              <Fragment>
+                <Link to="/project/loans/borrowers" className="hover:text-primary transition-colors">
+                  Personas
+                </Link>
+                <span className="text-[10px]">/</span>
+                <span className="text-on-surface font-label-md">{leafLabel}</span>
+              </Fragment>
+            )}
           </Fragment>
         ) : (
           <span className="text-on-surface font-label-md">Préstamos</span>
@@ -97,6 +124,8 @@ function Loans() {
           <Route index element={<LoansOverview />} />
           <Route path="loans" element={<Navigate to="/project/loans" replace />} />
           <Route path="borrowers" element={<Borrowers />} />
+          <Route path="borrowers/new" element={<PersonDetail />} />
+          <Route path="borrowers/:borrowerId" element={<PersonDetail />} />
           <Route path="new-loan" element={<LoanForm />} />
           <Route path="new-loan/:loanId" element={<LoanForm />} />
           <Route path="receipt" element={<ReceiptFlow />} />
@@ -104,6 +133,14 @@ function Loans() {
         </Routes>
       </Suspense>
     </div>
+  );
+}
+
+function Loans() {
+  return (
+    <BreadcrumbLeafProvider>
+      <LoansInner />
+    </BreadcrumbLeafProvider>
   );
 }
 

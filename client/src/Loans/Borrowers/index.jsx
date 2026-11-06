@@ -1,6 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Formik } from 'formik';
-import get from 'lodash/get';
 import { useNavigate } from 'react-router-dom';
 
 import TailwindConfirmModal from 'shared/components/ConfirmModal/TailwindConfirmModal';
@@ -9,63 +7,13 @@ import api from 'shared/utils/api';
 import toast from 'shared/utils/toast';
 
 import { borrowerCopy } from '../copy';
-
-const EMPTY = {
-  firstName: '',
-  lastName: '',
-  email: '',
-  phone: '',
-  address: '',
-  nationalId: '',
-  notes: '',
-};
-
-const PROFILE_FIELDS = ['firstName', 'lastName', 'email', 'phone', 'address', 'nationalId'];
-
-const validateBorrower = (values) => {
-  const errors = {};
-  ['firstName', 'lastName'].forEach((name) => {
-    if (String(values[name] || '').trim() === '') errors[name] = borrowerCopy.required;
-  });
-  return errors;
-};
-
-/** Extract initials from first + last name (uppercase, 2 chars). */
-const getInitials = (firstName, lastName) => {
-  const a = (firstName || '')[0] || '';
-  const b = (lastName || '')[0] || '';
-  return (a + b).toUpperCase();
-};
-
-/** Gradient class for the avatar based on name hash (deterministic). */
-const avatarGradient = (seed) => {
-  const gradients = [
-    'from-primary to-secondary',
-    'from-surface-variant to-secondary-container',
-    'from-secondary to-primary-container',
-    'from-primary to-primary-container',
-    'from-secondary-container to-secondary',
-  ];
-  let hash = 0;
-  for (let i = 0; i < (seed || '').length; i += 1) {
-    hash = seed.charCodeAt(i) + (hash * 32 - hash);
-  }
-  return gradients[Math.abs(hash) % gradients.length];
-};
-
-/** Get WhatsApp link from a phone number (digits only). */
-const whatsappLink = (phone) => {
-  const digits = (phone || '').replace(/\D/g, '');
-  return digits ? `https://wa.me/${digits}` : '#';
-};
+import { getInitials, avatarGradient, whatsappLink } from '../personUtils';
 
 function Borrowers() {
   const [search, setSearch] = useState('');
   const [borrowers, setBorrowers] = useState([]);
   const [isLoading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
-  const [editing, setEditing] = useState(null);
-  const [formOpen, setFormOpen] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const [filter, setFilter] = useState('all');
   const [searchValue, setSearchValue] = useState('');
@@ -74,7 +22,6 @@ function Borrowers() {
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [bulkConfirm, setBulkConfirm] = useState(false);
   const searchTimeout = useRef(null);
-  const formContainerRef = useRef(null);
   const navigate = useNavigate();
 
   const load = useCallback(() => {
@@ -107,40 +54,11 @@ function Borrowers() {
     searchTimeout.current = setTimeout(() => setSearch(value), 300);
   };
 
-  const save = (values) => {
-    /*
-     * Only the fields the endpoint accepts. Edit mode seeds the form from the
-     * API's own borrower, which carries `loanCount` (a response field), and
-     * posting the whole Formik bag would send it back on the wire.
-     */
-    const payload = PROFILE_FIELDS.concat('notes').reduce(
-      (body, name) => ({ ...body, [name]: values[name] ?? '' }),
-      {},
-    );
-    const request = editing
-      ? api.put(`/api/v1/borrowers/${editing}`, payload)
-      : api.post('/api/v1/borrowers', payload);
-    return request
-      .then(() => {
-        toast.success(editing ? borrowerCopy.updated : borrowerCopy.created);
-        setEditing(null);
-        setFormOpen(false);
-        return load();
-      })
-      .catch((error) => {
-        toast.error(error);
-        // Rethrown so the form's own submit state settles, rather than resolving
-        // on a write that failed.
-        throw error;
-      });
-  };
-
   const remove = (id) =>
     api
       .delete(`/api/v1/borrowers/${id}`)
       .then(() => {
         toast.success(borrowerCopy.removed);
-        if (editing === id) setEditing(null);
         return load();
       })
       .catch((error) => toast.error(error));
@@ -148,11 +66,6 @@ function Borrowers() {
   const retry = () => {
     setLoadError(null);
     load().catch(() => setLoadError(borrowerCopy.loadError));
-  };
-
-  const openForm = () => {
-    setEditing(null);
-    setFormOpen(true);
   };
 
   /** Filtered list based on current filter state */
@@ -294,9 +207,13 @@ function Borrowers() {
                     </div>
                     <div className="flex flex-col min-w-0">
                       <div className="flex items-center gap-1.5">
-                        <h3 className="font-headline-md text-headline-md text-on-surface font-semibold tracking-tight truncate">
+                        <button
+                          type="button"
+                          className="font-headline-md text-headline-md text-on-surface font-semibold tracking-tight truncate hover:text-primary transition-colors cursor-pointer text-left"
+                          onClick={() => navigate(`/project/loans/borrowers/${borrower.id}`)}
+                        >
                           {fullName}
-                        </h3>
+                        </button>
                         {!isProspect && (
                           <span
                             className={`material-symbols-outlined text-[17px] shrink-0 ${
@@ -494,17 +411,7 @@ function Borrowers() {
                     type="button"
                     className="w-8 h-8 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors"
                     title="Editar persona"
-                    onClick={() => {
-                      setEditing(borrower.id);
-                      setFormOpen(true);
-                      setTimeout(() => {
-                        formContainerRef.current?.scrollIntoView({
-                          behavior: 'smooth',
-                          block: 'start',
-                        });
-                      }, 0);
-                      toast.success(`Cargaste los datos de ${borrower.firstName} para editar.`);
-                    }}
+                    onClick={() => navigate(`/project/loans/borrowers/${borrower.id}`)}
                   >
                     <span className="material-symbols-outlined text-[17px]">edit</span>
                   </button>
@@ -698,9 +605,13 @@ function Borrowers() {
                           </div>
                           <div className="flex flex-col">
                             <div className="flex items-center gap-1">
-                              <span className="font-label-lg text-label-lg font-semibold text-on-surface group-hover:text-primary transition-colors">
+                              <button
+                                type="button"
+                                className="font-label-lg text-label-lg font-semibold text-on-surface group-hover:text-primary hover:text-primary transition-colors cursor-pointer text-left"
+                                onClick={() => navigate(`/project/loans/borrowers/${borrower.id}`)}
+                              >
                                 {fullName}
-                              </span>
+                              </button>
                               {!isProspect && (
                                 <span
                                   className={`material-symbols-outlined text-[16px] ${
@@ -892,19 +803,7 @@ function Borrowers() {
                             type="button"
                             className="w-7 h-7 rounded-md flex items-center justify-center text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors"
                             title="Editar persona"
-                            onClick={() => {
-                              setEditing(borrower.id);
-                              setFormOpen(true);
-                              setTimeout(() => {
-                                formContainerRef.current?.scrollIntoView({
-                                  behavior: 'smooth',
-                                  block: 'start',
-                                });
-                              }, 0);
-                              toast.success(
-                                `Cargaste los datos de ${borrower.firstName} para editar.`,
-                              );
-                            }}
+                            onClick={() => navigate(`/project/loans/borrowers/${borrower.id}`)}
                           >
                             <span className="material-symbols-outlined text-[16px]">edit</span>
                           </button>
@@ -929,8 +828,6 @@ function Borrowers() {
     );
   }
 
-  const editingBorrower = borrowers.find((item) => item.id === editing);
-
   return (
     <div className="flex flex-col gap-space-lg max-w-[1360px] mx-auto w-full">
       {/* Header */}
@@ -953,7 +850,7 @@ function Borrowers() {
             <button
               type="button"
               className="inline-flex items-center gap-1.5 h-10 px-4 rounded-lg bg-primary-container text-on-primary font-label-lg text-label-lg shadow-sm hover:bg-primary transition-all active:scale-[0.98]"
-              onClick={openForm}
+              onClick={() => navigate('/project/loans/borrowers/new')}
             >
               <span className="material-symbols-outlined text-[18px]">person_add</span>
               <span>+ Nueva persona</span>
@@ -1039,292 +936,7 @@ function Borrowers() {
         </div>
       </div>
 
-      {/* Inline Collapsible Form Accordion — always rendered */}
-      <section
-        ref={formContainerRef}
-        className="bg-surface-container-lowest rounded-xl shadow-md overflow-hidden transition-all duration-300"
-      >
-        <div className="p-space-lg flex flex-col gap-space-md">
-          {/* Clickable accordion header */}
-          <button
-            type="button"
-            onClick={() => setFormOpen((prev) => !prev)}
-            className="flex items-center justify-between w-full text-left"
-          >
-            <div className="flex items-center gap-space-sm">
-              <div className="w-8 h-8 rounded-lg bg-surface-container flex items-center justify-center text-primary">
-                <span className="material-symbols-outlined text-[19px]">badge</span>
-              </div>
-              <div>
-                <h2 className="font-headline-md text-headline-md text-on-surface tracking-tight">
-                  Agregar o editar persona
-                </h2>
-                <span className="font-body-sm text-body-sm text-outline">
-                  Formulario de legajo y registro de persona deudora
-                </span>
-              </div>
-            </div>
-            <div className="flex items-center gap-space-sm">
-              <span className="px-2.5 py-1 rounded bg-secondary-fixed text-on-secondary-fixed font-label-md text-label-md font-semibold">
-                Formulario de legajo
-              </span>
-              <span
-                className={`material-symbols-outlined transition-transform duration-200 ${
-                  formOpen ? 'rotate-180' : ''
-                }`}
-              >
-                expand_more
-              </span>
-            </div>
-          </button>
-
-          {/* Collapsible body using grid-rows trick */}
-          <div
-            className={`grid transition-[grid-template-rows] duration-300 ${
-              formOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
-            }`}
-          >
-            <div className="overflow-hidden min-h-0">
-              {/*
-               * `editing` switches the section between "add" and "edit"; the key remounts
-               * the form so it starts from the person being edited instead of the one it
-               * was showing before.
-               */}
-              <Formik
-                key={editing || 'new'}
-                initialValues={editingBorrower ? { ...EMPTY, ...editingBorrower } : EMPTY}
-                validateOnChange={false}
-                onSubmit={(values, actions) => {
-                  const errs = validateBorrower(values);
-                  if (Object.keys(errs).length > 0) {
-                    actions.setErrors(errs);
-                    actions.setSubmitting(false);
-                    const firstId = Object.keys(errs)[0];
-                    const el = document.getElementById(firstId);
-                    if (el) el.focus();
-                    return;
-                  }
-                  save(values)
-                    .then(() => {
-                      actions.resetForm({ values: EMPTY });
-                      setFormOpen(false);
-                    })
-                    .catch(() => {
-                      /* error already handled in save() via toast.error */
-                    })
-                    .finally(() => {
-                      actions.setSubmitting(false);
-                    });
-                }}
-              >
-                {({
-                  values,
-                  errors,
-                  handleSubmit,
-                  handleChange,
-                  handleBlur,
-                  isSubmitting,
-                  resetForm,
-                }) => (
-                  <form className="flex flex-col gap-space-md pt-space-md" onSubmit={handleSubmit}>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-space-md">
-                      {/* Nombre */}
-                      <div className="flex flex-col gap-1.5 min-w-0">
-                        <label
-                          className="font-label-md text-label-md text-on-surface font-medium"
-                          htmlFor="firstName"
-                        >
-                          {borrowerCopy.firstName} <span className="text-error font-bold">*</span>
-                        </label>
-                        <input
-                          id="firstName"
-                          name="firstName"
-                          className={`h-10 px-3 rounded-lg bg-surface-container-low text-on-surface placeholder:text-outline font-body-md text-body-md focus:bg-surface-container-lowest transition-colors border-0 outline-none w-full min-w-0 ${
-                            get(errors, 'firstName')
-                              ? 'ring-2 ring-inset ring-error/40 bg-surface-container-lowest'
-                              : ''
-                          }`}
-                          placeholder="p. ej. Ana"
-                          value={values.firstName}
-                          onChange={handleChange}
-                          onBlur={handleBlur}
-                        />
-                        {get(errors, 'firstName') && (
-                          <span className="text-error font-body-sm text-body-sm mt-0.5">
-                            {errors.firstName}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Apellido */}
-                      <div className="flex flex-col gap-1.5 min-w-0">
-                        <label
-                          className="font-label-md text-label-md text-on-surface font-medium"
-                          htmlFor="lastName"
-                        >
-                          {borrowerCopy.lastName} <span className="text-error font-bold">*</span>
-                        </label>
-                        <input
-                          id="lastName"
-                          name="lastName"
-                          className={`h-10 px-3 rounded-lg bg-surface-container-low text-on-surface placeholder:text-outline font-body-md text-body-md focus:bg-surface-container-lowest transition-colors border-0 outline-none w-full min-w-0 ${
-                            get(errors, 'lastName')
-                              ? 'ring-2 ring-inset ring-error/40 bg-surface-container-lowest'
-                              : ''
-                          }`}
-                          placeholder="p. ej. Gómez"
-                          value={values.lastName}
-                          onChange={handleChange}
-                          onBlur={handleBlur}
-                        />
-                        {get(errors, 'lastName') && (
-                          <span className="text-error font-body-sm text-body-sm mt-0.5">
-                            {errors.lastName}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* DNI / CUIT */}
-                      <div className="flex flex-col gap-1.5 min-w-0">
-                        <label
-                          className="font-label-md text-label-md text-on-surface font-medium"
-                          htmlFor="nationalId"
-                        >
-                          {borrowerCopy.nationalId}
-                        </label>
-                        <input
-                          id="nationalId"
-                          name="nationalId"
-                          className="h-10 px-3 rounded-lg bg-surface-container-low font-code-key text-code-key text-on-surface placeholder:text-outline focus:bg-surface-container-lowest transition-colors border-0 outline-none w-full min-w-0"
-                          placeholder="p. ej. 27-38194829-4"
-                          value={values.nationalId}
-                          onChange={handleChange}
-                          onBlur={handleBlur}
-                        />
-                      </div>
-
-                      {/* Teléfono / WhatsApp */}
-                      <div className="flex flex-col gap-1.5 min-w-0">
-                        <label
-                          className="font-label-md text-label-md text-on-surface font-medium"
-                          htmlFor="phone"
-                        >
-                          {borrowerCopy.phone}
-                        </label>
-                        <div className="relative flex items-center">
-                          <input
-                            id="phone"
-                            name="phone"
-                            type="tel"
-                            className="w-full h-10 pl-3 pr-9 rounded-lg bg-surface-container-low text-on-surface placeholder:text-outline font-body-md text-body-md focus:bg-surface-container-lowest transition-colors border-0 outline-none min-w-0"
-                            placeholder="+54 9 351 491-0028"
-                            value={values.phone}
-                            onChange={handleChange}
-                            onBlur={handleBlur}
-                          />
-                          <span className="material-symbols-outlined absolute right-2.5 text-tertiary text-[18px]">
-                            chat
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Email */}
-                      <div className="flex flex-col gap-1.5 min-w-0">
-                        <label
-                          className="font-label-md text-label-md text-on-surface font-medium"
-                          htmlFor="email"
-                        >
-                          {borrowerCopy.email}
-                        </label>
-                        <input
-                          id="email"
-                          name="email"
-                          type="email"
-                          className="h-10 px-3 rounded-lg bg-surface-container-low text-on-surface placeholder:text-outline font-body-md text-body-md focus:bg-surface-container-lowest transition-colors border-0 outline-none w-full min-w-0"
-                          placeholder="ana.gomez@visplatform.io"
-                          value={values.email}
-                          onChange={handleChange}
-                          onBlur={handleBlur}
-                        />
-                      </div>
-
-                      {/* Domicilio / Ciudad */}
-                      <div className="flex flex-col gap-1.5 min-w-0">
-                        <label
-                          className="font-label-md text-label-md text-on-surface font-medium"
-                          htmlFor="address"
-                        >
-                          {borrowerCopy.address}
-                        </label>
-                        <input
-                          id="address"
-                          name="address"
-                          className="h-10 px-3 rounded-lg bg-surface-container-low text-on-surface placeholder:text-outline font-body-md text-body-md focus:bg-surface-container-lowest transition-colors border-0 outline-none w-full min-w-0"
-                          placeholder="B° Nueva Córdoba, Córdoba Capital"
-                          value={values.address}
-                          onChange={handleChange}
-                          onBlur={handleBlur}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Notas / Observaciones */}
-                    <div className="flex flex-col gap-1.5">
-                      <label
-                        className="font-label-md text-label-md text-on-surface font-medium"
-                        htmlFor="notes"
-                      >
-                        {borrowerCopy.notes}
-                      </label>
-                      <textarea
-                        id="notes"
-                        name="notes"
-                        className="p-3 rounded-lg bg-surface-container-low text-on-surface placeholder:text-outline font-body-md text-body-md focus:bg-surface-container-lowest transition-colors resize-y border-0 outline-none w-full min-w-0"
-                        placeholder="p. ej. Clienta de confianza. Empleada bancaria, cobro del 1 al 10 de cada mes."
-                        rows={2}
-                        value={values.notes}
-                        onChange={handleChange}
-                        onBlur={handleBlur}
-                      />
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-space-md pt-space-xs">
-                      <p className="font-body-sm text-body-sm text-outline">
-                        Los campos con <span className="text-error font-semibold">*</span> son
-                        obligatorios para la emisión formal de recibos y pagarés.
-                      </p>
-                      <div className="flex items-center gap-space-md shrink-0">
-                        <button
-                          type="button"
-                          className="px-4 h-10 rounded-lg bg-surface-container text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high font-label-md text-label-md transition-colors"
-                          onClick={() => resetForm({ values: EMPTY })}
-                        >
-                          {borrowerCopy.clearForm}
-                        </button>
-                        <button
-                          type="submit"
-                          disabled={isSubmitting}
-                          className="px-5 h-10 rounded-lg bg-primary-container text-on-primary font-label-lg text-label-lg shadow-sm hover:bg-primary transition-all flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
-                        >
-                          {isSubmitting && (
-                            <span className="material-symbols-outlined text-[18px] animate-spin">
-                              progress_activity
-                            </span>
-                          )}
-                          <span>{borrowerCopy.save}</span>
-                        </button>
-                      </div>
-                    </div>
-                  </form>
-                )}
-              </Formik>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* People Directory Cards Grid */}
+      {/* People Directory */}
       <main>{directoryContent}</main>
 
       {/* Delete confirmation modal */}
