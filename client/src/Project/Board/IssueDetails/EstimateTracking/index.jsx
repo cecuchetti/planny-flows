@@ -46,8 +46,9 @@ function ProjectBoardIssueDetailsEstimateTracking({ issue, updateIssue, isReadon
           <div
             onClick={isReadonly ? undefined : modal.open}
             className={isReadonly ? 'cursor-default' : 'cursor-pointer'}
+            data-testid="tracking-widget-link"
           >
-            <TrackingWidget issue={issue} />
+            <TrackingWidget issue={issue} onLogWork={isReadonly ? null : modal.open} />
           </div>
         )}
         renderContent={(modal) => (
@@ -55,7 +56,7 @@ function ProjectBoardIssueDetailsEstimateTracking({ issue, updateIssue, isReadon
             <div className="font-label-lg text-label-lg font-bold text-on-surface">
               Time tracking
             </div>
-            <TrackingWidget issue={issue} />
+            <TrackingWidget issue={issue} showLogWorkButton={false} />
             <div className="flex gap-space-md">
               <div className="flex flex-col gap-1.5 flex-1">
                 <span className="font-label-md text-label-md font-semibold text-on-surface-variant">

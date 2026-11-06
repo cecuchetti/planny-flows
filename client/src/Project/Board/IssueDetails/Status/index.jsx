@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 
 import { IssueStatus } from 'shared/constants/issues';
 import { Select } from 'shared/components';
-import { issueStatusColors } from 'shared/utils/styles';
+import { issueStatusColors, jiraStatusColors } from 'shared/utils/styles';
 
 /* eslint-disable react/require-default-props */
 
@@ -12,6 +12,23 @@ const propTypes = {
   issue: PropTypes.object.isRequired,
   updateIssue: PropTypes.func.isRequired,
   isReadonly: PropTypes.bool,
+};
+
+const FALLBACK_STATUS_COLOR = '#64748b';
+
+/**
+ * Resolves a dot color for a status value. Enum values (backlog, inprogress, ...)
+ * use the canonical map; arbitrary Jira status names (e.g. "code review") fall
+ * back to a normalized-name lookup in the Jira palette.
+ */
+const getStatusColor = (status) => {
+  if (issueStatusColors[status]) return issueStatusColors[status];
+  const normalized = String(status || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[_-]+/g, ' ');
+  if (jiraStatusColors[normalized]) return jiraStatusColors[normalized].text;
+  return FALLBACK_STATUS_COLOR;
 };
 
 function ProjectBoardIssueDetailsStatus({ issue, updateIssue, isReadonly = false }) {
@@ -22,7 +39,7 @@ function ProjectBoardIssueDetailsStatus({ issue, updateIssue, isReadonly = false
   }));
 
   const renderStatusRow = (status, showChevron) => {
-    const color = issueStatusColors[status] || '#64748b';
+    const color = getStatusColor(status);
     return (
       <div
         className={`flex items-center justify-between px-3 py-2 bg-surface-container-lowest rounded-xl shadow-xs transition-colors ${

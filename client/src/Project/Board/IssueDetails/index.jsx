@@ -7,7 +7,9 @@ import {
   PageError,
   CopyLinkButton,
   AboutTooltip,
+  Avatar,
 } from 'shared/components';
+import useCurrentUser from 'shared/hooks/currentUser';
 
 import Loader from './Loader';
 import Type from './Type';
@@ -42,6 +44,7 @@ function ProjectBoardIssueDetails({
   const [{ data, error, setLocalData }, fetchIssue] = useApi.get(`/issues/${issueId}`);
   const [isTimeEntryOpen, setTimeEntryOpen] = useState(false);
   const $logWorkCardRef = React.useRef(null);
+  const { currentUser } = useCurrentUser();
 
   if (!data) return <Loader />;
   if (error) return <PageError />;
@@ -85,8 +88,18 @@ function ProjectBoardIssueDetails({
     <Fragment>
       {/* Modal Header Action Bar */}
       <div className="px-space-xl pt-space-lg pb-space-md flex items-center justify-between bg-surface-container-lowest">
-        {/* Left: Issue Type Pill */}
-        <Type issue={issue} updateIssue={updateIssue} isReadonly={isReadonly} />
+        {/* Left: Issue Type Pill + optional category tag */}
+        <div className="flex items-center gap-space-sm">
+          <Type issue={issue} updateIssue={updateIssue} isReadonly={isReadonly} />
+          {issue.category && (
+            <span
+              data-testid="issue-category-tag"
+              className="font-overline text-overline uppercase tracking-wider text-on-surface-variant bg-surface-container px-2 py-0.5 rounded"
+            >
+              {issue.category}
+            </span>
+          )}
+        </div>
 
         {/* Right Action Controls */}
         <div className="flex items-center gap-space-sm">
@@ -127,6 +140,15 @@ function ProjectBoardIssueDetails({
               <span>View in Jira</span>
               <span className="material-symbols-outlined text-[16px]">north_east</span>
             </a>
+          )}
+          {currentUser && (
+            <span
+              data-testid="header-user-avatar"
+              title={currentUser.name || 'You'}
+              className="ml-space-xs"
+            >
+              <Avatar avatarUrl={currentUser.avatarUrl} name={currentUser.name} size={28} />
+            </span>
           )}
           <button
             type="button"

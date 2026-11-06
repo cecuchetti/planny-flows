@@ -23,7 +23,7 @@ const priorityChipStyles = {
 
 const priorityIcons = {
   [IssuePriority.HIGHEST]: 'priority_high',
-  [IssuePriority.HIGH]: 'arrow_upward',
+  [IssuePriority.HIGH]: 'priority_high',
   [IssuePriority.MEDIUM]: 'remove',
   [IssuePriority.LOW]: 'arrow_downward',
   [IssuePriority.LOWEST]: 'keyboard_double_arrow_down',
