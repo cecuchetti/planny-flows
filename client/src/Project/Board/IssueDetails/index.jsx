@@ -3,12 +3,8 @@ import PropTypes from 'prop-types';
 
 import api from 'shared/utils/api';
 import useApi from 'shared/hooks/api';
-import {
-  PageError,
-  CopyLinkButton,
-  AboutTooltip,
-  Avatar,
-} from 'shared/components';
+import { copyToClipboard } from 'shared/utils/browser';
+import { PageError, AboutTooltip, Avatar } from 'shared/components';
 import useCurrentUser from 'shared/hooks/currentUser';
 
 import Loader from './Loader';
@@ -43,6 +39,7 @@ function ProjectBoardIssueDetails({
 }) {
   const [{ data, error, setLocalData }, fetchIssue] = useApi.get(`/issues/${issueId}`);
   const [isTimeEntryOpen, setTimeEntryOpen] = useState(false);
+  const [isLinkCopied, setLinkCopied] = useState(false);
   const $logWorkCardRef = React.useRef(null);
   const { currentUser } = useCurrentUser();
 
@@ -84,38 +81,60 @@ function ProjectBoardIssueDetails({
     }, 100);
   };
 
+  const handleLinkCopy = () => {
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 2000);
+    copyToClipboard(window.location.href);
+  };
+
   return (
     <Fragment>
       {/* Modal Header Action Bar */}
       <div className="px-space-xl pt-space-lg pb-space-md flex items-center justify-between bg-surface-container-lowest">
-        {/* Left: Issue Type Pill + optional category tag */}
-        <div className="flex items-center gap-space-sm">
+        {/* Left: Issue Type Pill + optional category tag — min-w-0 lets long text truncate
+            instead of compressing the action group */}
+        <div className="flex items-center gap-space-sm min-w-0 flex-1">
           <Type issue={issue} updateIssue={updateIssue} isReadonly={isReadonly} />
           {issue.category && (
             <span
               data-testid="issue-category-tag"
-              className="font-overline text-overline uppercase tracking-wider text-on-surface-variant bg-surface-container px-2 py-0.5 rounded"
+              className="font-overline text-overline uppercase tracking-wider text-on-surface-variant bg-surface-container px-2 py-0.5 rounded min-w-0 truncate"
             >
               {issue.category}
             </span>
           )}
         </div>
 
-        {/* Right Action Controls — uniform gap, no ad-hoc margins */}
-        <div className="flex items-center gap-2" data-testid="issue-details-header-actions">
+        {/* Right Action Controls — uniform gap, no ad-hoc margins; flex-shrink-0 keeps the
+            bordered button blocks intact when the left side runs long */}
+        <div
+          className="flex items-center gap-2 flex-shrink-0"
+          data-testid="issue-details-header-actions"
+        >
           <AboutTooltip
             renderLink={(linkProps) => (
               <button
                 type="button"
                 {...linkProps}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors font-label-md text-label-md font-medium"
+                className="flex items-center gap-1.5 border border-solid border-outline-variant/40 rounded-md px-3 py-1.5 whitespace-nowrap text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors font-label-md text-label-md font-medium"
               >
                 <span className="material-symbols-outlined text-[18px]">rate_review</span>
                 <span>Give feedback</span>
               </button>
             )}
           />
-          <CopyLinkButton className="w-9 h-9 rounded-lg" />
+          <button
+            type="button"
+            onClick={handleLinkCopy}
+            title="Copy issue link"
+            aria-label="Copy issue link"
+            data-testid="issue-copy-link"
+            className="h-8 w-8 flex items-center justify-center border border-solid border-outline-variant/40 rounded-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors"
+          >
+            <span className="material-symbols-outlined text-[18px]">
+              {isLinkCopied ? 'check' : 'link'}
+            </span>
+          </button>
           {!isReadonly && (
             <Delete issue={issue} fetchProject={fetchProject} modalClose={modalClose} />
           )}
@@ -124,7 +143,7 @@ function ProjectBoardIssueDetails({
               type="button"
               onClick={openLogWork}
               title={`Log time to ${externalKey}`}
-              className="flex items-center gap-1.5 px-space-md py-2 rounded-lg bg-primary text-on-primary font-label-md text-label-md font-semibold hover:bg-primary-container shadow-sm active:scale-[0.98] transition-all ring-2 ring-primary/20"
+              className="flex items-center gap-1.5 border border-solid border-primary rounded-md px-3 py-1.5 whitespace-nowrap bg-primary text-on-primary font-label-md text-label-md font-semibold hover:bg-primary-container shadow-sm active:scale-[0.98] transition-all ring-2 ring-primary/20"
             >
               <span className="material-symbols-outlined text-[18px]">timer</span>
               <span>Log Time</span>
@@ -135,7 +154,7 @@ function ProjectBoardIssueDetails({
               href={`https://${JIRA_BASE_URL}/browse/${externalKey}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1 px-3 py-2 text-primary font-label-md text-label-md font-semibold hover:underline transition-all"
+              className="flex items-center gap-1 border border-solid border-outline-variant/40 rounded-md px-3 py-1.5 whitespace-nowrap text-primary font-label-md text-label-md font-semibold hover:bg-surface-container transition-colors"
             >
               <span>View in Jira</span>
               <span className="material-symbols-outlined text-[16px]">north_east</span>
@@ -152,7 +171,8 @@ function ProjectBoardIssueDetails({
             type="button"
             onClick={modalClose}
             title="Close dialog"
-            className="w-9 h-9 rounded-lg flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors"
+            aria-label="Close dialog"
+            className="h-8 w-8 flex items-center justify-center border border-solid border-outline-variant/40 rounded-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors"
           >
             <span className="material-symbols-outlined text-[24px]">close</span>
           </button>
