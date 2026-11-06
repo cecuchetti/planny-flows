@@ -1,5 +1,7 @@
 # AGENTS.md
 
+**MANDATORY before any autonomous code run:** read and execute the pre-flight checklist at `.claude/skills/preflight-checklist/SKILL.md` (or `preflight-checklist.md` at the repo root). Without its 8 points verified with real evidence, no code is written.
+
 ## Project
 
 Planny Flows — a proxy in front of one or two real Jira instances, plus a local board.
@@ -199,3 +201,7 @@ Use `grep` or `find` only if:
 - `rg` or `fd` are not installed
 
 Heuristic: text/content search → `rg`, file/path discovery → `fd`.
+
+## Codebase knowledge graph (graphify)
+
+When you need to understand how the code works (where something lives, what calls what), query the graph instead of grepping: `graphify query "<question>"`, `graphify explain "<Symbol>"`, `graphify path "<A>" "<B>"` — e.g. `graphify query "how does the planny-flows kanban sync work"`. Read the files it points to only after. Skip this if `graphify-out/graph.json` does not exist.
