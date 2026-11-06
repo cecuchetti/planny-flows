@@ -45,6 +45,9 @@ module.exports = {
             loader: 'css-loader',
             options: { sourceMap: false },
           },
+          {
+            loader: 'postcss-loader',
+          },
         ],
       },
       {

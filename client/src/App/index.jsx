@@ -9,6 +9,7 @@ import Routes from './Routes';
 // to be constantly re-requested from the server (which causes screen flicker)
 // https://github.com/styled-components/styled-components/issues/1593
 import './fontStyles.css';
+import '../tailwind.css';
 
 const App = () => (
   <Fragment>

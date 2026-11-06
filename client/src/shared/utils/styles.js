@@ -164,10 +164,10 @@ export const lineHeights = {
 };
 
 export const font = {
-  regular: 'font-family: "CircularStdBook", "Inter", system-ui, sans-serif; font-weight: normal;',
-  medium: 'font-family: "CircularStdMedium", "Inter", system-ui, sans-serif; font-weight: 500;',
-  bold: 'font-family: "CircularStdBold", "Inter", system-ui, sans-serif; font-weight: 600;',
-  black: 'font-family: "CircularStdBlack", "Inter", system-ui, sans-serif; font-weight: 700;',
+  regular: 'font-family: "Inter", system-ui, sans-serif; font-weight: 400;',
+  medium: 'font-family: "Inter", system-ui, sans-serif; font-weight: 500;',
+  bold: 'font-family: "Inter", system-ui, sans-serif; font-weight: 600;',
+  black: 'font-family: "Inter", system-ui, sans-serif; font-weight: 700;',
   size: size => `font-size: ${size}px;`,
   /** Combined size + line-height for consistent text blocks */
   text: (size, lineHeight = lineHeights.normal) => `
