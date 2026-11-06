@@ -23,7 +23,12 @@ async def list_borrowers(db: AsyncSession, search: str | None = None) -> list[Bo
     if search and search.strip():
         term = f"%{search.strip().lower()}%"
         query = query.where(
-            or_(func.lower(Borrower.firstName).like(term), func.lower(Borrower.lastName).like(term))
+            or_(
+                func.lower(Borrower.firstName).like(term),
+                func.lower(Borrower.lastName).like(term),
+                func.lower(Borrower.email).like(term),
+                func.lower(Borrower.nationalId).like(term),
+            )
         )
     return list((await db.execute(query)).scalars().all())
 

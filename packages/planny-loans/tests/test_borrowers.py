@@ -135,6 +135,35 @@ async def test_borrower_with_real_contact_data_is_not_overridden(
     assert borrower["nationalId"] == "20-12345678-9"
 
 
+@pytest.mark.asyncio
+async def test_list_borrowers_searches_by_email_and_national_id(client: AsyncClient) -> None:
+    created = await client.post(
+        "/api/v1/borrowers",
+        json={
+            "firstName": "María",
+            "lastName": "González",
+            "email": "maria.gonzalez@example.com",
+            "nationalId": "27-00000005-5",
+        },
+    )
+    assert created.status_code == 201
+
+    # Search by partial email
+    by_email = await client.get("/api/v1/borrowers", params={"search": "gonzalez@example"})
+    assert by_email.status_code == 200
+    assert any(b["nationalId"] == "27-00000005-5" for b in by_email.json()["borrowers"])
+
+    # Search by partial nationalId (DNI suffix)
+    by_dni = await client.get("/api/v1/borrowers", params={"search": "00000005-5"})
+    assert by_dni.status_code == 200
+    assert any(b["nationalId"] == "27-00000005-5" for b in by_dni.json()["borrowers"])
+
+    # Search by nonexistent term returns empty
+    no_match = await client.get("/api/v1/borrowers", params={"search": "zzzzznonexistent999"})
+    assert no_match.status_code == 200
+    assert len(no_match.json()["borrowers"]) == 0
+
+
 async def _linked() -> int:
     return 1
 
