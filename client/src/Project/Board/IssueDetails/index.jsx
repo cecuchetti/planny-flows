@@ -101,8 +101,8 @@ function ProjectBoardIssueDetails({
           )}
         </div>
 
-        {/* Right Action Controls */}
-        <div className="flex items-center gap-space-sm">
+        {/* Right Action Controls — uniform gap, no ad-hoc margins */}
+        <div className="flex items-center gap-2" data-testid="issue-details-header-actions">
           <AboutTooltip
             renderLink={(linkProps) => (
               <button
@@ -141,12 +141,10 @@ function ProjectBoardIssueDetails({
               <span className="material-symbols-outlined text-[16px]">north_east</span>
             </a>
           )}
+          {/* M3 divider separating issue actions from user/session controls */}
+          <span aria-hidden="true" className="h-5 w-px shrink-0 bg-outline-variant/60" />
           {currentUser && (
-            <span
-              data-testid="header-user-avatar"
-              title={currentUser.name || 'You'}
-              className="ml-space-xs"
-            >
+            <span data-testid="header-user-avatar" title={currentUser.name || 'You'}>
               <Avatar avatarUrl={currentUser.avatarUrl} name={currentUser.name} size={28} />
             </span>
           )}
@@ -154,7 +152,7 @@ function ProjectBoardIssueDetails({
             type="button"
             onClick={modalClose}
             title="Close dialog"
-            className="w-9 h-9 rounded-lg flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container ml-space-xs transition-colors"
+            className="w-9 h-9 rounded-lg flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors"
           >
             <span className="material-symbols-outlined text-[24px]">close</span>
           </button>
