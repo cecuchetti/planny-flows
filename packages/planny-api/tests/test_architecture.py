@@ -29,6 +29,12 @@ PACKAGES_DIR = CORE_ROOT.parents[2]
 PLUGIN_ROOT = PACKAGES_DIR / "planny-loans" / "src" / "planny_loans"
 PLUGIN_IMPORT = "planny_loans"
 
+#: Plugin packages that are not API domains — operational tooling with no
+#: ``MODULE``/``MODULES`` (the one-time legacy-data migration CLI, Epic 5). They
+#: must not be treated as domains, or the P1 declaration rule would demand an
+#: ``ApiModule`` from a package the kernel never mounts.
+PLUGIN_NON_DOMAIN_PACKAGES = {"migration"}
+
 
 def _imported_names(path: Path) -> set[str]:
     """Return every module name imported by *path*."""
@@ -128,7 +134,10 @@ def _plugin_domain_packages() -> list[Path]:
     return [
         path
         for path in sorted(PLUGIN_ROOT.iterdir())
-        if path.is_dir() and not path.name.startswith("_") and (path / "__init__.py").is_file()
+        if path.is_dir()
+        and not path.name.startswith("_")
+        and path.name not in PLUGIN_NON_DOMAIN_PACKAGES
+        and (path / "__init__.py").is_file()
     ]
 
 

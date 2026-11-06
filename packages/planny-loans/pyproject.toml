@@ -6,10 +6,14 @@ dependencies = [
     "planny-core",
     "planny-api",
     "fastapi>=0.115",
+    "motor>=3.7,<4",
 ]
 
 [project.entry-points."planny.modules"]
 planny_loans = "planny_loans.modules"
+
+[project.scripts]
+planny-migrate = "planny_loans.migration.cli:main"
 
 [build-system]
 requires = ["hatchling"]

@@ -166,6 +166,16 @@ class Settings(BaseSettings):
         default="Working on issue {issueKey}"
     )
 
+    # ── Legacy data migration (Epic 5) ──────────────────────────────────────
+    legacy_mongo_uri: str | None = Field(
+        default=None,
+        description=(
+            "Read-only MongoDB connection string of the legacy gestion-prestamos "
+            "app. Read only by the one-time migration CLI; never by the running "
+            "application."
+        ),
+    )
+
     # ── CORS ─────────────────────────────────────────────────────────────────
     cors_origins: list[str] = Field(
         default_factory=lambda: [
