@@ -18,6 +18,7 @@ import { PageLoader, PageError, Modal, Icon } from 'shared/components';
 
 import { ProjectCategoryCopy } from 'shared/constants/projects';
 
+import useCurrentUser from 'shared/hooks/currentUser';
 import { filterSelection } from './projectFilter';
 import NavbarLeft from './NavbarLeft';
 import Sidebar from './Sidebar';
@@ -119,6 +120,8 @@ function Project() {
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  const { currentUser } = useCurrentUser();
+
   const issueSearchModalHelpers = createQueryParamModalHelpers('issue-search', navigate, location);
   const issueCreateModalHelpers = createQueryParamModalHelpers('issue-create', navigate, location);
 
@@ -202,7 +205,7 @@ function Project() {
   }, [selectedProjectIds, fetchBoardData]);
 
   // ── Force a sync now ─────────────────────────────────────────────────────
-  const [{ isUpdating: isSyncing }, syncNow] = useApi.post('/projects/sync');
+  const [{ isCreating: isSyncing }, syncNow] = useApi.post('/projects/sync');
 
   const handleSyncNow = useCallback(async () => {
     try {
@@ -331,6 +334,32 @@ function Project() {
             <TopBarName>{project.name}</TopBarName>
             <TopBarCategory>{ProjectCategoryCopy[project.category]}</TopBarCategory>
           </TopBarTexts>
+
+          <div className="flex-1" />
+
+          <div className="hidden md:inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/10 text-white/90 font-label-md text-label-md">
+            <span className="w-2 h-2 rounded-full bg-tertiary" />
+            Jira connected
+          </div>
+
+          <div className="hidden md:flex items-center gap-2.5">
+            <div className="flex flex-col items-end leading-tight">
+              <span className="text-white text-label-lg font-label-lg font-medium">
+                {currentUser?.displayName || currentUser?.name || 'Ezequiel C.'}
+              </span>
+              <span className="text-white/60 text-body-sm font-body-sm">
+                {currentUser?.role || 'Tech Lead'}
+              </span>
+            </div>
+            <div className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center text-white text-label-md font-medium">
+              {(() => {
+                const initials = currentUser?.name
+                  ? currentUser.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
+                  : 'EC';
+                return initials;
+              })()}
+            </div>
+          </div>
         </TopBar>
 
         <BodyRow>

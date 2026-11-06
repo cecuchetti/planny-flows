@@ -104,8 +104,8 @@ const ProjectBoardLists = ({ project, filters, updateLocalProjectIssues }) => {
                     style={{
                       ...colProvided.draggableProps.style,
                       margin: 0,
-                      flex: '0 0 310px',
-                      minWidth: '310px',
+                      flex: '1 1 0',
+                      minWidth: 0,
                     }}
                   >
                     <List

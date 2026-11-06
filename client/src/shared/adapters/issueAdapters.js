@@ -108,6 +108,35 @@ export const normalizeBoardIssue = (issue, project, projectUsers, boardUrl) => {
   const prefix = issue.projectKey || project.key || (project.name || '').replace(/\W/g, '').slice(0, 4).toUpperCase() || 'PRJ';
   const issueKey = issue.externalKey || `${prefix}-${issue.id}`;
 
+  // Determine if issue is done
+  const isDone = issue.status === IssueStatus.DONE;
+
+  // Format estimate seconds to human-readable string (e.g. 7200 → "2h", 3600 → "1h", 12600 → "3.5h")
+  const formatEstimate = (seconds) => {
+    if (seconds == null || seconds <= 0) return null;
+    const hours = seconds / 3600;
+    if (hours === Math.floor(hours)) return `${hours}h`;
+    return `${(Math.round(hours * 10) / 10).toFixed(1)}h`;
+  };
+
+  // Use timeRemaining if available, fall back to estimate
+  const estimateSeconds = issue.timeRemaining ?? issue.estimate ?? null;
+  const estimateText = formatEstimate(estimateSeconds);
+
+  // Build badges with optional estimate chip
+  const badges = [
+    {
+      text: IssueStatusCopy[issue.status] || issue.status,
+      bgColor: statusBg,
+      textColor: statusText,
+    },
+    {
+      text: IssueTypeCopy[issue.type] || issue.type,
+      bgColor: typeBg,
+      textColor: typeText,
+    },
+  ];
+
   return {
     id: issue.id.toString(),
     key: issueKey,
@@ -116,20 +145,14 @@ export const normalizeBoardIssue = (issue, project, projectUsers, boardUrl) => {
     type: IssueTypeCopy[issue.type] || issue.type,
     priority,
     stripColor,
-    badges: [
-      {
-        text: IssueStatusCopy[issue.status] || issue.status,
-        bgColor: statusBg,
-        textColor: statusText,
-      },
-      {
-        text: IssueTypeCopy[issue.type] || issue.type,
-        bgColor: typeBg,
-        textColor: typeText,
-      },
-    ],
+    badges,
     assignees,
     to: `${boardUrl}/issues/${issue.id}`,
+    updatedAt: issue.updatedAt || null,
+    done: isDone,
+    estimateText,
+    timeSpent: issue.timeSpent ?? null,
+    timeRemaining: issue.timeRemaining ?? null,
   };
 };
 

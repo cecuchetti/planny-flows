@@ -24,8 +24,7 @@
     "kanbanBoard": "Tablero Kanban",
     "projectSettings": "Configuración",
     "quickActions": "Atajos",
-    "borrowers": "Personas",
-    "summary": "Resumen"
+    "borrowers": "Personas"
   },
   "quickActions": {
     "pageTitle": "Atajos",
@@ -137,6 +136,7 @@
     "searchPlaceholder": "Buscar por resumen, descripción...",
     "noResultsTitle": "No encontramos nada que coincida con tu búsqueda",
     "noResultsTip": "Prueba con otro término.",
+    "searchIssues": "Buscar issues por resumen, descripción...",
     "projectCategory": "Categoría del proyecto",
     "selectAtLeastOneProject": "Seleccioná al menos un proyecto",
     "allProjects": "Todos los proyectos",
@@ -145,7 +145,8 @@
     "showingProjects": "Mostrando {{selected}} de {{total}} proyectos",
     "showAllProjects": "Mostrar todos",
     "syncNow": "Sincronizar ahora",
-    "syncing": "Sincronizando…"
+    "syncing": "Sincronizando…",
+    "dropHere": "Soltá el issue acá para moverlo"
   },
   "issue": {
     "createIssue": "Crear issue",

@@ -1,4 +1,4 @@
-import React, { Fragment } from 'react';
+import React from 'react';
 import PropTypes from 'prop-types';
 import { Routes, Route, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -82,9 +82,16 @@ function ProjectBoard({
   const projectName = project.name || t('board.allProjects');
 
   return (
-    <Fragment>
-      <Breadcrumbs items={[t('board.projects'), projectName, t('board.kanbanBoard')]} />
+      <div className="relative w-full">
+        <div className="absolute -top-6 left-1/4 w-96 h-32 bg-primary/5 rounded-full blur-3xl pointer-events-none -z-10" />
+        <div className="absolute -top-6 right-1/4 w-96 h-32 bg-secondary/5 rounded-full blur-3xl pointer-events-none -z-10" />
+        <Breadcrumbs items={[
+          { label: t('board.projects'), to: '/project' },
+          projectName,
+          t('board.kanbanBoard'),
+        ]} />
       <Header onSyncNow={onSyncNow} isSyncing={isSyncing} />
+      <div className="h-5" />
       {hasFilter && (
         <ProjectFilter
           projects={projects}
@@ -92,11 +99,13 @@ function ProjectBoard({
           onChange={onProjectFilterChange}
         />
       )}
+      {hasFilter && <div className="h-5" />}
       <Filters
         projectUsers={project.users}
         defaultFilters={defaultFilters}
         filters={filters}
         mergeFilters={mergeFilters}
+        issues={project.issues}
       />
       {selectedProjectIds && selectedProjectIds.length === 0 ? (
         <SelectAtLeastOne>{t('board.selectAtLeastOneProject')}</SelectAtLeastOne>
@@ -119,7 +128,7 @@ function ProjectBoard({
           }
         />
       </Routes>
-    </Fragment>
+      </div>
   );
 }
 

@@ -24,8 +24,7 @@
     "kanbanBoard": "Kanban Board",
     "projectSettings": "Settings",
     "quickActions": "Quick actions",
-    "borrowers": "People",
-    "summary": "Summary"
+    "borrowers": "People"
   },
   "quickActions": {
     "pageTitle": "Quick actions",
@@ -137,6 +136,7 @@
     "searchPlaceholder": "Search issues by summary, description...",
     "noResultsTitle": "We couldn't find anything matching your search",
     "noResultsTip": "Try again with a different term.",
+    "searchIssues": "Search issues by summary, description...",
     "projectCategory": "Project Category",
     "selectAtLeastOneProject": "Select at least one project",
     "allProjects": "All Projects",
@@ -145,7 +145,8 @@
     "showingProjects": "Showing {{selected}} of {{total}} projects",
     "showAllProjects": "Show all",
     "syncNow": "Sync now",
-    "syncing": "Syncing…"
+    "syncing": "Syncing…",
+    "dropHere": "Drop issue here to move"
   },
   "issue": {
     "createIssue": "Create issue",

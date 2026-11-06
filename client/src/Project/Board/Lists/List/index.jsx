@@ -4,8 +4,8 @@ import { Droppable } from '@hello-pangea/dnd';
 import intersection from 'lodash/intersection';
 import { useTranslation } from 'react-i18next';
 
+import { IssueStatus } from 'shared/constants/issues';
 import Issue from './Issue';
-import { List, Title, IssuesCount, Issues } from './Styles';
 
 const propTypes = {
   status: PropTypes.string.isRequired,
@@ -15,30 +15,47 @@ const propTypes = {
   columnDragHandleProps: PropTypes.object,
 };
 
-const ProjectBoardList = ({
+function ProjectBoardList({
   status,
   project,
   filters,
   currentUserId = null,
   columnDragHandleProps = null,
-}) => {
+}) {
   const { t } = useTranslation();
   const filteredIssues = filterIssues(project.issues, filters, currentUserId);
   const filteredListIssues = getSortedListIssues(filteredIssues, status);
   const allListIssues = getSortedListIssues(project.issues, status);
 
+  const isFullWidth = !!columnDragHandleProps;
+
   return (
     <Droppable key={status} droppableId={status}>
-      {(provided) => (
-        <List $fullWidth={!!columnDragHandleProps}>
-          <Title {...columnDragHandleProps}>
-            {`${t(`issueStatuses.${status}`)} `}
-            <IssuesCount>{formatIssuesCount(allListIssues, filteredListIssues)}</IssuesCount>
-          </Title>
-          <Issues
+      {(provided, snapshot) => (
+        <div
+          className={`flex flex-col bg-surface-container-low/70 rounded-2xl p-3 min-h-[640px] ${isFullWidth ? 'w-full' : 'w-full'}`}
+        >
+          <div {...columnDragHandleProps} className="flex items-center justify-between pb-3 px-1">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="font-headline-md text-headline-md text-on-surface truncate min-w-0">
+                {t(`issueStatuses.${status}`)}
+              </span>
+              {renderBadge(allListIssues, filteredListIssues, status)}
+            </div>
+            <button
+              type="button"
+              className="text-on-surface-variant hover:text-on-surface p-1 rounded-lg hover:bg-surface-container transition-colors"
+            >
+              <span className="material-symbols-outlined text-[18px]">
+                {status === IssueStatus.DONE ? 'check' : 'add'}
+              </span>
+            </button>
+          </div>
+          <div
             {...provided.droppableProps}
             ref={provided.innerRef}
             data-testid={`board-list:${status}`}
+            className="flex flex-col gap-2.5 h-full px-0.5"
           >
             {filteredListIssues.map((issue, index) => (
               <Issue
@@ -49,11 +66,53 @@ const ProjectBoardList = ({
                 index={index}
               />
             ))}
-            {provided.placeholder}
-          </Issues>
-        </List>
+            {snapshot.isDraggingOver ? (
+              <div className="w-full h-24 rounded-xl bg-surface-container/60 flex flex-col items-center justify-center gap-1.5 text-primary/70 transition-all">
+                <span className="material-symbols-outlined text-[20px] text-primary">
+                  drag_indicator
+                </span>
+                <span className="font-label-md text-label-md font-medium text-primary">
+                  {t('board.dropHere')}
+                </span>
+              </div>
+            ) : (
+              <div className="min-h-[1px]" data-dnd-placeholder-wrapper>
+                {provided.placeholder}
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </Droppable>
+  );
+}
+
+const renderBadge = (allListIssues, filteredListIssues, status) => {
+  const countText = formatIssuesCount(allListIssues, filteredListIssues);
+
+  // X of Y format → pill variant
+  if (allListIssues.length !== filteredListIssues.length) {
+    return (
+      <span className="px-2 py-0.5 rounded-full bg-primary-fixed text-on-primary-fixed font-code-key text-[11px] font-semibold shrink-0">
+        {countText}
+      </span>
+    );
+  }
+
+  // Done status → green variant
+  if (status === IssueStatus.DONE) {
+    return (
+      <span className="min-w-[20px] h-5 px-[5px] rounded-full bg-tertiary-fixed text-on-tertiary-fixed font-code-key text-code-key flex items-center justify-center font-bold shrink-0">
+        {countText}
+      </span>
+    );
+  }
+
+  // Plain number → default circle
+  return (
+    <span className="min-w-[20px] h-5 px-[5px] rounded-full bg-surface-container-high text-on-surface-variant font-code-key text-code-key flex items-center justify-center font-semibold shrink-0">
+      {countText}
+    </span>
   );
 };
 
@@ -106,5 +165,10 @@ const formatIssuesCount = (allListIssues, filteredListIssues) => {
 };
 
 ProjectBoardList.propTypes = propTypes;
+
+ProjectBoardList.defaultProps = {
+  currentUserId: null,
+  columnDragHandleProps: null,
+};
 
 export default ProjectBoardList;
