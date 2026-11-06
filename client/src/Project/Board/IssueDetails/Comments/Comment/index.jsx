@@ -75,7 +75,9 @@ const ProjectBoardIssueDetailsComment = ({ comment, fetchIssue }) => {
               message={t('issue.deleteConfirmMessage')}
               confirmText={t('issue.deleteComment')}
               onConfirm={handleCommentDelete}
-              renderLink={modal => <DeleteLink onClick={modal.open}>{t('common.delete')}</DeleteLink>}
+              renderLink={(modal) => (
+                <DeleteLink onClick={modal.open}>{t('common.delete')}</DeleteLink>
+              )}
             />
           </Fragment>
         )}
