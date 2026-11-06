@@ -23,13 +23,18 @@ function ProjectBoardIssueDetailsAssigneesReporter({
   const userOptions = projectUsers.map((user) => ({ value: user.id, label: user.name }));
 
   const renderUserRow = (user, showChevron = false, onRemove = null) => (
-    <div className="flex items-center justify-between p-2 rounded-xl bg-surface-container-lowest shadow-xs">
+    <div className="flex items-center justify-between p-2 rounded-xl bg-surface-container-lowest shadow-xs hover:bg-surface-container-high transition-colors">
       <div className="flex items-center gap-2.5">
         <Avatar avatarUrl={user?.avatarUrl} name={user?.name} size={28} />
         <div className="flex flex-col">
           <span className="font-label-md text-label-md font-semibold text-on-surface">
             {user?.name || 'Unknown'}
           </span>
+          {user?.role && (
+            <span className="font-overline text-overline uppercase tracking-wider text-on-surface-variant">
+              {user.role}
+            </span>
+          )}
         </div>
       </div>
       <div className="flex items-center gap-1">

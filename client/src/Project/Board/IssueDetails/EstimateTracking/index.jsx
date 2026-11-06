@@ -5,16 +5,8 @@ import isNil from 'lodash/isNil';
 import { InputDebounced, Modal, Button } from 'shared/components';
 
 import TrackingWidget from './TrackingWidget';
-import { SectionTitle } from '../Styles';
-import {
-  TrackingLink,
-  ModalContents,
-  ModalTitle,
-  Inputs,
-  InputCont,
-  InputLabel,
-  Actions,
-} from './Styles';
+
+/* eslint-disable react/require-default-props */
 
 const propTypes = {
   issue: PropTypes.object.isRequired,
@@ -22,78 +14,73 @@ const propTypes = {
   isReadonly: PropTypes.bool,
 };
 
-const ProjectBoardIssueDetailsEstimateTracking = ({ issue, updateIssue, isReadonly = false }) => {
-  if (isReadonly) {
-    return (
-      <Fragment>
-        <SectionTitle>Original Estimate (hours)</SectionTitle>
-        <InputCont>
-          <InputDebounced
-            placeholder="Number"
-            value={isNil(issue.estimate) ? '' : issue.estimate}
-            disabled
-          />
-        </InputCont>
-
-        <SectionTitle>Time Tracking</SectionTitle>
-        <div style={{ padding: '4px 0' }}>
-          <TrackingWidget issue={issue} />
-        </div>
-      </Fragment>
-    );
-  }
+function ProjectBoardIssueDetailsEstimateTracking({ issue, updateIssue, isReadonly = false }) {
+  const renderHourInput = (fieldName) => (
+    <InputDebounced
+      placeholder="Number"
+      filter={/^\d{0,6}$/}
+      value={isNil(issue[fieldName]) ? '' : issue[fieldName]}
+      disabled={isReadonly}
+      onChange={(stringValue) => {
+        const value = stringValue.trim() ? Number(stringValue) : null;
+        updateIssue({ [fieldName]: value });
+      }}
+    />
+  );
 
   return (
     <Fragment>
-      <SectionTitle>Original Estimate (hours)</SectionTitle>
-      {renderHourInput('estimate', issue, updateIssue)}
+      {/* Original estimate */}
+      <div className="flex flex-col gap-1.5">
+        <span className="font-overline text-overline uppercase tracking-wider text-on-surface-variant">
+          Original estimate (hours)
+        </span>
+        <div className="w-full">{renderHourInput('estimate')}</div>
+      </div>
 
-      <SectionTitle>Time Tracking</SectionTitle>
+      {/* Time tracking */}
       <Modal
         testid="modal:tracking"
         width={400}
         renderLink={(modal) => (
-          <TrackingLink onClick={modal.open}>
+          <div
+            onClick={isReadonly ? undefined : modal.open}
+            className={isReadonly ? 'cursor-default' : 'cursor-pointer'}
+          >
             <TrackingWidget issue={issue} />
-          </TrackingLink>
+          </div>
         )}
         renderContent={(modal) => (
-          <ModalContents>
-            <ModalTitle>Time tracking</ModalTitle>
+          <div className="p-5 flex flex-col gap-space-md" data-testid="modal:tracking-content">
+            <div className="font-label-lg text-label-lg font-bold text-on-surface">
+              Time tracking
+            </div>
             <TrackingWidget issue={issue} />
-            <Inputs>
-              <InputCont>
-                <InputLabel>Time spent (hours)</InputLabel>
-                {renderHourInput('timeSpent', issue, updateIssue)}
-              </InputCont>
-              <InputCont>
-                <InputLabel>Time remaining (hours)</InputLabel>
-                {renderHourInput('timeRemaining', issue, updateIssue)}
-              </InputCont>
-            </Inputs>
-            <Actions>
+            <div className="flex gap-space-md">
+              <div className="flex flex-col gap-1.5 flex-1">
+                <span className="font-label-md text-label-md font-semibold text-on-surface-variant">
+                  Time spent (hours)
+                </span>
+                {renderHourInput('timeSpent')}
+              </div>
+              <div className="flex flex-col gap-1.5 flex-1">
+                <span className="font-label-md text-label-md font-semibold text-on-surface-variant">
+                  Time remaining (hours)
+                </span>
+                {renderHourInput('timeRemaining')}
+              </div>
+            </div>
+            <div className="flex justify-end">
               <Button variant="primary" onClick={modal.close}>
                 Done
               </Button>
-            </Actions>
-          </ModalContents>
+            </div>
+          </div>
         )}
       />
     </Fragment>
   );
-};
-
-const renderHourInput = (fieldName, issue, updateIssue) => (
-  <InputDebounced
-    placeholder="Number"
-    filter={/^\d{0,6}$/}
-    value={isNil(issue[fieldName]) ? '' : issue[fieldName]}
-    onChange={(stringValue) => {
-      const value = stringValue.trim() ? Number(stringValue) : null;
-      updateIssue({ [fieldName]: value });
-    }}
-  />
-);
+}
 
 ProjectBoardIssueDetailsEstimateTracking.propTypes = propTypes;
 

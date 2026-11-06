@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 
 import api from 'shared/utils/api';
 import toast from 'shared/utils/toast';
-import { Button, ConfirmModal } from 'shared/components';
+import { ConfirmModal } from 'shared/components';
 
 const propTypes = {
   issue: PropTypes.object.isRequired,
@@ -12,7 +12,7 @@ const propTypes = {
   modalClose: PropTypes.func.isRequired,
 };
 
-const ProjectBoardIssueDetailsDelete = ({ issue, fetchProject, modalClose }) => {
+function ProjectBoardIssueDetailsDelete({ issue, fetchProject, modalClose }) {
   const { t } = useTranslation();
 
   const handleIssueDelete = async () => {
@@ -29,14 +29,22 @@ const ProjectBoardIssueDetailsDelete = ({ issue, fetchProject, modalClose }) => 
     <ConfirmModal
       title={t('issue.deleteConfirmTitle')}
       message={t('issue.deleteConfirmMessage')}
-      confirmText={t('issue.deleteIssue')}
+      confirmText={t('common.delete')}
       onConfirm={handleIssueDelete}
-      renderLink={modal => (
-        <Button icon="trash" iconSize={19} variant="empty" onClick={modal.open} />
+      renderLink={(modal) => (
+        <button
+          type="button"
+          onClick={modal.open}
+          title={t('issue.delete')}
+          data-testid="issue-delete-button"
+          className="w-9 h-9 rounded-lg flex items-center justify-center text-on-surface-variant hover:text-error hover:bg-error/10 transition-colors"
+        >
+          <span className="material-symbols-outlined text-[18px]">delete</span>
+        </button>
       )}
     />
   );
-};
+}
 
 ProjectBoardIssueDetailsDelete.propTypes = propTypes;
 

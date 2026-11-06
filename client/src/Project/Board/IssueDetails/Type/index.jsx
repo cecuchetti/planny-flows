@@ -3,9 +3,9 @@ import PropTypes from 'prop-types';
 import { useTranslation } from 'react-i18next';
 
 import { IssueType } from 'shared/constants/issues';
-import { IssueTypeIcon, Select } from 'shared/components';
+import { Select } from 'shared/components';
 
-import { TypeButton, Type, TypeLabel } from './Styles';
+/* eslint-disable react/require-default-props */
 
 const propTypes = {
   issue: PropTypes.object.isRequired,
@@ -13,19 +13,50 @@ const propTypes = {
   isReadonly: PropTypes.bool,
 };
 
-const ProjectBoardIssueDetailsType = ({ issue, updateIssue, isReadonly = false }) => {
+const typePillStyles = {
+  [IssueType.BUG]: 'bg-[#fee2e2] text-[#b91c1c]',
+  [IssueType.TASK]: 'bg-[#dbeafe] text-[#1d4ed8]',
+  [IssueType.STORY]: 'bg-[#dcfce7] text-[#15803d]',
+};
+
+const typeIcons = {
+  [IssueType.BUG]: 'bug_report',
+  [IssueType.TASK]: 'task_alt',
+  [IssueType.STORY]: 'auto_stories',
+};
+
+function ProjectBoardIssueDetailsType({ issue, updateIssue, isReadonly = false }) {
   const { t } = useTranslation();
   const options = Object.values(IssueType).map((type) => ({
     value: type,
     label: t(`issueTypes.${type}`),
   }));
 
-  if (isReadonly) {
+  const issueKey = issue.key || issue.externalKey || issue.external_key;
+
+  // Trigger pill shared between readonly (static) and editable (select value)
+  const renderPill = (type) => {
+    const typeLabel = t(`issueTypes.${type}`) || type;
+    const classes = typePillStyles[type] || typePillStyles[IssueType.TASK];
+    const icon = typeIcons[type] || 'task_alt';
     return (
-      <TypeButton variant="empty" icon={<IssueTypeIcon type={issue.type} />} disabled>
-        {issue.externalKey || `${issue.type}-${issue.id}`}
-      </TypeButton>
+      <span
+        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-md cursor-pointer hover:brightness-95 transition-colors ${classes}`}
+      >
+        <span className="material-symbols-outlined text-[16px]">{icon}</span>
+        <span className="font-code-key text-code-key font-bold tracking-tight">
+          {typeLabel}
+          {issueKey ? ` ${issueKey}` : ''}
+        </span>
+        {!isReadonly && (
+          <span className="material-symbols-outlined text-[16px] opacity-70">expand_more</span>
+        )}
+      </span>
     );
+  };
+
+  if (isReadonly) {
+    return renderPill(issue.type);
   }
 
   return (
@@ -37,20 +68,21 @@ const ProjectBoardIssueDetailsType = ({ issue, updateIssue, isReadonly = false }
       value={issue.type}
       options={options}
       onChange={(type) => updateIssue({ type })}
-      renderValue={({ value: type }) => (
-        <TypeButton variant="empty" icon={<IssueTypeIcon type={type} />}>
-          {issue.externalKey || `${t(`issueTypes.${type}`)}-${issue.id}`}
-        </TypeButton>
-      )}
+      renderValue={({ value: type }) => renderPill(type)}
       renderOption={({ value: type }) => (
-        <Type key={type} onClick={() => updateIssue({ type })}>
-          <IssueTypeIcon type={type} top={1} />
-          <TypeLabel>{t(`issueTypes.${type}`)}</TypeLabel>
-        </Type>
+        <button
+          key={type}
+          type="button"
+          onClick={() => updateIssue({ type })}
+          className="flex items-center gap-2 px-3 py-1.5 cursor-pointer hover:bg-surface-container rounded-lg font-label-md text-label-md w-full text-left"
+        >
+          <span className="material-symbols-outlined text-[16px]">{typeIcons[type]}</span>
+          <span>{t(`issueTypes.${type}`)}</span>
+        </button>
       )}
     />
   );
-};
+}
 
 ProjectBoardIssueDetailsType.propTypes = propTypes;
 

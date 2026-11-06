@@ -16,6 +16,8 @@ export const ScrollOverlay = styled.div`
 export const ClickableOverlay = styled.div`
   min-height: 100%;
   background: rgba(15, 23, 42, 0.35);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   ${props => clickOverlayStyles[props.$variant]}
 `;
 

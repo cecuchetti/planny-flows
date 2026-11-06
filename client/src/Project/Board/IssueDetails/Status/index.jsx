@@ -3,10 +3,8 @@ import PropTypes from 'prop-types';
 import { useTranslation } from 'react-i18next';
 
 import { IssueStatus } from 'shared/constants/issues';
-import { Select, Icon } from 'shared/components';
-
-import { SectionTitle } from '../Styles';
-import { Status } from './Styles';
+import { Select } from 'shared/components';
+import { issueStatusColors } from 'shared/utils/styles';
 
 /* eslint-disable react/require-default-props */
 
@@ -16,27 +14,56 @@ const propTypes = {
   isReadonly: PropTypes.bool,
 };
 
-const ProjectBoardIssueDetailsStatus = ({ issue, updateIssue, isReadonly = false }) => {
+function ProjectBoardIssueDetailsStatus({ issue, updateIssue, isReadonly = false }) {
   const { t } = useTranslation();
   const options = Object.values(IssueStatus).map((status) => ({
     value: status,
     label: t(`issueStatuses.${status}`),
   }));
 
+  const renderStatusRow = (status, showChevron) => {
+    const color = issueStatusColors[status] || '#64748b';
+    return (
+      <div
+        className={`flex items-center justify-between px-3 py-2 bg-surface-container-lowest rounded-xl shadow-xs transition-colors ${
+          isReadonly ? 'cursor-default' : 'cursor-pointer hover:bg-surface-container-high'
+        }`}
+      >
+        <div className="inline-flex items-center gap-2">
+          <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
+          <span
+            className="font-label-lg text-label-lg font-semibold"
+            style={{ color }}
+            data-testid={`issue-status-${status}`}
+          >
+            {t(`issueStatuses.${status}`) || status}
+          </span>
+        </div>
+        {showChevron && (
+          <span className="material-symbols-outlined text-[18px] text-on-surface-variant">
+            unfold_more
+          </span>
+        )}
+      </div>
+    );
+  };
+
   if (isReadonly) {
     return (
       <Fragment>
-        <SectionTitle>{t('issue.statusLabel')}</SectionTitle>
-        <Status $isValue $color={issue.status} style={{ cursor: 'default' }}>
-          <div>{t(`issueStatuses.${issue.status}`) || issue.status}</div>
-        </Status>
+        <span className="font-overline text-overline uppercase tracking-wider text-on-surface-variant">
+          {t('issue.statusLabel')}
+        </span>
+        {renderStatusRow(issue.status, false)}
       </Fragment>
     );
   }
 
   return (
     <Fragment>
-      <SectionTitle>{t('issue.statusLabel')}</SectionTitle>
+      <span className="font-overline text-overline uppercase tracking-wider text-on-surface-variant">
+        {t('issue.statusLabel')}
+      </span>
       <Select
         variant="empty"
         dropdownWidth={343}
@@ -45,19 +72,25 @@ const ProjectBoardIssueDetailsStatus = ({ issue, updateIssue, isReadonly = false
         value={issue.status}
         options={options}
         onChange={(status) => updateIssue({ status })}
-        renderValue={({ value: status }) => (
-          <Status $isValue $color={status}>
-            <div>{t(`issueStatuses.${status}`)}</div>
-            <Icon type="chevron-down" size={18} />
-          </Status>
-        )}
+        renderValue={({ value: status }) => renderStatusRow(status, true)}
         renderOption={({ value: status }) => (
-          <Status $color={status}>{t(`issueStatuses.${status}`)}</Status>
+          <div className="flex items-center gap-2.5 px-3 py-2 cursor-pointer hover:bg-surface-container rounded-lg">
+            <span
+              className="w-2.5 h-2.5 rounded-full"
+              style={{ backgroundColor: issueStatusColors[status] || '#64748b' }}
+            />
+            <span
+              className="font-label-md text-label-md font-semibold"
+              style={{ color: issueStatusColors[status] || '#64748b' }}
+            >
+              {t(`issueStatuses.${status}`)}
+            </span>
+          </div>
         )}
       />
     </Fragment>
   );
-};
+}
 
 ProjectBoardIssueDetailsStatus.propTypes = propTypes;
 
