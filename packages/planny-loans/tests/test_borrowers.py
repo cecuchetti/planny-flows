@@ -174,3 +174,217 @@ async def test_link_count_propagates_unexpected_database_errors() -> None:
     db.execute.side_effect = OperationalError("SELECT", {}, RuntimeError("database offline"))
     with pytest.raises(OperationalError):
         await repository.linked_loan_count(db, 1)
+
+
+# ── Detail-endpoint helpers ─────────────────────────────────────────────────
+
+
+async def _make_borrower(client: AsyncClient, first: str = "Ana", last: str = "Pérez") -> int:
+    response = await client.post(
+        "/api/v1/borrowers", json={"firstName": first, "lastName": last}
+    )
+    assert response.status_code == 201, response.text
+    return int(response.json()["borrower"]["id"])
+
+
+def _loan_payload(borrower_id: int, **overrides: object) -> dict[str, object]:
+    body: dict[str, object] = {
+        "borrowerId": borrower_id,
+        "amount": "1500.50",
+        "currency": "USD",
+        "date": "2026-10-07",
+        "concept": "Préstamo personal",
+        "lender": "Ecuche",
+        "city": "Córdoba",
+    }
+    body.update(overrides)
+    return body
+
+
+# ── Detail-endpoint tests ──────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_borrower_detail_has_mocked_profile_fields(client: AsyncClient) -> None:
+    """Detail endpoint returns all mocked profile fields."""
+    borrower_id = await _make_borrower(client)
+    response = await client.get(f"/api/v1/borrowers/{borrower_id}")
+    assert response.status_code == 200
+    body = response.json()["borrower"]
+
+    fields = [
+        "dni", "fiscalStatus", "altPhone", "city", "postalCode",
+        "occupation", "monthlyIncome", "enabledForLoans", "notifyWhatsApp",
+        "incomeCertification",
+    ]
+    for field in fields:
+        assert field in body, f"Missing field: {field}"
+        assert body[field] is not None, f"Null field: {field}"
+
+    assert body["enabledForLoans"] is True
+    assert body["notifyWhatsApp"] is True
+    assert isinstance(body["incomeCertification"], dict)
+    assert "updatedAt" in body["incomeCertification"]
+
+
+@pytest.mark.asyncio
+async def test_borrower_detail_mocked_fields_are_deterministic(
+    client: AsyncClient,
+) -> None:
+    """Same borrower id → same mocked field values across requests."""
+    borrower_id = await _make_borrower(client)
+
+    first = await client.get(f"/api/v1/borrowers/{borrower_id}")
+    assert first.status_code == 200
+    first_data = first.json()["borrower"]
+
+    second = await client.get(f"/api/v1/borrowers/{borrower_id}")
+    assert second.status_code == 200
+    second_data = second.json()["borrower"]
+
+    deterministic_fields = [
+        "dni", "fiscalStatus", "altPhone", "city", "postalCode",
+        "occupation", "monthlyIncome",
+    ]
+    for field in deterministic_fields:
+        assert first_data[field] == second_data[field], (
+            f"{field} must be deterministic, got "
+            f"{first_data[field]!r} vs {second_data[field]!r}"
+        )
+
+
+@pytest.mark.asyncio
+async def test_borrower_detail_loans_matches_created_loans(
+    client: AsyncClient,
+) -> None:
+    """Detail ``loans`` list contains every loan for that borrower."""
+    borrower_id = await _make_borrower(client)
+
+    # Create two loans
+    r1 = await client.post("/api/v1/loans", json=_loan_payload(borrower_id))
+    assert r1.status_code == 201
+    loan1 = r1.json()["loan"]
+
+    r2 = await client.post(
+        "/api/v1/loans", json=_loan_payload(borrower_id, amount="2500.00", date="2026-11-01")
+    )
+    assert r2.status_code == 201
+    loan2 = r2.json()["loan"]
+
+    detail = await client.get(f"/api/v1/borrowers/{borrower_id}")
+    assert detail.status_code == 200
+    loans = detail.json()["borrower"]["loans"]
+
+    assert len(loans) == 2
+    loan_ids = {ln["id"] for ln in loans}
+    assert loan1["id"] in loan_ids
+    assert loan2["id"] in loan_ids
+
+
+@pytest.mark.asyncio
+async def test_borrower_detail_activity_has_loan_creation_events(
+    client: AsyncClient,
+) -> None:
+    """Activity contains one ``modificacion`` per loan."""
+    borrower_id = await _make_borrower(client)
+    await client.post("/api/v1/loans", json=_loan_payload(borrower_id))
+    await client.post(
+        "/api/v1/loans", json=_loan_payload(borrower_id, amount="800.00", date="2026-11-15")
+    )
+
+    detail = await client.get(f"/api/v1/borrowers/{borrower_id}")
+    assert detail.status_code == 200
+    activity = detail.json()["borrower"]["activity"]
+
+    modificaciones = [e for e in activity if e["category"] == "modificacion"]
+    assert len(modificaciones) == 2
+    for event in modificaciones:
+        assert "formalizado" in event["title"]
+        assert event["detail"] is not None
+
+
+@pytest.mark.asyncio
+async def test_borrower_detail_activity_has_payment_events(
+    client: AsyncClient,
+) -> None:
+    """Activity contains one ``cobro`` per payment made on the borrower's loans."""
+    borrower_id = await _make_borrower(client)
+    r = await client.post("/api/v1/loans", json=_loan_payload(borrower_id))
+    assert r.status_code == 201
+    loan_id = r.json()["loan"]["id"]
+
+    # Make a payment
+    rp = await client.post(f"/api/v1/loans/{loan_id}/payments", json={"amount": "500.00"})
+    assert rp.status_code == 201
+
+    detail = await client.get(f"/api/v1/borrowers/{borrower_id}")
+    assert detail.status_code == 200
+    activity = detail.json()["borrower"]["activity"]
+
+    cobros = [e for e in activity if e["category"] == "cobro"]
+    assert len(cobros) == 1
+    assert "Pago" in cobros[0]["title"]
+
+
+@pytest.mark.asyncio
+async def test_borrower_detail_activity_sorted_newest_first(
+    client: AsyncClient,
+) -> None:
+    """Activity timeline is sorted descending by date."""
+    borrower_id = await _make_borrower(client)
+    await client.post(
+        "/api/v1/loans", json=_loan_payload(borrower_id, date="2026-01-15")
+    )
+    await client.post(
+        "/api/v1/loans", json=_loan_payload(borrower_id, date="2026-06-20")
+    )
+
+    detail = await client.get(f"/api/v1/borrowers/{borrower_id}")
+    assert detail.status_code == 200
+    activity = detail.json()["borrower"]["activity"]
+
+    dates = [e["date"] for e in activity]
+    assert dates == sorted(dates, reverse=True), (
+        f"Activity must be newest first: {dates}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_borrower_list_does_not_include_heavy_detail_fields(
+    client: AsyncClient,
+) -> None:
+    """The list endpoint must NOT carry ``loans`` or ``activity`` keys."""
+    borrower_id = await _make_borrower(client)
+    await client.post("/api/v1/loans", json=_loan_payload(borrower_id))
+
+    response = await client.get("/api/v1/borrowers")
+    assert response.status_code == 200
+    borrowers = response.json()["borrowers"]
+    assert len(borrowers) >= 1
+
+    for b in borrowers:
+        assert "loans" not in b, "list must not include loans"
+        assert "activity" not in b, "list must not include activity"
+
+
+@pytest.mark.asyncio
+async def test_borrower_detail_activity_is_capped_at_25(
+    client: AsyncClient,
+) -> None:
+    """Detail activity timeline is capped at 25 events."""
+    borrower_id = await _make_borrower(client)
+    # Create many loans (each produces one activity event)
+    for i in range(30):
+        await client.post(
+            "/api/v1/loans",
+            json=_loan_payload(
+                borrower_id,
+                amount=f"{100 + i}.00",
+                date=f"2026-{(i % 12) + 1:02d}-{(i % 28) + 1:02d}",
+            ),
+        )
+
+    detail = await client.get(f"/api/v1/borrowers/{borrower_id}")
+    assert detail.status_code == 200
+    activity = detail.json()["borrower"]["activity"]
+    assert len(activity) <= 25

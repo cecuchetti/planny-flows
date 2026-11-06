@@ -208,6 +208,22 @@ async def near_completion(db: AsyncSession) -> list[tuple[Loan, Decimal]]:
     return result
 
 
+async def list_loans_by_borrower(db: AsyncSession, borrower_id: int) -> list[Loan]:
+    """Every loan for one borrower, with payments loaded.
+
+    Payments are eagerly loaded so the caller can compute pending balances and
+    build the activity timeline without N+1 queries. The borrower is joined by
+    the model's ``lazy="joined"`` default.
+    """
+    stmt = (
+        select(Loan)
+        .options(selectinload(Loan.payments))
+        .where(Loan.borrower_id == borrower_id)
+        .order_by(Loan.date.desc(), Loan.id.desc())
+    )
+    return list((await db.execute(stmt)).scalars().all())
+
+
 async def recent_payments(db: AsyncSession, limit: int = 5) -> list[Payment]:
     """The most recent payments still in force, newest first.
 

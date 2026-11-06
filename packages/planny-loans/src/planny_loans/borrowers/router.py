@@ -4,11 +4,18 @@ from decimal import Decimal
 
 from fastapi import APIRouter, Depends, Query
 from planny_api.dependencies import get_db
+from planny_core.models import Payment
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from planny_loans.borrowers import repository, service
 from planny_loans.borrowers.schemas import BorrowerRequest
-from planny_loans.borrowers.serializers import borrower_to_dict
+from planny_loans.borrowers.serializers import (
+    borrower_detail_fields,
+    borrower_to_dict,
+    build_activity,
+)
+from planny_loans.loans import repository as loans_repository
+from planny_loans.loans.serializers import loan_to_dict
 
 
 def _to_decimal(value: float) -> Decimal | None:
@@ -97,9 +104,58 @@ async def _borrower_with_stats(
     )
 
 
+async def _borrower_detail(db: AsyncSession, borrower_id: int) -> dict[str, object] | None:
+    """Fetch a borrower with every field the detail page renders.
+
+    Includes the stats from ``_borrower_with_stats``, plus mocked profile
+    fields, the borrower's loans (with their pending balances) and an activity
+    timeline from real payments.
+    """
+    borrower = await repository.get(db, borrower_id)
+    if borrower is None:
+        return None
+    count = await repository.linked_loan_count(db, borrower_id)
+    stats = await repository.borrower_loan_stats(db, borrower_id)
+    result = borrower_to_dict(
+        borrower,
+        loan_count=count,
+        active_loan_count=stats.active_loan_count,
+        total_historical_amount=_to_decimal(stats.total_amount) if stats.total_amount else None,
+        remaining_balance=_to_decimal(stats.remaining_balance) if stats.remaining_balance else None,
+        recovery_percent=stats.recovery_percent,
+    )
+
+    # Enrich with detail-only fields.
+    result.update(borrower_detail_fields(borrower))
+
+    # Loans with pending balances (computed locally from eagerly-loaded payments).
+    loans = await loans_repository.list_loans_by_borrower(db, borrower_id)
+    loan_dicts = []
+    all_payments: list[Payment] = []
+    for loan in loans:
+        collected = sum(
+            (p.amount for p in loan.payments if p.reversedAt is None),
+            Decimal("0.00"),
+        )
+        advance = loan.advancePaid or Decimal("0.00")
+        written_off = loan.writtenOffAmount or Decimal("0.00")
+        balance = Decimal("0.00")
+        if loan.amount:
+            balance = (loan.amount - advance - collected - written_off).quantize(
+                Decimal("0.01")
+            )
+        loan_dicts.append(loan_to_dict(loan, balance))
+        all_payments.extend(loan.payments)
+
+    result["loans"] = loan_dicts
+    result["activity"] = build_activity(loans, all_payments)
+
+    return result
+
+
 @router.get("/{borrower_id}")
 async def get_borrower(borrower_id: int, db: AsyncSession = Depends(get_db)) -> dict[str, object]:
-    result = await _borrower_with_stats(db, borrower_id)
+    result = await _borrower_detail(db, borrower_id)
     if result is None:
         from planny_core.errors import EntityNotFoundError
         raise EntityNotFoundError("Borrower", message="No encontramos esa persona.")
