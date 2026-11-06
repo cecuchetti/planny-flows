@@ -15,6 +15,7 @@ from planny_core.enums import ProjectSourceType
 from planny_api.modules.jira.sync.mapping import (
     DEFAULT_ISSUE_TYPE,
     DEFAULT_PRIORITY,
+    adf_to_html,
     adf_to_text,
     jira_user_identity,
     map_jira_issue_to_local,
@@ -110,6 +111,190 @@ class TestAdfToText:
         assert adf_to_text(node) == "a\nb\n"
 
 
+class TestAdfToHtml:
+    """Atlassian Document Format is rendered as the HTML subset the client allows."""
+
+    def test_empty_values(self) -> None:
+        assert adf_to_html(None) == ""
+        assert adf_to_html("") == ""
+        assert adf_to_html({}) == ""
+
+    def test_non_dict_is_ignored(self) -> None:
+        assert adf_to_html(42) == ""
+
+    def test_plain_string_passes_through(self) -> None:
+        assert adf_to_html("<p>already html</p>") == "<p>already html</p>"
+
+    def test_empty_content_array(self) -> None:
+        assert adf_to_html({"type": "doc", "content": []}) == ""
+
+    def test_heading_paragraph_list_and_code_block(self) -> None:
+        """The required node set, mapped to their semantic tags."""
+        doc = {
+            "type": "doc",
+            "content": [
+                {
+                    "type": "heading",
+                    "attrs": {"level": 2},
+                    "content": [{"type": "text", "text": "Plan"}],
+                },
+                {
+                    "type": "paragraph",
+                    "content": [
+                        {"type": "text", "text": "normal "},
+                        {"type": "text", "marks": [{"type": "strong"}], "text": "bold"},
+                        {"type": "text", "marks": [{"type": "em"}], "text": " italic"},
+                    ],
+                },
+                {
+                    "type": "bulletList",
+                    "content": [
+                        {
+                            "type": "listItem",
+                            "content": [
+                                {
+                                    "type": "paragraph",
+                                    "content": [{"type": "text", "text": "one"}],
+                                }
+                            ],
+                        },
+                        {
+                            "type": "listItem",
+                            "content": [
+                                {
+                                    "type": "paragraph",
+                                    "content": [{"type": "text", "text": "two"}],
+                                }
+                            ],
+                        },
+                    ],
+                },
+                {
+                    "type": "codeBlock",
+                    "content": [{"type": "text", "text": "x = 1"}],
+                },
+            ],
+        }
+        assert adf_to_html(doc) == (
+            "<h2>Plan</h2>"
+            "<p>normal <strong>bold</strong><em> italic</em></p>"
+            "<ul><li><p>one</p></li><li><p>two</p></li></ul>"
+            "<pre><code>x = 1</code></pre>"
+        )
+
+    def test_ordered_list_and_blockquote(self) -> None:
+        doc = {
+            "type": "doc",
+            "content": [
+                {
+                    "type": "orderedList",
+                    "content": [
+                        {
+                            "type": "listItem",
+                            "content": [
+                                {"type": "paragraph", "content": [{"type": "text", "text": "a"}]}
+                            ],
+                        }
+                    ],
+                },
+                {
+                    "type": "blockquote",
+                    "content": [
+                        {"type": "paragraph", "content": [{"type": "text", "text": "quoted"}]}
+                    ],
+                },
+            ],
+        }
+        assert adf_to_html(doc) == (
+            "<ol><li><p>a</p></li></ol><blockquote><p>quoted</p></blockquote>"
+        )
+
+    def test_hard_break_inside_paragraph(self) -> None:
+        doc = {
+            "type": "paragraph",
+            "content": [
+                {"type": "text", "text": "line1"},
+                {"type": "hardBreak"},
+                {"type": "text", "text": "line2"},
+            ],
+        }
+        assert adf_to_html(doc) == "<p>line1<br>line2</p>"
+
+    def test_link_mark_becomes_anchor(self) -> None:
+        node = {
+            "type": "text",
+            "marks": [{"type": "link", "attrs": {"href": "https://example.com"}}],
+            "text": "docs",
+        }
+        assert adf_to_html(node) == (
+            '<a href="https://example.com" target="_blank" rel="noopener noreferrer">docs</a>'
+        )
+
+    def test_underline_and_strike_marks(self) -> None:
+        underlined = {"type": "text", "marks": [{"type": "underline"}], "text": "u"}
+        struck = {"type": "text", "marks": [{"type": "strike"}], "text": "s"}
+        assert adf_to_html(underlined) == "<u>u</u>"
+        assert adf_to_html(struck) == "<s>s</s>"
+
+    def test_heading_level_is_clamped(self) -> None:
+        doc = {
+            "type": "doc",
+            "content": [
+                {
+                    "type": "heading",
+                    "attrs": {"level": 9},
+                    "content": [{"type": "text", "text": "big"}],
+                },
+                {
+                    "type": "heading",
+                    "attrs": {"level": 0},
+                    "content": [{"type": "text", "text": "small"}],
+                },
+            ],
+        }
+        assert adf_to_html(doc) == "<h6>big</h6><h1>small</h1>"
+
+    def test_code_block_renders_raw_text_without_marks(self) -> None:
+        doc = {
+            "type": "codeBlock",
+            "content": [
+                {"type": "text", "marks": [{"type": "strong"}], "text": "keep <raw>"}
+            ],
+        }
+        assert adf_to_html(doc) == "<pre><code>keep &lt;raw&gt;</code></pre>"
+
+    def test_text_and_href_are_escaped(self) -> None:
+        """Jira content is never trusted: text and link hrefs are escaped."""
+        node = {
+            "type": "paragraph",
+            "content": [
+                {
+                    "type": "text",
+                    "marks": [
+                        {"type": "link", "attrs": {"href": 'https://x.com/"onclick="evil'}}
+                    ],
+                    "text": '<script>alert("xss")</script>',
+                }
+            ],
+        }
+        result = adf_to_html(node)
+        assert "&lt;script&gt;" in result
+        assert "<script>" not in result
+        # The quote is escaped, so the attribute cannot be broken out of.
+        assert 'href="https://x.com/&quot;onclick' in result
+
+    def test_mentions_are_dropped_without_losing_the_paragraph(self) -> None:
+        """Nodes without a required mapping render nothing but don't kill text."""
+        doc = {
+            "type": "paragraph",
+            "content": [
+                {"type": "text", "text": "hi "},
+                {"type": "mention", "attrs": {"id": "u1", "text": "Ada"}},
+            ],
+        }
+        assert adf_to_html(doc) == "<p>hi </p>"
+
+
 class TestJiraUserIdentity:
     """Identity extraction, including Jira's hidden-email case."""
 
@@ -185,7 +370,7 @@ class TestMapJiraIssueToLocal:
         assert result["type"] == "story"
         assert result["status"] == "inprogress"
         assert result["priority"] == "4"
-        assert result["description"] == "Body\n"
+        assert result["description"] == "<p>Body</p>"
         assert result["estimate"] == 1
         assert result["timeSpent"] == 0.5
         assert result["timeRemaining"] == 0.5

@@ -15,12 +15,14 @@ the reporter through the Jira account itself.
 
 from __future__ import annotations
 
+import html
 from datetime import UTC, datetime
 from typing import Any
 
 from planny_core.enums import ProjectSourceType
 
 __all__ = [
+    "adf_to_html",
     "adf_to_text",
     "jira_user_identity",
     "map_jira_issue_to_local",
@@ -126,6 +128,117 @@ def adf_to_text(adf: Any) -> str:
     return joined
 
 
+#: Every mark type the client renderer supports, mapped to its HTML tag.
+_MARK_TAGS: dict[str, str] = {
+    "strong": "strong",
+    "em": "em",
+    "code": "code",
+    "underline": "u",
+    "strike": "s",
+}
+
+#: Marks are applied in this order, so the produced nesting is deterministic.
+_MARK_ORDER: tuple[str, ...] = ("strong", "em", "code", "underline", "strike")
+
+
+def _render_adf_text(node: dict[str, Any]) -> str:
+    """Render one ADF ``text`` node: escaped content wrapped by its marks."""
+    text = html.escape(str(node.get("text", "")))
+    if not text:
+        return ""
+
+    marks = [mark for mark in node.get("marks", []) if isinstance(mark, dict)]
+    for mark_type in _MARK_ORDER:
+        if not any(mark.get("type") == mark_type for mark in marks):
+            continue
+        tag = _MARK_TAGS[mark_type]
+        text = f"<{tag}>{text}</{tag}>"
+
+    link = next((mark for mark in marks if mark.get("type") == "link"), None)
+    if isinstance(link, dict):
+        attrs = link.get("attrs")
+        href = html.escape(str(attrs.get("href", ""))) if isinstance(attrs, dict) else ""
+        text = f'<a href="{href}" target="_blank" rel="noopener noreferrer">{text}</a>'
+    return text
+
+
+def _adf_heading_tag(adf: dict[str, Any]) -> str:
+    """Resolve a heading node to ``h1``..``h6``, clamping bogus levels."""
+    attrs = adf.get("attrs")
+    level = attrs.get("level") if isinstance(attrs, dict) else None
+    try:
+        resolved = int(level)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        resolved = 1
+    return f"h{min(max(resolved, 1), 6)}"
+
+
+def _adf_code_block_text(content: list[Any]) -> str:
+    """Code blocks hold raw text: escape it, render no inner marks."""
+    return html.escape("".join(_raw_adf_text(child) for child in content))
+
+
+def _raw_adf_text(node: Any) -> str:
+    if not isinstance(node, dict):
+        return ""
+    if node.get("type") == "text":
+        return str(node.get("text", ""))
+    inner = node.get("content")
+    if not isinstance(inner, list):
+        return ""
+    return "".join(_raw_adf_text(child) for child in inner)
+
+
+def adf_to_html(adf: Any) -> str:
+    """Convert Atlassian Document Format to the HTML the client renders.
+
+    Only tags the client's rich-text sanitizer allows are emitted (``p, br,
+    strong, em, u, s, a, ol, ul, li, h1-h6, blockquote, code, pre, span``).
+    Every piece of text content is escaped with :func:`html.escape` — Jira
+    content is never trusted raw.
+
+    Edge cases match :func:`adf_to_text`: ``None``, ``""`` and non-dict input
+    yield ``""``; a string is passed through unchanged, since it is already
+    text or HTML (older local issues were stored that way).
+    """
+    if not adf:
+        return ""
+    if isinstance(adf, str):
+        return adf
+    if not isinstance(adf, dict):
+        return ""
+
+    node_type = adf.get("type")
+    if node_type == "text":
+        return _render_adf_text(adf)
+    if node_type == "hardBreak":
+        return "<br>"
+
+    content = adf.get("content")
+    if not isinstance(content, list):
+        return ""
+    inner = "".join(adf_to_html(child) for child in content)
+
+    if node_type in (None, "doc"):
+        return inner
+    if node_type == "paragraph":
+        return f"<p>{inner}</p>"
+    if node_type == "heading":
+        tag = _adf_heading_tag(adf)
+        return f"<{tag}>{inner}</{tag}>"
+    if node_type == "bulletList":
+        return f"<ul>{inner}</ul>"
+    if node_type == "orderedList":
+        return f"<ol>{inner}</ol>"
+    if node_type == "listItem":
+        return f"<li>{inner}</li>"
+    if node_type == "blockquote":
+        return f"<blockquote>{inner}</blockquote>"
+    if node_type == "codeBlock":
+        return f"<pre><code>{_adf_code_block_text(content)}</code></pre>"
+    return inner
+
+
 def jira_user_identity(user: dict[str, Any] | None) -> tuple[str, str, str | None] | None:
     """Extract ``(name, email, avatar_url)`` from a Jira user payload.
 
@@ -190,7 +303,7 @@ def map_jira_issue_to_local(
         "type": TYPE_MAP.get(named("issuetype").lower(), DEFAULT_ISSUE_TYPE),
         "status": map_jira_status(named("status")),
         "priority": PRIORITY_MAP.get(named("priority").lower(), DEFAULT_PRIORITY),
-        "description": adf_to_text(fields.get("description")),
+        "description": adf_to_html(fields.get("description")),
         "estimate": seconds_to_hours(timetracking.get("originalEstimateSeconds")),
         "timeSpent": seconds_to_hours(timetracking.get("timeSpentSeconds")),
         "timeRemaining": seconds_to_hours(timetracking.get("remainingEstimateSeconds")),
